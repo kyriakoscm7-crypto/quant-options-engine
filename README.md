@@ -12,23 +12,27 @@ The project combines quantitative finance concepts with software engineering pra
 
 | Metric | Result |
 |---|---|
-| Vectorized Pricing Performance | **3.62 million options/second** |
-| Measured Performance Improvement | **262.89× faster** |
+| Standalone Vectorized Pricing Throughput | **3.62 million options/second** |
+| Standalone Pricing Speedup | **262.89× faster** |
+| FastAPI Batch Pricing Throughput | **100,637 options/second** |
+| FastAPI Batch Pricing Speedup | **50.19× faster** |
 | Automated Tests | **209 passing** |
 | Overall Code Coverage | **89%** |
 | FastAPI Coverage | **97%** |
 | Vectorized Pricing Module Coverage | **100%** |
 | REST API Endpoints | **6** |
-| Batch API Capacity | **10,000 contracts/request** |
-| Continuous Integration | **GitHub Actions — Passing** |
+| Maximum Batch API Size | **10,000 contracts/request** |
+| Continuous Integration | **GitHub Actions** |
 | Containerization | **Docker** |
 | API Framework | **FastAPI** |
 
-Performance results were measured locally on an Apple Silicon MacBook Pro using Python 3.11.
+Performance measurements were performed locally on an Apple Silicon MacBook Pro using Python 3.11.
 
-The reported speedup compares end-to-end scalar and vectorized workflows for calculating both European call and put prices across 100,000 option contracts. Results are hardware-dependent and may vary across environments.
+The standalone pricing benchmark compares scalar and vectorized implementations of European call and put pricing.
 
-The performance figures describe the standalone pricing engines, not HTTP API throughput.
+The API benchmark compares repeated individual FastAPI requests against a single vectorized batch request.
+
+**These benchmarks measure different workflows and should not be interpreted as equivalent performance measurements.**
 
 ---
 
@@ -70,7 +74,7 @@ Capabilities include:
 
 The vectorized implementation achieved a measured **262.89× speedup** when pricing 100,000 European option contracts in the standalone benchmark.
 
-The vectorized engine is also accessible through the REST API, allowing clients to submit up to 10,000 contracts in a single request.
+The optimized pricing engine is also accessible through the REST API.
 
 ### 3. Analytical Option Greeks
 
@@ -125,7 +129,7 @@ The market-data layer separates external data retrieval from the pricing and vis
 
 Exposes quantitative pricing and market-data functionality through a REST API.
 
-The application provides **six endpoints**:
+The application provides six endpoints:
 
 | Method | Endpoint | Description |
 |---|---|---|
@@ -163,7 +167,9 @@ The endpoint:
 - Rejects invalid financial parameters with HTTP 422.
 - Uses the existing vectorized pricing engine without duplicating its mathematical implementation.
 
-The batch endpoint is designed for efficient multi-contract pricing. Its HTTP-level performance is evaluated separately from the standalone numerical benchmark.
+A local benchmark demonstrated a **50.19× speedup** for 10,000 contracts compared with sending 10,000 individual requests through FastAPI's TestClient.
+
+This improvement reflects the combined benefits of batching requests and using vectorized calculations.
 
 ### 7. Interactive Volatility Visualizations
 
@@ -181,13 +187,20 @@ Includes:
 
 ## Performance Benchmarking
 
-One of the project's primary engineering improvements is the development of a vectorized Black-Scholes-Merton pricing engine.
+The project includes two complementary performance benchmarks:
+
+1. **Standalone pricing benchmark:** Compares scalar and vectorized Python pricing workflows.
+2. **FastAPI benchmark:** Compares repeated single-option API requests against one batch-pricing request.
+
+Both benchmarks verify numerical consistency between the compared implementations.
+
+### Benchmark 1: Standalone Pricing Engine
 
 The original implementation calculates option prices individually using Python objects and scalar SciPy operations.
 
 The optimized implementation uses NumPy arrays and vectorized mathematical operations to process large batches.
 
-### Benchmark Methodology
+#### Methodology
 
 Both implementations were evaluated using identical, deterministically generated option parameters.
 
@@ -207,7 +220,7 @@ The original implementation includes per-option object construction, while the v
 
 This comparison represents two different end-to-end pricing workflows rather than an isolated comparison of mathematical functions.
 
-### Benchmark Results
+#### Standalone Benchmark Results
 
 | Options Priced | Original Engine | Vectorized Engine | Speedup |
 |---|---:|---:|---:|
@@ -215,7 +228,7 @@ This comparison represents two different end-to-end pricing workflows rather tha
 | 10,000 | 731.115 ms | 3.087 ms | **236.80×** |
 | 100,000 | 7,266.352 ms | 27.640 ms | **262.89×** |
 
-### Pricing Throughput
+#### Standalone Pricing Throughput
 
 | Workload | Original Engine | Vectorized Engine |
 |---|---:|---:|
@@ -223,7 +236,7 @@ This comparison represents two different end-to-end pricing workflows rather tha
 | 10,000 options | 13,678 options/sec | 3,238,955 options/sec |
 | 100,000 options | 13,762 options/sec | **3,617,956 options/sec** |
 
-### Key Performance Result
+#### Key Standalone Result
 
 For 100,000 European option contracts:
 
@@ -243,6 +256,158 @@ This corresponds to an approximately **99.62% reduction in execution time** for 
 
 These measurements apply to batch call-and-put pricing, not analytical Greeks, implied volatility estimation, or the complete market-data workflow.
 
+---
+
+### Benchmark 2: FastAPI Batch Pricing Performance
+
+The second benchmark evaluates whether vectorized pricing provides a measurable performance improvement when accessed through the REST API.
+
+Rather than comparing only mathematical functions, this benchmark compares two complete API workflows.
+
+#### Workflow A: Individual API Requests
+
+Each option contract is submitted separately to:
+
+```text
+POST /api/v1/options/price
+```
+
+For 10,000 contracts, the application processes 10,000 individual requests.
+
+Each request includes:
+
+- FastAPI request handling.
+- Pydantic input validation.
+- Scalar option pricing.
+- Response construction.
+- JSON serialization and decoding.
+
+#### Workflow B: Vectorized Batch API Request
+
+All option contracts are submitted together to:
+
+```text
+POST /api/v1/options/batch-price
+```
+
+For 10,000 contracts, the application processes one batch request.
+
+The workflow includes:
+
+- FastAPI request handling.
+- Pydantic validation of all contracts.
+- Conversion of contract parameters into NumPy arrays.
+- Vectorized call and put pricing.
+- Response construction.
+- JSON serialization and decoding.
+
+#### API Benchmark Methodology
+
+The benchmark uses FastAPI's `TestClient` to execute the application directly within the Python process.
+
+No separate Uvicorn server is required.
+
+The benchmark:
+
+1. Generates deterministic option parameters using a fixed random seed.
+2. Uses identical contracts for both API workflows.
+3. Warms up the endpoints before measuring performance.
+4. Measures the elapsed time for each workflow.
+5. Repeats each workload five times.
+6. Uses median execution times to reduce sensitivity to timing fluctuations.
+7. Verifies that individual and batch pricing results agree within the configured numerical tolerance.
+8. Calculates speedup and option-pricing throughput.
+9. Saves the measurements to a CSV file.
+
+The workloads are:
+
+- 100 contracts.
+- 1,000 contracts.
+- 10,000 contracts.
+
+The benchmark uses sequential requests for the individual workflow.
+
+It does not simulate concurrent clients or network traffic.
+
+#### API Benchmark Results
+
+| Options Priced | Individual API Requests | Single Batch API Request | Speedup |
+|---|---:|---:|---:|
+| 100 | 46.449 ms | 1.590 ms | **29.22×** |
+| 1,000 | 457.218 ms | 10.029 ms | **45.59×** |
+| 10,000 | 4,987.507 ms | 99.367 ms | **50.19×** |
+
+#### API Pricing Throughput
+
+| Workload | Individual API Requests | Batch API Request |
+|---|---:|---:|
+| 100 options | 2,153 options/sec | 62,905 options/sec |
+| 1,000 options | 2,187 options/sec | 99,710 options/sec |
+| 10,000 options | 2,005 options/sec | **100,637 options/sec** |
+
+#### Key API Performance Result
+
+For 10,000 European option contracts:
+
+**Individual API requests:**
+
+- Number of requests: 10,000.
+- Execution time: 4.988 seconds.
+- Throughput: 2,005 options per second.
+
+**Vectorized batch API:**
+
+- Number of requests: 1.
+- Execution time: 0.099 seconds.
+- Throughput: 100,637 options per second.
+
+**Measured improvement: 50.19× faster.**
+
+This represents an approximately **98.01% reduction in execution time** for the measured workflow.
+
+The benchmark demonstrates that the batch API can process substantially more contracts per second than repeated sequential individual requests under the tested conditions.
+
+#### Why the API Speedup Differs from the Standalone Speedup
+
+The standalone benchmark achieved a 262.89× speedup.
+
+The API benchmark achieved a 50.19× speedup.
+
+These results are not contradictory.
+
+The standalone benchmark primarily measures pricing workflow performance.
+
+The API benchmark includes additional application overhead, including:
+
+- Request routing.
+- Pydantic validation.
+- JSON processing.
+- Response generation.
+- TestClient request handling.
+
+The API benchmark also compares one batch request against many separate requests, so its speedup reflects both request consolidation and vectorized pricing.
+
+The results should not be interpreted as isolating the performance contribution of NumPy alone.
+
+#### API Benchmark Limitations
+
+The benchmark measures in-process FastAPI request handling using `TestClient`.
+
+It does not include:
+
+- Real network latency.
+- Production Uvicorn server performance.
+- Concurrent user traffic.
+- Reverse proxies or load balancers.
+- Cloud infrastructure.
+- External market-data retrieval.
+- Database operations.
+- Production monitoring overhead.
+
+The reported throughput is therefore **in-process benchmark throughput**, not a claim about production HTTP server capacity.
+
+---
+
 ### Reproduce the Benchmarks
 
 Run the original pricing benchmark:
@@ -251,41 +416,42 @@ Run the original pricing benchmark:
 python -m benchmarks.benchmark_black_scholes
 ```
 
-Run the scalar-versus-vectorized comparison:
+Run the scalar-versus-vectorized pricing benchmark:
 
 ```bash
 python -m benchmarks.benchmark_vectorized
 ```
 
-The scripts save results to:
+Run the FastAPI performance benchmark:
+
+```bash
+python -m benchmarks.benchmark_api
+```
+
+The API benchmark runs directly against the FastAPI application using `TestClient`.
+
+A separate server is not required.
+
+The benchmark may take several minutes because it performs repeated individual API requests.
+
+#### Benchmark Output Files
+
+Results are saved to:
 
 ```text
 benchmarks/results/
 ├── black_scholes_benchmark.csv
-└── vectorized_comparison.csv
+├── vectorized_comparison.csv
+└── api_comparison.csv
 ```
 
 The original benchmark measures call pricing, put pricing, and full valuation with analytical Greeks separately.
 
 The vectorized comparison measures both call and put pricing together.
 
+The API comparison measures the complete in-process request workflows.
+
 Results depend on processor performance, installed dependencies, Python version, and system load.
-
-### Standalone Pricing vs. API Performance
-
-The standalone benchmark evaluates Python pricing workflows directly.
-
-The FastAPI batch-pricing endpoint introduces additional operations:
-
-- HTTP request processing.
-- JSON decoding.
-- Pydantic request validation.
-- Conversion of validated parameters into NumPy arrays.
-- JSON response construction and serialization.
-
-Consequently, the measured 262.89× standalone speedup should not be interpreted as an equivalent improvement in HTTP request performance.
-
-API-level performance benchmarking is planned as a future enhancement.
 
 ---
 
@@ -382,6 +548,16 @@ Responsible for:
 - Visualizing volatility across moneyness and maturity.
 - Producing interactive Plotly figures.
 
+### Benchmarking Layer
+
+Responsible for:
+
+- Measuring scalar pricing performance.
+- Measuring vectorized pricing performance.
+- Comparing individual and batch API workflows.
+- Verifying numerical consistency during performance comparisons.
+- Saving reproducible benchmark results.
+
 ### Testing and Infrastructure
 
 Responsible for:
@@ -430,9 +606,11 @@ quant-options-engine/
 │       └── volatility_surface_3d.py
 │
 ├── benchmarks/
+│   ├── benchmark_api.py
 │   ├── benchmark_black_scholes.py
 │   ├── benchmark_vectorized.py
 │   └── results/
+│       ├── api_comparison.csv
 │       ├── black_scholes_benchmark.csv
 │       └── vectorized_comparison.csv
 │
@@ -941,11 +1119,12 @@ Observed volatility patterns may contain outliers caused by market-data limitati
 - Results may vary with hardware, software versions, and system load.
 - Benchmarks use generated option parameters rather than live trading workloads.
 - The vectorized implementation calculates call and put prices, not analytical Greeks.
-- Reported throughput excludes market-data retrieval, API overhead, and network latency.
+- Standalone pricing throughput excludes market-data retrieval, API overhead, and network latency.
+- API benchmark throughput includes in-process request handling but excludes real network latency.
+- The API benchmark uses sequential individual requests rather than concurrent clients.
 - The scalar and vectorized implementations have different execution and memory-allocation characteristics.
+- The batch API supports a maximum of 10,000 contracts per request.
 - Performance results should not be interpreted as production trading-system throughput.
-- The batch API currently supports a maximum of 10,000 contracts per request.
-- The batch API has not yet been independently benchmarked against repeated individual HTTP requests.
 
 ---
 
@@ -953,13 +1132,17 @@ Observed volatility patterns may contain outliers caused by market-data limitati
 
 Potential future enhancements include:
 
-- Benchmarking batch API requests against repeated single-contract HTTP requests.
 - Extending vectorized calculations to analytical Greeks.
+- Implementing Monte Carlo option pricing with statistical convergence analysis.
+- Implementing American-style option pricing using binomial trees.
+- Adding finite-difference pricing methods.
+- Developing portfolio-level risk analytics and aggregate Greeks.
 - Incorporating estimated dividend yields into market-data implied volatility calculations.
-- Implementing American-style option pricing models.
 - Improving quote-quality filters and volatility outlier detection.
 - Developing interpolated and calibrated volatility surfaces.
 - Adding additional underlying assets and option types.
+- Benchmarking performance under real HTTP traffic and concurrent workloads.
+- Building an interactive web dashboard.
 - Deploying the FastAPI application to a cloud platform.
 - Adding structured logging and application monitoring.
 - Introducing additional numerical performance optimizations.
