@@ -4,10 +4,10 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from app.market_data.yahoo_client import (
+    calculate_observation_age_hours,
     calculate_time_to_expiration,
     is_valid_option_quote,
     normalize_timestamp,
-    calculate_observation_age_hours
 )
 
 

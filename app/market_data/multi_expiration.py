@@ -12,7 +12,6 @@ The resulting dataset will be used to construct an interactive
 3D implied volatility visualization.
 """
 
-import math
 from datetime import datetime, timedelta
 
 import pandas as pd
@@ -22,7 +21,6 @@ from app.market_data.yahoo_client import (
     MARKET_TIMEZONE,
     fetch_option_chain,
 )
-
 
 # ============================================================
 # EXPIRATION SELECTION

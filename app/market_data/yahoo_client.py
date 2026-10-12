@@ -1,12 +1,11 @@
 import math
-from datetime import datetime, time, timedelta, timezone
+from datetime import UTC, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 import pandas as pd
 import yfinance as yf
 
 from app.pricing.implied_volatility import implied_volatility
-
 
 # US equity options use the New York market timezone.
 MARKET_TIMEZONE = ZoneInfo("America/New_York")
@@ -214,7 +213,7 @@ def fetch_option_chain(
     # --------------------------------------------------------
 
     # Record when the market-data request begins.
-    retrieval_timestamp = datetime.now(timezone.utc)
+    retrieval_timestamp = datetime.now(UTC)
 
     retrieval_time_iso = retrieval_timestamp.isoformat()
 

@@ -1,17 +1,32 @@
+import logging
 import math
 
-from fastapi import FastAPI
-from pydantic import BaseModel, ConfigDict, Field, model_validator
-
-from app.pricing.black_scholes import BlackScholes
-from app.pricing.implied_volatility import implied_volatility
-
-from fastapi import HTTPException
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
 
 from app.market_data.yahoo_client import fetch_option_chain
+from app.pricing.black_scholes import BlackScholes
+from app.pricing.implied_volatility import implied_volatility
+
+# ============================================================
+# LOGGING CONFIGURATION
+# ============================================================
+
+# Create a dedicated logger for this Python module.
+#
+# __name__ identifies the module as "app.api.main".
+# This allows application logs to be organized by module
+# instead of using Python's global/root logger.
+#
+# When an unexpected error occurs, this logger can record
+# the error message and traceback for debugging.
+logger = logging.getLogger(__name__)
 
 
+# ============================================================
+# FASTAPI APPLICATION
+# ============================================================
 
 # Create the FastAPI application.
 app = FastAPI(
@@ -20,6 +35,10 @@ app = FastAPI(
     version="1.0.0"
 )
 
+
+# ============================================================
+# REQUEST MODELS
+# ============================================================
 
 # Define the structure of an incoming option-pricing request.
 class OptionRequest(BaseModel):
@@ -44,6 +63,7 @@ class OptionRequest(BaseModel):
 
     # Continuously compounded annual dividend yield.
     q: float = Field(default=0.0, allow_inf_nan=False)
+
 
 # Define the inputs required to calculate implied volatility.
 class ImpliedVolatilityRequest(BaseModel):
@@ -73,7 +93,10 @@ class ImpliedVolatilityRequest(BaseModel):
     q: float = Field(default=0.0, allow_inf_nan=False)
 
 
-# Endpoint 1: Health check.
+# ============================================================
+# ENDPOINT 1: HEALTH CHECK
+# ============================================================
+
 @app.get("/health")
 def health_check():
 
@@ -83,10 +106,15 @@ def health_check():
     }
 
 
-# Endpoint 2: Calculate option prices.
+# ============================================================
+# ENDPOINT 2: OPTION PRICING
+# ============================================================
+
 @app.post("/api/v1/options/price")
 def calculate_option_price(request: OptionRequest):
 
+    # Initialize the Black-Scholes pricing engine
+    # using the values supplied in the API request.
     engine = BlackScholes(
         S=request.S,
         K=request.K,
@@ -96,16 +124,21 @@ def calculate_option_price(request: OptionRequest):
         q=request.q
     )
 
+    # Return the theoretical European call and put prices.
     return {
         "call_price": round(engine.call_price(), 4),
         "put_price": round(engine.put_price(), 4)
     }
 
 
-# Endpoint 3: Calculate option Greeks.
+# ============================================================
+# ENDPOINT 3: OPTION GREEKS
+# ============================================================
+
 @app.post("/api/v1/options/greeks")
 def calculate_option_greeks(request: OptionRequest):
 
+    # Initialize the pricing engine using the request inputs.
     engine = BlackScholes(
         S=request.S,
         K=request.K,
@@ -115,10 +148,14 @@ def calculate_option_greeks(request: OptionRequest):
         q=request.q
     )
 
+    # Return the option sensitivity measurements.
     return engine.greeks()
 
 
-# Endpoint 4: Calculate implied volatility from a market option price.
+# ============================================================
+# ENDPOINT 4: IMPLIED VOLATILITY
+# ============================================================
+
 @app.post("/api/v1/options/implied-volatility")
 def calculate_implied_volatility(request: ImpliedVolatilityRequest):
 
@@ -142,13 +179,17 @@ def calculate_implied_volatility(request: ImpliedVolatilityRequest):
             detail="No valid implied volatility found for these inputs."
         )
 
+    # Return implied volatility as both a decimal and percentage.
     return {
         "implied_volatility": round(iv, 6),
         "implied_volatility_percent": round(iv * 100, 4)
     }
 
 
-    # Endpoint 5: Retrieve market option quotes and calculated IVs.
+# ============================================================
+# ENDPOINT 5: YAHOO FINANCE MARKET DATA
+# ============================================================
+
 @app.get("/api/v1/market/options/{ticker}")
 async def get_market_options(
     ticker: str,
@@ -200,11 +241,19 @@ async def get_market_options(
 
     except Exception as exc:
 
-        # Log the actual error for debugging.
-        import logging
-        logging.exception("Market data request failed")
+        # Record the unexpected error using our dedicated logger.
+        #
+        # logger.exception() automatically includes the
+        # exception traceback when called inside an except block.
+        #
+        # This helps developers diagnose failures without
+        # exposing internal provider errors to API users.
+        logger.exception("Market data request failed")
 
-        # Avoid exposing internal provider errors to API users.
+        # Return a generic HTTP 503 response to the API client.
+        #
+        # HTTP 503 means the service is temporarily unavailable.
+        # The original exception is preserved internally.
         raise HTTPException(
             status_code=503,
             detail="Market data is temporarily unavailable."

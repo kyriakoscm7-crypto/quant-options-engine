@@ -21,7 +21,6 @@ from app.market_data.multi_expiration import (
     fetch_multiple_expirations,
 )
 
-
 # ============================================================
 # PREPARE VOLATILITY DATA
 # ============================================================

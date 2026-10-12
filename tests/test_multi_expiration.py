@@ -9,11 +9,10 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from app.market_data.yahoo_client import MARKET_TIMEZONE
-
 from app.market_data.multi_expiration import (
     select_expirations,
 )
+from app.market_data.yahoo_client import MARKET_TIMEZONE
 
 
 def make_expiration(days_from_today: int) -> str:

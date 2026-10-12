@@ -1,0 +1,26 @@
+# Ruff configuration for Quant Options Engine.
+
+# Python version used by this project.
+target-version = "py311"
+
+[lint]
+
+# Enable code-quality checks.
+select = [
+    "E4",    # Import-related errors.
+    "E7",    # Statement errors.
+    "E9",    # Syntax errors.
+    "F",     # Unused imports and undefined names.
+    "I",     # Import sorting.
+    "LOG",   # Logging best practices.
+    "SIM",   # Code simplification.
+    "C4",    # Collection-related improvements.
+    "UP",    # Python modernization.
+]
+
+# Ignore stylistic rules that conflict with our existing code.
+ignore = [
+    "SIM103", # Preserve explicit conditional returns.
+    "SIM300", # Preserve natural pytest assertions.
+    "C408",   # Allow dict(...) in Plotly configuration.
+]

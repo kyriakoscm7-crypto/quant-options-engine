@@ -12,7 +12,6 @@ from app.visualization.volatility_surface_3d import (
     prepare_surface_data,
 )
 
-
 # ============================================================
 # SYNTHETIC TEST DATA
 # ============================================================

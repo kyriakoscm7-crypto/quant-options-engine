@@ -1,12 +1,10 @@
-import pytest
+from unittest.mock import patch
 
+import pandas as pd
+import pytest
 from fastapi.testclient import TestClient
 
 from app.api.main import app
-
-import pandas as pd
-
-from unittest.mock import patch
 
 # Create a test client that sends simulated HTTP requests
 # directly to our FastAPI application.
