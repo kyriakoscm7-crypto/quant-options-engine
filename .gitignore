@@ -1,0 +1,37 @@
+# Python virtual environments
+.venv/
+venv/
+env/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+
+# Testing caches and reports
+.pytest_cache/
+.coverage
+htmlcov/
+
+# macOS files
+.DS_Store
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Generated HTML visualizations
+volatility_smile.html
+volatility_surface_3d.html
+
+# Local backups
+backups/
+
+# Editor settings
+.vscode/
+.idea/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/

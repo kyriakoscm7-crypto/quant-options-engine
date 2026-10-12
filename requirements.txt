@@ -1,0 +1,10 @@
+numpy
+scipy
+pandas
+yfinance
+fastapi
+uvicorn
+plotly
+pytest
+httpx
+
