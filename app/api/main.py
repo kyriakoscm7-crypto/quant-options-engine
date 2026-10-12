@@ -1,6 +1,7 @@
 import logging
 import math
 
+import numpy as np
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
@@ -8,6 +9,7 @@ from starlette.concurrency import run_in_threadpool
 from app.market_data.yahoo_client import fetch_option_chain
 from app.pricing.black_scholes import BlackScholes
 from app.pricing.implied_volatility import implied_volatility
+from app.pricing.vectorized_black_scholes import price_options_vectorized
 
 # ============================================================
 # LOGGING CONFIGURATION
@@ -32,7 +34,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="Quant Options Engine",
     description="Options pricing and quantitative analytics REST API.",
-    version="1.0.0"
+    version="1.1.0",
 )
 
 
@@ -63,6 +65,23 @@ class OptionRequest(BaseModel):
 
     # Continuously compounded annual dividend yield.
     q: float = Field(default=0.0, allow_inf_nan=False)
+
+
+# Define the structure of a batch-pricing request.
+class BatchOptionRequest(BaseModel):
+
+    # Reject unexpected fields at the outer request level.
+    model_config = ConfigDict(extra="forbid")
+
+    # Accept between 1 and 10,000 option contracts.
+    #
+    # Each item uses OptionRequest, so every contract
+    # automatically receives the same validation rules
+    # as the existing single-option pricing endpoint.
+    options: list[OptionRequest] = Field(
+        min_length=1,
+        max_length=10_000,
+    )
 
 
 # Define the inputs required to calculate implied volatility.
@@ -102,7 +121,7 @@ def health_check():
 
     return {
         "status": "healthy",
-        "service": "quant-options-engine"
+        "service": "quant-options-engine",
     }
 
 
@@ -121,13 +140,13 @@ def calculate_option_price(request: OptionRequest):
         T=request.T,
         r=request.r,
         sigma=request.sigma,
-        q=request.q
+        q=request.q,
     )
 
     # Return the theoretical European call and put prices.
     return {
         "call_price": round(engine.call_price(), 4),
-        "put_price": round(engine.put_price(), 4)
+        "put_price": round(engine.put_price(), 4),
     }
 
 
@@ -145,7 +164,7 @@ def calculate_option_greeks(request: OptionRequest):
         T=request.T,
         r=request.r,
         sigma=request.sigma,
-        q=request.q
+        q=request.q,
     )
 
     # Return the option sensitivity measurements.
@@ -167,7 +186,7 @@ def calculate_implied_volatility(request: ImpliedVolatilityRequest):
         T=request.T,
         r=request.r,
         option_type=request.option_type,
-        q=request.q
+        q=request.q,
     )
 
     # Some market prices have no valid implied volatility
@@ -176,13 +195,13 @@ def calculate_implied_volatility(request: ImpliedVolatilityRequest):
 
         raise HTTPException(
             status_code=422,
-            detail="No valid implied volatility found for these inputs."
+            detail="No valid implied volatility found for these inputs.",
         )
 
     # Return implied volatility as both a decimal and percentage.
     return {
         "implied_volatility": round(iv, 6),
-        "implied_volatility_percent": round(iv * 100, 4)
+        "implied_volatility_percent": round(iv * 100, 4),
     }
 
 
@@ -195,7 +214,7 @@ async def get_market_options(
     ticker: str,
     risk_free_rate: float = 0.045,
     dividend_yield: float = 0.0,
-    minimum_days_to_expiry: int = 7
+    minimum_days_to_expiry: int = 7,
 ):
 
     # Restrict ticker symbols to common alphanumeric formats.
@@ -208,7 +227,7 @@ async def get_market_options(
     if not re.fullmatch(r"[A-Z0-9.^-]{1,15}", ticker):
         raise HTTPException(
             status_code=422,
-            detail="Invalid ticker symbol."
+            detail="Invalid ticker symbol.",
         )
 
     # Validate query parameters.
@@ -218,13 +237,13 @@ async def get_market_options(
     ):
         raise HTTPException(
             status_code=422,
-            detail="Interest rate and dividend yield must be finite."
+            detail="Interest rate and dividend yield must be finite.",
         )
 
     if minimum_days_to_expiry < 1 or minimum_days_to_expiry > 365:
         raise HTTPException(
             status_code=422,
-            detail="minimum_days_to_expiry must be between 1 and 365."
+            detail="minimum_days_to_expiry must be between 1 and 365.",
         )
 
     try:
@@ -236,7 +255,7 @@ async def get_market_options(
             ticker_symbol=ticker,
             risk_free_rate=risk_free_rate,
             dividend_yield=dividend_yield,
-            minimum_days_to_expiry=minimum_days_to_expiry
+            minimum_days_to_expiry=minimum_days_to_expiry,
         )
 
     except Exception as exc:
@@ -256,7 +275,7 @@ async def get_market_options(
         # The original exception is preserved internally.
         raise HTTPException(
             status_code=503,
-            detail="Market data is temporarily unavailable."
+            detail="Market data is temporarily unavailable.",
         ) from exc
 
     # Convert the DataFrame into JSON-compatible records.
@@ -265,5 +284,96 @@ async def get_market_options(
     return {
         "ticker": ticker,
         "count": len(records),
-        "options": records
+        "options": records,
+    }
+
+
+# ============================================================
+# ENDPOINT 6: VECTORIZED BATCH OPTION PRICING
+# ============================================================
+
+@app.post("/api/v1/options/batch-price")
+def calculate_batch_option_prices(request: BatchOptionRequest):
+
+    # Convert the validated option contracts into NumPy arrays.
+    #
+    # Each array contains one parameter for every contract.
+    # For example, strikes might contain:
+    #
+    # [90.0, 100.0, 110.0]
+    #
+    # NumPy arrays allow the pricing engine to process
+    # the entire batch instead of using a Python loop
+    # to price every contract individually.
+
+    stock_prices = np.array(
+        [option.S for option in request.options],
+        dtype=float,
+    )
+
+    strikes = np.array(
+        [option.K for option in request.options],
+        dtype=float,
+    )
+
+    expirations = np.array(
+        [option.T for option in request.options],
+        dtype=float,
+    )
+
+    interest_rates = np.array(
+        [option.r for option in request.options],
+        dtype=float,
+    )
+
+    volatilities = np.array(
+        [option.sigma for option in request.options],
+        dtype=float,
+    )
+
+    dividend_yields = np.array(
+        [option.q for option in request.options],
+        dtype=float,
+    )
+
+    # Calculate every call and put price in one vectorized operation.
+    #
+    # The function returns two NumPy arrays:
+    #
+    # call_prices = [call_1, call_2, call_3, ...]
+    # put_prices  = [put_1, put_2, put_3, ...]
+    #
+    # Both arrays preserve the order of the incoming contracts.
+    call_prices, put_prices = price_options_vectorized(
+        S=stock_prices,
+        K=strikes,
+        T=expirations,
+        r=interest_rates,
+        sigma=volatilities,
+        q=dividend_yields,
+    )
+
+    # Build the JSON-compatible response.
+    #
+    # zip() pairs the call and put price for each contract.
+    #
+    # float() converts NumPy numbers into standard Python floats.
+    # round() keeps the response consistent with the existing
+    # single-option pricing endpoint.
+    results = [
+        {
+            "call_price": round(float(call), 4),
+            "put_price": round(float(put), 4),
+        }
+        for call, put in zip(
+            call_prices,
+            put_prices,
+            strict=True,
+        )
+    ]
+
+    # Return the number of priced contracts and their prices.
+    return {
+        "count": len(results),
+        "results": results,
     }

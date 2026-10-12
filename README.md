@@ -14,9 +14,12 @@ The project combines quantitative finance concepts with software engineering pra
 |---|---|
 | Vectorized Pricing Performance | **3.62 million options/second** |
 | Measured Performance Improvement | **262.89× faster** |
-| Automated Tests | **172 passing** |
+| Automated Tests | **209 passing** |
 | Overall Code Coverage | **89%** |
+| FastAPI Coverage | **97%** |
 | Vectorized Pricing Module Coverage | **100%** |
+| REST API Endpoints | **6** |
+| Batch API Capacity | **10,000 contracts/request** |
 | Continuous Integration | **GitHub Actions — Passing** |
 | Containerization | **Docker** |
 | API Framework | **FastAPI** |
@@ -24,6 +27,8 @@ The project combines quantitative finance concepts with software engineering pra
 Performance results were measured locally on an Apple Silicon MacBook Pro using Python 3.11.
 
 The reported speedup compares end-to-end scalar and vectorized workflows for calculating both European call and put prices across 100,000 option contracts. Results are hardware-dependent and may vary across environments.
+
+The performance figures describe the standalone pricing engines, not HTTP API throughput.
 
 ---
 
@@ -61,8 +66,11 @@ Capabilities include:
 - Zero-volatility handling.
 - Input validation across entire arrays.
 - Numerical comparison against the original pricing engine.
+- Integration with the FastAPI batch-pricing endpoint.
 
-The vectorized implementation achieved a measured **262.89× speedup** when pricing 100,000 European option contracts.
+The vectorized implementation achieved a measured **262.89× speedup** when pricing 100,000 European option contracts in the standalone benchmark.
+
+The vectorized engine is also accessible through the REST API, allowing clients to submit up to 10,000 contracts in a single request.
 
 ### 3. Analytical Option Greeks
 
@@ -117,20 +125,45 @@ The market-data layer separates external data retrieval from the pricing and vis
 
 Exposes quantitative pricing and market-data functionality through a REST API.
 
-The application provides five endpoints covering:
+The application provides **six endpoints**:
 
-- European option pricing.
-- Analytical Greeks.
-- Implied volatility estimation.
-- Option-chain market data.
-- Application health monitoring.
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/health` | Application health monitoring |
+| POST | `/api/v1/options/price` | Single-contract European call and put pricing |
+| POST | `/api/v1/options/greeks` | Analytical option Greeks |
+| POST | `/api/v1/options/implied-volatility` | Numerical implied volatility estimation |
+| GET | `/api/v1/market/options/{ticker}` | Yahoo Finance option-chain market data |
+| POST | `/api/v1/options/batch-price` | Vectorized pricing for up to 10,000 contracts |
 
 Additional features include:
 
 - JSON request and response handling.
-- Automatic input validation.
+- Automatic input validation using Pydantic.
 - Interactive Swagger documentation.
 - Automated endpoint tests.
+- Numerical validation of batch-pricing results.
+- Request-size restrictions for batch pricing.
+
+#### Vectorized Batch Pricing API
+
+The batch-pricing endpoint accepts between **1 and 10,000 European option contracts** in a single request.
+
+Each contract is validated using the same financial input rules as the original single-option pricing endpoint.
+
+After validation, the application converts the input parameters into NumPy arrays and performs vectorized call and put pricing.
+
+The endpoint:
+
+- Processes multiple contracts in one request.
+- Supports different stock prices, strikes, maturities, rates, volatilities, and dividend yields.
+- Preserves the original contract order.
+- Returns European call and put prices rounded to four decimal places.
+- Rejects empty batches and batches exceeding 10,000 contracts.
+- Rejects invalid financial parameters with HTTP 422.
+- Uses the existing vectorized pricing engine without duplicating its mathematical implementation.
+
+The batch endpoint is designed for efficient multi-contract pricing. Its HTTP-level performance is evaluated separately from the standalone numerical benchmark.
 
 ### 7. Interactive Volatility Visualizations
 
@@ -238,6 +271,22 @@ The vectorized comparison measures both call and put pricing together.
 
 Results depend on processor performance, installed dependencies, Python version, and system load.
 
+### Standalone Pricing vs. API Performance
+
+The standalone benchmark evaluates Python pricing workflows directly.
+
+The FastAPI batch-pricing endpoint introduces additional operations:
+
+- HTTP request processing.
+- JSON decoding.
+- Pydantic request validation.
+- Conversion of validated parameters into NumPy arrays.
+- JSON response construction and serialization.
+
+Consequently, the measured 262.89× standalone speedup should not be interpreted as an equivalent improvement in HTTP request performance.
+
+API-level performance benchmarking is planned as a future enhancement.
+
 ---
 
 ## Visualizations
@@ -281,6 +330,7 @@ The screenshots below show the visualization from different viewing angles.
 | Data Processing | pandas |
 | Market Data | yfinance |
 | REST API | FastAPI, Uvicorn |
+| Data Validation | Pydantic |
 | Visualization | Plotly |
 | Automated Testing | pytest, pytest-cov |
 | Code Quality | Ruff |
@@ -319,6 +369,8 @@ Responsible for:
 
 - Exposing quantitative functionality through FastAPI.
 - Validating incoming requests.
+- Supporting single-contract and batch option pricing.
+- Enforcing batch request-size limits.
 - Returning structured JSON responses.
 - Providing application health monitoring.
 
@@ -336,6 +388,7 @@ Responsible for:
 
 - Automated unit and integration-style tests.
 - Numerical correctness checks.
+- Batch API validation and response testing.
 - Code coverage measurement.
 - Static code-quality checks.
 - Dependency vulnerability scanning.
@@ -391,6 +444,7 @@ quant-options-engine/
 │
 ├── tests/
 │   ├── test_api.py
+│   ├── test_batch_pricing_api.py
 │   ├── test_black_scholes.py
 │   ├── test_implied_volatility.py
 │   ├── test_market_data.py
@@ -465,6 +519,16 @@ Open the interactive API documentation:
 
 The Swagger interface allows users to explore available endpoints, submit requests, and inspect responses.
 
+If port 8000 is already in use, start the application on another port:
+
+```bash
+uvicorn app.api.main:app --reload --port 8001
+```
+
+Then open:
+
+**http://127.0.0.1:8001/docs**
+
 ---
 
 ## Running with Docker
@@ -534,7 +598,7 @@ Submit the following JSON to:
 
 The API returns calculated option prices and risk sensitivities.
 
-### Example: Vectorized Pricing
+### Example: Vectorized Pricing in Python
 
 The vectorized engine can price multiple contracts in a single operation.
 
@@ -560,11 +624,98 @@ print("Put prices:", puts)
 
 NumPy broadcasting allows a single stock price, interest rate, or volatility value to be combined with arrays of strike prices and expiration times.
 
+### Example: Vectorized Batch Pricing Through FastAPI
+
+**Endpoint:**
+
+```text
+POST /api/v1/options/batch-price
+```
+
+The endpoint accepts between 1 and 10,000 contracts per request.
+
+#### Example Request
+
+```json
+{
+  "options": [
+    {
+      "S": 100,
+      "K": 90,
+      "T": 1,
+      "r": 0.05,
+      "sigma": 0.2,
+      "q": 0
+    },
+    {
+      "S": 100,
+      "K": 100,
+      "T": 1,
+      "r": 0.05,
+      "sigma": 0.2,
+      "q": 0
+    },
+    {
+      "S": 100,
+      "K": 110,
+      "T": 1,
+      "r": 0.05,
+      "sigma": 0.2,
+      "q": 0
+    }
+  ]
+}
+```
+
+#### Example Response
+
+```json
+{
+  "count": 3,
+  "results": [
+    {
+      "call_price": 16.6994,
+      "put_price": 2.3101
+    },
+    {
+      "call_price": 10.4506,
+      "put_price": 5.5735
+    },
+    {
+      "call_price": 6.0401,
+      "put_price": 10.6753
+    }
+  ]
+}
+```
+
+The example was verified locally using FastAPI's Swagger interface.
+
+The API returned HTTP 200 with three option-pricing results.
+
+Each result corresponds to the contract at the same position in the request.
+
+#### Request Validation
+
+The endpoint returns HTTP 422 when:
+
+- The options list is empty.
+- More than 10,000 contracts are submitted.
+- A required contract parameter is missing.
+- A stock price or strike price is nonpositive.
+- Time to expiration or volatility is negative.
+- A parameter is invalid or non-finite.
+- Unexpected request fields are supplied.
+
+Each contract is validated before the pricing operation begins.
+
 ---
 
 ## Automated Testing
 
-The project includes **172 automated tests** covering quantitative calculations, market-data processing, API behavior, and visualizations.
+The project includes **209 automated tests** covering quantitative calculations, market-data processing, API behavior, and visualizations.
+
+The batch-pricing milestone introduced **37 additional tests**.
 
 ### Test Coverage
 
@@ -572,7 +723,7 @@ Latest verified local results:
 
 | Component | Coverage |
 |---|---:|
-| FastAPI | 97% |
+| FastAPI | **97%** |
 | Yahoo Finance Client | 95% |
 | Multiple-Expiration Processing | 90% |
 | Original Black-Scholes Engine | 90% |
@@ -597,6 +748,11 @@ The test suite covers:
 - NumPy broadcasting.
 - Expired and zero-volatility options.
 - Numerical agreement between scalar and vectorized pricing.
+- Batch API request validation.
+- Batch API response formatting.
+- Preservation of contract order.
+- Maximum batch-size enforcement.
+- Consistency between single-contract and batch-pricing endpoints.
 
 ### Run Tests Locally
 
@@ -607,8 +763,8 @@ python -m pytest tests/ -q --cov=app --cov-report=term-missing
 Latest verified local result:
 
 ```text
-172 passed, 1 warning
-TOTAL 474 54 89%
+209 passed, 1 warning
+TOTAL 490 54 89%
 ```
 
 The warning originates from a Starlette dependency deprecation notice and does not indicate a failed test.
@@ -732,6 +888,8 @@ NumPy and SciPy perform many array operations using optimized numerical routines
 
 In this project, vectorization substantially improves throughput for batch European option pricing.
 
+The optimized calculations can be accessed directly through Python or through the FastAPI batch-pricing endpoint.
+
 ---
 
 ## Model Assumptions and Limitations
@@ -786,6 +944,8 @@ Observed volatility patterns may contain outliers caused by market-data limitati
 - Reported throughput excludes market-data retrieval, API overhead, and network latency.
 - The scalar and vectorized implementations have different execution and memory-allocation characteristics.
 - Performance results should not be interpreted as production trading-system throughput.
+- The batch API currently supports a maximum of 10,000 contracts per request.
+- The batch API has not yet been independently benchmarked against repeated individual HTTP requests.
 
 ---
 
@@ -793,7 +953,7 @@ Observed volatility patterns may contain outliers caused by market-data limitati
 
 Potential future enhancements include:
 
-- Integrating vectorized pricing into the FastAPI application.
+- Benchmarking batch API requests against repeated single-contract HTTP requests.
 - Extending vectorized calculations to analytical Greeks.
 - Incorporating estimated dividend yields into market-data implied volatility calculations.
 - Implementing American-style option pricing models.
