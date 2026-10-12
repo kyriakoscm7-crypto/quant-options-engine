@@ -35,3 +35,8 @@ backups/
 build/
 dist/
 *.egg-info/
+
+# Python test coverage files
+.coverage
+.coverage.*
+htmlcov/

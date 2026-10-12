@@ -1,41 +1,117 @@
 name: Quant Options Engine CI
 
+# Run this workflow whenever code is pushed or a pull request is opened.
 on:
   push:
   pull_request:
 
 jobs:
+
+  # ============================================================
+  # JOB 1: PYTHON QUALITY, TESTING, AND SECURITY
+  # ============================================================
+
   test:
-    name: Run Python Tests
+    name: Python Quality, Tests, and Security
     runs-on: ubuntu-latest
 
     steps:
+
+      # Download the repository onto GitHub's temporary runner.
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Install Python 3.11, matching our local development environment.
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
 
+      # Install application dependencies and development tools.
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          python -m pip install -r requirements.txt
+          python -m pip install ruff pytest-cov pip-audit
 
-      - name: Run automated tests
+      # Check for common Python mistakes and style violations.
+      # Ruff automatically reads the ruff.toml configuration file.
+      - name: Run Ruff linting
         run: |
-          python -m pytest tests/ -q
+          python -m ruff check app/ tests/
+
+      # Run all automated tests and calculate code coverage.
+      # --cov=app measures how much of our application code is tested.
+      # --cov-report=term-missing displays uncovered line numbers.
+      - name: Run tests with coverage
+        run: |
+          python -m pytest tests/ -q --cov=app --cov-report=term-missing
+
+      # Check installed Python dependencies for known vulnerabilities.
+      # A detected vulnerability will cause this step to fail.
+      - name: Audit Python dependencies
+        run: |
+          python -m pip_audit
+
+
+  # ============================================================
+  # JOB 2: DOCKER BUILD AND SMOKE TEST
+  # ============================================================
 
   docker:
-    name: Build Docker Image
+    name: Docker Build and Smoke Test
     runs-on: ubuntu-latest
 
     steps:
+
+      # Download the repository onto GitHub's temporary runner.
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Build the same Docker image we run locally.
       - name: Build Docker image
         run: |
           docker build -t quant-options-engine .
+
+      # Start the FastAPI application inside a Docker container.
+      #
+      # --detach runs the container in the background.
+      # --name gives it a predictable name.
+      # -p 8080:8080 maps the container's API port to the runner.
+      - name: Start Docker container
+        run: |
+          docker run \
+            --detach \
+            --name quant-options-engine-ci \
+            -p 8080:8080 \
+            quant-options-engine
+
+      # Wait for the API to start, then check its health endpoint.
+      #
+      # curl --fail returns an error for HTTP 400/500 responses.
+      # The loop allows up to 30 attempts, one second apart.
+      #
+      # If the API never becomes healthy, the workflow fails.
+      - name: Verify API health endpoint
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8080/health; then
+              echo ""
+              echo "Docker smoke test passed!"
+              exit 0
+            fi
+
+            echo "Waiting for API to start... ($attempt/30)"
+            sleep 1
+          done
+
+          echo "ERROR: API did not become healthy."
+          docker logs quant-options-engine-ci
+          exit 1
+
+      # Always stop and remove the container, even if a test fails.
+      - name: Clean up Docker container
+        if: always()
+        run: |
+          docker rm --force quant-options-engine-ci || true
