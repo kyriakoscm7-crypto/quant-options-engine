@@ -2,47 +2,243 @@
 
 [![Quant Options Engine CI](https://github.com/kyriakoscm7-crypto/quant-options-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/kyriakoscm7-crypto/quant-options-engine/actions/workflows/ci.yml)
 
-A Python-based quantitative finance application for pricing options, calculating risk sensitivities, estimating implied volatility, and visualizing volatility patterns using real market data.
+**A Python-based quantitative options analytics platform featuring Black-Scholes-Merton pricing, analytical Greeks, implied volatility estimation, real market-data integration, and high-performance NumPy vectorization.**
 
-Built with a modular architecture featuring a pricing engine, market-data integration, REST API, interactive visualizations, automated testing, Docker containerization, and continuous integration.
+Built using a modular architecture with a REST API, interactive volatility visualizations, automated testing, Docker containerization, and GitHub Actions continuous integration.
+
+The project combines quantitative finance concepts with software engineering practices, emphasizing numerical correctness, reproducible performance measurements, and automated quality assurance.
+
+## Project Highlights
+
+| Metric | Result |
+|---|---|
+| Vectorized Pricing Performance | **3.62 million options/second** |
+| Measured Performance Improvement | **262.89× faster** |
+| Automated Tests | **172 passing** |
+| Overall Code Coverage | **89%** |
+| Vectorized Pricing Module Coverage | **100%** |
+| Continuous Integration | **GitHub Actions — Passing** |
+| Containerization | **Docker** |
+| API Framework | **FastAPI** |
+
+Performance results were measured locally on an Apple Silicon MacBook Pro using Python 3.11.
+
+The reported speedup compares end-to-end scalar and vectorized workflows for calculating both European call and put prices across 100,000 option contracts. Results are hardware-dependent and may vary across environments.
+
+---
 
 ## Features
 
-### Options Pricing
+### 1. Black-Scholes-Merton Options Pricing
 
-- Black-Scholes-Merton pricing for European call and put options.
-- Support for continuous dividend yields.
-- Analytical option Greeks for risk sensitivity analysis.
-- Input validation and handling of important pricing edge cases.
+Implements analytical pricing for European call and put options.
 
-### Implied Volatility
+Features include:
 
-- Numerical implied volatility estimation from observed option prices.
-- Arbitrage-bound validation and numerical safeguards.
-- Implied volatility calculations using filtered market-data observations.
+- European call and put pricing.
+- Continuous dividend yield support.
+- Risk-free interest rate modeling.
+- Input validation for invalid or non-finite parameters.
+- Expiration and zero-volatility handling.
+- Analytical option Greeks.
+- Numerical consistency testing.
 
-### Market Data
+The original implementation provides a readable, object-oriented reference pricing engine.
 
-- Yahoo Finance integration for retrieving SPY option-chain data.
-- Bid-ask quote filtering to reduce the impact of poor-quality observations.
-- Multiple-expiration option-chain retrieval.
-- Implied volatility calculations across strikes and maturities.
-- Tracking of underlying-price and option-trade timestamps.
+### 2. High-Performance Vectorized Pricing
 
-### REST API
+Implements a second Black-Scholes-Merton pricing engine using NumPy and SciPy.
 
-- FastAPI endpoints for option pricing, Greeks, implied volatility, and market-data retrieval.
-- Interactive Swagger API documentation.
+Unlike the original implementation, which constructs a separate Python object for each option, the vectorized engine processes arrays of option parameters in batches.
+
+Capabilities include:
+
+- Batch European call and put pricing.
+- NumPy broadcasting across input arrays.
+- Support for varying strikes, maturities, volatility, and interest rates.
+- Continuous dividend yields.
+- Expired-option handling.
+- Zero-volatility handling.
+- Input validation across entire arrays.
+- Numerical comparison against the original pricing engine.
+
+The vectorized implementation achieved a measured **262.89× speedup** when pricing 100,000 European option contracts.
+
+### 3. Analytical Option Greeks
+
+The original pricing engine calculates the following risk sensitivities:
+
+| Greek | Description |
+|---|---|
+| Delta | Sensitivity to changes in the underlying asset price |
+| Gamma | Sensitivity of delta to changes in the underlying price |
+| Vega | Sensitivity to changes in volatility |
+| Theta | Sensitivity to the passage of time |
+| Rho | Sensitivity to changes in the risk-free interest rate |
+
+The implementation uses the following conventions:
+
+- Delta and gamma are expressed relative to a $1 underlying price movement.
+- Vega measures sensitivity to a 1-percentage-point volatility change.
+- Theta represents calendar-day time decay.
+- Rho measures sensitivity to a 1-percentage-point interest rate change.
+
+The vectorized engine currently calculates call and put prices. Analytical Greeks remain available through the original pricing engine.
+
+### 4. Implied Volatility Estimation
+
+Provides numerical implied volatility estimation from observed option prices.
+
+Features include:
+
+- Numerical root-finding.
+- Pricing-bound validation.
+- Numerical safeguards.
+- Market-data-derived implied volatility estimates.
+- Support for analyzing volatility across strikes and maturities.
+
+### 5. Yahoo Finance Market Data
+
+Integrates with Yahoo Finance through `yfinance` to retrieve option-chain observations.
+
+Features include:
+
+- SPY option-chain retrieval.
+- Bid-ask quote filtering.
+- Multiple-expiration data collection.
+- Underlying-price observations.
+- Option last-trade timestamps.
+- Implied volatility estimation from filtered market observations.
+- Preparation of datasets for volatility visualizations.
+
+The market-data layer separates external data retrieval from the pricing and visualization components.
+
+### 6. FastAPI REST API
+
+Exposes quantitative pricing and market-data functionality through a REST API.
+
+The application provides five endpoints covering:
+
+- European option pricing.
+- Analytical Greeks.
+- Implied volatility estimation.
+- Option-chain market data.
+- Application health monitoring.
+
+Additional features include:
+
 - JSON request and response handling.
-- Automated API endpoint testing.
+- Automatic input validation.
+- Interactive Swagger documentation.
+- Automated endpoint tests.
 
-### Software Engineering
+### 7. Interactive Volatility Visualizations
 
-- Modular Python project architecture.
-- 61 automated tests using pytest.
-- Dockerized FastAPI application.
-- GitHub Actions continuous integration.
-- Automated testing and Docker image builds on every push and pull request.
+Uses Plotly to visualize implied volatility across option strikes and expiration dates.
+
+Includes:
+
+- A 2D implied volatility smile.
+- A 3D visualization of implied volatility across moneyness and maturity.
+- Interactive tooltips.
+- Market-data-derived observations.
+- Multiple viewing perspectives.
+
+---
+
+## Performance Benchmarking
+
+One of the project's primary engineering improvements is the development of a vectorized Black-Scholes-Merton pricing engine.
+
+The original implementation calculates option prices individually using Python objects and scalar SciPy operations.
+
+The optimized implementation uses NumPy arrays and vectorized mathematical operations to process large batches.
+
+### Benchmark Methodology
+
+Both implementations were evaluated using identical, deterministically generated option parameters.
+
+The benchmark measures the complete workflow required to calculate both European call and put prices.
+
+Three workloads were evaluated:
+
+- 1,000 option contracts.
+- 10,000 option contracts.
+- 100,000 option contracts.
+
+Each workload was repeated five times, with the median execution time used for comparison.
+
+The benchmark also checks numerical consistency between the aggregate pricing results of both implementations.
+
+The original implementation includes per-option object construction, while the vectorized implementation includes conversion of the generated input parameters into NumPy arrays.
+
+This comparison represents two different end-to-end pricing workflows rather than an isolated comparison of mathematical functions.
+
+### Benchmark Results
+
+| Options Priced | Original Engine | Vectorized Engine | Speedup |
+|---|---:|---:|---:|
+| 1,000 | 73.469 ms | 0.511 ms | **143.90×** |
+| 10,000 | 731.115 ms | 3.087 ms | **236.80×** |
+| 100,000 | 7,266.352 ms | 27.640 ms | **262.89×** |
+
+### Pricing Throughput
+
+| Workload | Original Engine | Vectorized Engine |
+|---|---:|---:|
+| 1,000 options | 13,611 options/sec | 1,958,703 options/sec |
+| 10,000 options | 13,678 options/sec | 3,238,955 options/sec |
+| 100,000 options | 13,762 options/sec | **3,617,956 options/sec** |
+
+### Key Performance Result
+
+For 100,000 European option contracts:
+
+**Original implementation:**
+
+- Execution time: 7.266 seconds.
+- Throughput: 13,762 options per second.
+
+**Vectorized implementation:**
+
+- Execution time: 0.02764 seconds.
+- Throughput: 3,617,956 options per second.
+
+**Measured improvement: 262.89× faster.**
+
+This corresponds to an approximately **99.62% reduction in execution time** for the benchmarked workload.
+
+These measurements apply to batch call-and-put pricing, not analytical Greeks, implied volatility estimation, or the complete market-data workflow.
+
+### Reproduce the Benchmarks
+
+Run the original pricing benchmark:
+
+```bash
+python -m benchmarks.benchmark_black_scholes
+```
+
+Run the scalar-versus-vectorized comparison:
+
+```bash
+python -m benchmarks.benchmark_vectorized
+```
+
+The scripts save results to:
+
+```text
+benchmarks/results/
+├── black_scholes_benchmark.csv
+└── vectorized_comparison.csv
+```
+
+The original benchmark measures call pricing, put pricing, and full valuation with analytical Greeks separately.
+
+The vectorized comparison measures both call and put pricing together.
+
+Results depend on processor performance, installed dependencies, Python version, and system load.
+
+---
 
 ## Visualizations
 
@@ -50,7 +246,7 @@ Built with a modular architecture featuring a pricing engine, market-data integr
 
 The volatility smile displays implied volatility across option strikes using filtered SPY market-data observations.
 
-This visualization helps illustrate how implied volatility varies across different strike prices for a selected expiration.
+This visualization helps illustrate how implied volatility varies across strike prices for a selected expiration.
 
 ![SPY Implied Volatility Smile](docs/images/volatility_smile.png)
 
@@ -64,7 +260,7 @@ The interactive 3D visualization displays observed implied volatility across:
 
 Unlike an interpolated volatility surface, this visualization represents individual market-data observations.
 
-The two screenshots below show the same type of visualization from different viewing angles.
+The screenshots below show the visualization from different viewing angles.
 
 **View 1 — Implied Volatility Across Moneyness and Maturity**
 
@@ -73,6 +269,8 @@ The two screenshots below show the same type of visualization from different vie
 **View 2 — Alternative Perspective**
 
 ![SPY Implied Volatility - 3D View 2](docs/images/volatility_surface_3d_2.png)
+
+---
 
 ## Technology Stack
 
@@ -84,20 +282,68 @@ The two screenshots below show the same type of visualization from different vie
 | Market Data | yfinance |
 | REST API | FastAPI, Uvicorn |
 | Visualization | Plotly |
-| Automated Testing | pytest |
+| Automated Testing | pytest, pytest-cov |
+| Code Quality | Ruff |
+| Dependency Security | pip-audit |
 | Containerization | Docker |
 | Version Control | Git, GitHub |
 | Continuous Integration | GitHub Actions |
 
+---
+
 ## Project Architecture
 
-The application is organized into independent components:
+The application follows a modular architecture that separates financial calculations, market-data retrieval, API functionality, and visualization.
 
-1. **Pricing Engine:** Implements Black-Scholes-Merton pricing, analytical Greeks, and implied volatility estimation.
-2. **Market-Data Layer:** Retrieves option-chain data, validates quotes, and prepares observations for analysis.
-3. **API Layer:** Exposes pricing, Greeks, implied volatility, and market-data functionality through FastAPI.
-4. **Visualization Layer:** Generates interactive Plotly visualizations of implied volatility.
-5. **Testing and Infrastructure:** Provides automated tests, Docker containerization, and GitHub Actions CI.
+### Pricing Layer
+
+Responsible for:
+
+- Scalar Black-Scholes-Merton pricing.
+- Analytical Greeks.
+- Implied volatility estimation.
+- Vectorized batch pricing.
+
+### Market-Data Layer
+
+Responsible for:
+
+- Yahoo Finance option-chain retrieval.
+- Quote validation and filtering.
+- Multiple-expiration data collection.
+- Preparing market observations for analysis.
+
+### API Layer
+
+Responsible for:
+
+- Exposing quantitative functionality through FastAPI.
+- Validating incoming requests.
+- Returning structured JSON responses.
+- Providing application health monitoring.
+
+### Visualization Layer
+
+Responsible for:
+
+- Generating implied volatility smiles.
+- Visualizing volatility across moneyness and maturity.
+- Producing interactive Plotly figures.
+
+### Testing and Infrastructure
+
+Responsible for:
+
+- Automated unit and integration-style tests.
+- Numerical correctness checks.
+- Code coverage measurement.
+- Static code-quality checks.
+- Dependency vulnerability scanning.
+- Docker image builds.
+- Container smoke testing.
+- Continuous integration.
+
+---
 
 ## Project Structure
 
@@ -122,12 +368,20 @@ quant-options-engine/
 │   ├── pricing/
 │   │   ├── __init__.py
 │   │   ├── black_scholes.py
-│   │   └── implied_volatility.py
+│   │   ├── implied_volatility.py
+│   │   └── vectorized_black_scholes.py
 │   │
 │   └── visualization/
 │       ├── __init__.py
 │       ├── volatility_smile.py
 │       └── volatility_surface_3d.py
+│
+├── benchmarks/
+│   ├── benchmark_black_scholes.py
+│   ├── benchmark_vectorized.py
+│   └── results/
+│       ├── black_scholes_benchmark.csv
+│       └── vectorized_comparison.csv
 │
 ├── docs/
 │   └── images/
@@ -141,23 +395,30 @@ quant-options-engine/
 │   ├── test_implied_volatility.py
 │   ├── test_market_data.py
 │   ├── test_multi_expiration.py
-│   └── test_volatility_surface.py
+│   ├── test_multi_expiration_extended.py
+│   ├── test_vectorized_black_scholes.py
+│   ├── test_volatility_smile.py
+│   ├── test_volatility_surface.py
+│   └── test_yahoo_client_extended.py
 │
 ├── .dockerignore
 ├── .gitignore
 ├── Dockerfile
 ├── README.md
 ├── requirements.txt
+├── ruff.toml
 └── volatility_surface.py
 ```
+
+---
 
 ## Installation
 
 ### Prerequisites
 
-- Python 3.11
-- Git
-- Docker (optional, for containerized execution)
+- Python 3.11.
+- Git.
+- Docker (optional).
 
 ### 1. Clone the Repository
 
@@ -168,14 +429,14 @@ cd quant-options-engine
 
 ### 2. Create a Virtual Environment
 
-On macOS or Linux:
+**macOS or Linux:**
 
 ```bash
 python3.11 -m venv .venv
 source .venv/bin/activate
 ```
 
-On Windows:
+**Windows:**
 
 ```powershell
 py -3.11 -m venv .venv
@@ -188,6 +449,8 @@ py -3.11 -m venv .venv
 python -m pip install -r requirements.txt
 ```
 
+---
+
 ## Running the API
 
 Start the FastAPI application:
@@ -198,9 +461,11 @@ uvicorn app.api.main:app --reload
 
 Open the interactive API documentation:
 
-`http://127.0.0.1:8000/docs`
+**http://127.0.0.1:8000/docs**
 
 The Swagger interface allows users to explore available endpoints, submit requests, and inspect responses.
+
+---
 
 ## Running with Docker
 
@@ -222,11 +487,11 @@ docker run --rm -p 8080:8080 quant-options-engine
 
 Open:
 
-`http://127.0.0.1:8080/docs`
-
-The FastAPI application is now running inside the Docker container.
+**http://127.0.0.1:8080/docs**
 
 To stop the container, press `Ctrl + C` in the terminal.
+
+---
 
 ## Example: Black-Scholes-Merton Pricing
 
@@ -252,7 +517,7 @@ The Black-Scholes-Merton model produces approximately:
 
 ### Example API Request
 
-Using the interactive Swagger documentation, submit the following JSON to the Greeks endpoint:
+Submit the following JSON to:
 
 **POST `/api/v1/options/greeks`**
 
@@ -269,40 +534,124 @@ Using the interactive Swagger documentation, submit the following JSON to the Gr
 
 The API returns calculated option prices and risk sensitivities.
 
+### Example: Vectorized Pricing
+
+The vectorized engine can price multiple contracts in a single operation.
+
+```python
+from app.pricing.vectorized_black_scholes import (
+    price_options_vectorized,
+)
+
+strikes = [90, 95, 100, 105, 110]
+
+calls, puts = price_options_vectorized(
+    S=100,
+    K=strikes,
+    T=0.5,
+    r=0.045,
+    sigma=0.20,
+    q=0.01,
+)
+
+print("Call prices:", calls)
+print("Put prices:", puts)
+```
+
+NumPy broadcasting allows a single stock price, interest rate, or volatility value to be combined with arrays of strike prices and expiration times.
+
+---
+
 ## Automated Testing
 
-The project includes 61 automated tests covering the application's major components.
+The project includes **172 automated tests** covering quantitative calculations, market-data processing, API behavior, and visualizations.
 
-The test suite checks:
+### Test Coverage
 
-- Black-Scholes-Merton pricing calculations.
-- Analytical Greeks and numerical edge cases.
+Latest verified local results:
+
+| Component | Coverage |
+|---|---:|
+| FastAPI | 97% |
+| Yahoo Finance Client | 95% |
+| Multiple-Expiration Processing | 90% |
+| Original Black-Scholes Engine | 90% |
+| Vectorized Black-Scholes Engine | **100%** |
+| Implied Volatility Solver | 78% |
+| Volatility Smile | 79% |
+| 3D Volatility Visualization | 63% |
+| **Overall** | **89%** |
+
+The test suite covers:
+
+- European call and put pricing.
+- Analytical Greeks.
+- Numerical pricing edge cases.
 - Implied volatility estimation.
 - Input validation and error handling.
-- FastAPI endpoints.
-- Market-data processing and filtering.
+- FastAPI endpoint behavior.
+- Market-data processing and quote filtering.
 - Multiple-expiration data retrieval.
-- Volatility visualization data preparation.
+- Volatility visualization generation.
+- Vectorized batch pricing.
+- NumPy broadcasting.
+- Expired and zero-volatility options.
+- Numerical agreement between scalar and vectorized pricing.
 
 ### Run Tests Locally
 
 ```bash
-python -m pytest tests/ -q
+python -m pytest tests/ -q --cov=app --cov-report=term-missing
 ```
 
 Latest verified local result:
 
 ```text
-61 passed, 1 warning
+172 passed, 1 warning
+TOTAL 474 54 89%
 ```
 
-The warning originates from a dependency deprecation notice and does not indicate a failed test.
+The warning originates from a Starlette dependency deprecation notice and does not indicate a failed test.
+
+Code coverage measures which statements are executed during testing. It does not independently guarantee numerical correctness or complete financial-model validation.
+
+---
+
+## Code Quality and Security
+
+The project uses automated checks to maintain code quality and identify dependency vulnerabilities.
+
+### Ruff
+
+Ruff performs static analysis and enforces consistent Python coding practices.
+
+Run locally:
+
+```bash
+python -m ruff check app/ tests/ benchmarks/
+```
+
+Latest verified result:
+
+```text
+All checks passed!
+```
+
+### Dependency Security Scanning
+
+The GitHub Actions workflow includes dependency vulnerability scanning using `pip-audit`.
+
+This helps identify known security vulnerabilities in installed Python dependencies.
+
+Security scanning does not guarantee that the application or its dependencies are free from vulnerabilities.
+
+---
 
 ## Continuous Integration
 
-The project uses GitHub Actions to automatically validate code changes.
+The project uses GitHub Actions to automatically validate changes.
 
-The workflow is defined in:
+Workflow configuration:
 
 ```text
 .github/workflows/ci.yml
@@ -310,44 +659,58 @@ The workflow is defined in:
 
 Every push and pull request triggers two jobs.
 
-### Python Tests
+### Python Quality, Tests, and Security
 
-1. Check out the repository.
-2. Configure Python 3.11.
-3. Install project dependencies.
-4. Execute the automated pytest suite.
+The workflow:
 
-### Docker Build
+1. Checks out the repository.
+2. Configures Python 3.11.
+3. Installs project dependencies.
+4. Runs Ruff code-quality checks.
+5. Executes automated pytest tests.
+6. Generates code coverage results.
+7. Scans dependencies for known vulnerabilities.
 
-1. Check out the repository.
-2. Build the application's Docker image.
-3. Verify that the container image can be constructed successfully.
+### Docker Build and Smoke Test
+
+The workflow:
+
+1. Checks out the repository.
+2. Builds the application's Docker image.
+3. Starts the container.
+4. Checks the application's `/health` endpoint.
+5. Verifies that the containerized API responds successfully.
 
 Both jobs have been successfully executed through GitHub Actions.
 
 The workflow status is displayed at the top of this README.
 
-## Quantitative Finance Concepts
+---
 
-This project demonstrates several concepts commonly used in derivatives pricing and quantitative finance.
+## Quantitative Finance Concepts
 
 ### Black-Scholes-Merton Model
 
-The Black-Scholes-Merton framework estimates theoretical European option prices using the underlying price, strike price, time to expiration, risk-free interest rate, volatility, and dividend yield.
+The Black-Scholes-Merton framework estimates theoretical European option prices using:
+
+- Underlying asset price.
+- Strike price.
+- Time to expiration.
+- Risk-free interest rate.
+- Volatility.
+- Continuous dividend yield.
+
+The model assumes a particular stochastic process for the underlying asset and provides analytical European option pricing formulas.
 
 ### Option Greeks
 
-Option Greeks measure how an option's theoretical value changes when market inputs change.
+Option Greeks quantify how theoretical option values respond to changes in market inputs.
 
-- **Delta:** Sensitivity to changes in the underlying price.
-- **Gamma:** Sensitivity of delta to changes in the underlying price.
-- **Vega:** Sensitivity to changes in implied volatility.
-- **Theta:** Sensitivity to the passage of time.
-- **Rho:** Sensitivity to changes in the risk-free interest rate.
+They are useful for analyzing risk exposure and understanding the behavior of derivative prices.
 
 ### Implied Volatility
 
-Implied volatility is the volatility parameter that makes a pricing model's theoretical value match an observed option price.
+Implied volatility is the volatility parameter that makes a model's theoretical price equal an observed option price.
 
 Because implied volatility generally cannot be isolated algebraically in the Black-Scholes-Merton formula, numerical root-finding methods are used.
 
@@ -359,18 +722,28 @@ A volatility smile describes how implied volatility varies across strike prices 
 
 Examining implied volatility across different expiration dates helps illustrate the term structure of implied volatility.
 
-The project's 3D visualization combines strike-relative moneyness, time to expiration, and implied volatility into a single interactive chart.
+The project's 3D visualization combines strike-relative moneyness, time to expiration, and implied volatility into an interactive chart.
+
+### Numerical Vectorization
+
+Vectorization replaces repeated scalar Python operations with array-based numerical computations.
+
+NumPy and SciPy perform many array operations using optimized numerical routines, reducing Python-level execution overhead.
+
+In this project, vectorization substantially improves throughput for batch European option pricing.
+
+---
 
 ## Model Assumptions and Limitations
 
-This project is intended to demonstrate quantitative modeling and software engineering techniques. Several limitations should be considered when interpreting its results.
+This project demonstrates quantitative modeling and software engineering techniques. Several limitations should be considered when interpreting its results.
 
 ### Black-Scholes-Merton Assumptions
 
-- The underlying asset follows a geometric Brownian motion.
+- The underlying asset follows geometric Brownian motion.
 - Volatility and the risk-free interest rate are assumed constant over the option's life.
 - The model assumes continuous trading and frictionless markets.
-- The analytical formulas are designed for European-style exercise.
+- Analytical pricing formulas are designed for European-style exercise.
 
 ### American-Style SPY Options
 
@@ -378,15 +751,15 @@ SPY options are American-style and may be exercised before expiration.
 
 The current implementation uses European Black-Scholes-Merton formulas when estimating prices and implied volatility.
 
-Consequently, these estimates are approximations, especially when early exercise is economically relevant.
+Consequently, these estimates are approximations, particularly when early exercise is economically relevant.
 
 ### Dividend Yield
 
-The pricing engine supports continuous dividend yields.
+The pricing engines support continuous dividend yields.
 
-However, the current market-data implied volatility workflow assumes a zero continuous dividend yield.
+The market-data implied volatility workflow may use a zero dividend yield unless a nonzero value is explicitly supplied.
 
-This can introduce differences between model estimates and observed SPY option prices.
+This can introduce differences between theoretical model estimates and observed SPY option prices.
 
 ### Market-Data Quality
 
@@ -404,10 +777,24 @@ It is not a calibrated, interpolated, or arbitrage-free volatility surface.
 
 Observed volatility patterns may contain outliers caused by market-data limitations or pricing-model assumptions.
 
+### Performance Benchmark Limitations
+
+- Measurements were performed on a local Apple Silicon MacBook Pro.
+- Results may vary with hardware, software versions, and system load.
+- Benchmarks use generated option parameters rather than live trading workloads.
+- The vectorized implementation calculates call and put prices, not analytical Greeks.
+- Reported throughput excludes market-data retrieval, API overhead, and network latency.
+- The scalar and vectorized implementations have different execution and memory-allocation characteristics.
+- Performance results should not be interpreted as production trading-system throughput.
+
+---
+
 ## Future Improvements
 
 Potential future enhancements include:
 
+- Integrating vectorized pricing into the FastAPI application.
+- Extending vectorized calculations to analytical Greeks.
 - Incorporating estimated dividend yields into market-data implied volatility calculations.
 - Implementing American-style option pricing models.
 - Improving quote-quality filters and volatility outlier detection.
@@ -415,8 +802,10 @@ Potential future enhancements include:
 - Adding additional underlying assets and option types.
 - Deploying the FastAPI application to a cloud platform.
 - Adding structured logging and application monitoring.
-- Implementing performance benchmarks and numerical optimization.
-- Introducing more advanced derivatives pricing models.
+- Introducing additional numerical performance optimizations.
+- Implementing more advanced derivatives pricing models.
+
+---
 
 ## Disclaimer
 
