@@ -1,0 +1,4 @@
+options,scalar_seconds,vectorized_seconds,speedup,scalar_options_per_second,vectorized_options_per_second
+1000,0.073469,0.000511,143.9,13611,1958703
+10000,0.731115,0.003087,236.8,13678,3238955
+100000,7.266352,0.02764,262.89,13762,3617956
