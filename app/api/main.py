@@ -9,7 +9,10 @@ from starlette.concurrency import run_in_threadpool
 from app.market_data.yahoo_client import fetch_option_chain
 from app.pricing.black_scholes import BlackScholes
 from app.pricing.implied_volatility import implied_volatility
-from app.pricing.vectorized_black_scholes import price_options_vectorized
+from app.pricing.vectorized_black_scholes import (
+    greeks_options_vectorized,
+    price_options_vectorized,
+)
 
 # ============================================================
 # LOGGING CONFIGURATION
@@ -34,7 +37,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="Quant Options Engine",
     description="Options pricing and quantitative analytics REST API.",
-    version="1.1.0",
+    version="1.2.0",
 )
 
 
@@ -68,6 +71,13 @@ class OptionRequest(BaseModel):
 
 
 # Define the structure of a batch-pricing request.
+#
+# This model is shared by both batch endpoints:
+#
+# POST /api/v1/options/batch-price
+# POST /api/v1/options/batch-greeks
+#
+# Sharing the model guarantees consistent validation.
 class BatchOptionRequest(BaseModel):
 
     # Reject unexpected fields at the outer request level.
@@ -75,9 +85,8 @@ class BatchOptionRequest(BaseModel):
 
     # Accept between 1 and 10,000 option contracts.
     #
-    # Each item uses OptionRequest, so every contract
-    # automatically receives the same validation rules
-    # as the existing single-option pricing endpoint.
+    # Each contract uses OptionRequest, so every item
+    # receives the same validation as the single-option API.
     options: list[OptionRequest] = Field(
         min_length=1,
         max_length=10_000,
@@ -338,11 +347,6 @@ def calculate_batch_option_prices(request: BatchOptionRequest):
 
     # Calculate every call and put price in one vectorized operation.
     #
-    # The function returns two NumPy arrays:
-    #
-    # call_prices = [call_1, call_2, call_3, ...]
-    # put_prices  = [put_1, put_2, put_3, ...]
-    #
     # Both arrays preserve the order of the incoming contracts.
     call_prices, put_prices = price_options_vectorized(
         S=stock_prices,
@@ -373,6 +377,162 @@ def calculate_batch_option_prices(request: BatchOptionRequest):
     ]
 
     # Return the number of priced contracts and their prices.
+    return {
+        "count": len(results),
+        "results": results,
+    }
+
+
+# ============================================================
+# ENDPOINT 7: VECTORIZED BATCH OPTION GREEKS
+# ============================================================
+
+@app.post("/api/v1/options/batch-greeks")
+def calculate_batch_option_greeks(request: BatchOptionRequest):
+    """
+    Calculate European option prices and Greeks for a batch.
+
+    Accepts between 1 and 10,000 option contracts.
+
+    Each result contains:
+    - Call price
+    - Put price
+    - Call delta
+    - Put delta
+    - Gamma
+    - Vega
+    - Call theta
+    - Put theta
+    - Call rho
+    - Put rho
+
+    Undefined Greeks are returned as JSON null.
+    """
+
+    # ========================================================
+    # CONVERT VALIDATED INPUTS INTO NUMPY ARRAYS
+    # ========================================================
+
+    # Extract stock prices from all submitted contracts.
+    stock_prices = np.array(
+        [option.S for option in request.options],
+        dtype=float,
+    )
+
+    # Extract strike prices.
+    strikes = np.array(
+        [option.K for option in request.options],
+        dtype=float,
+    )
+
+    # Extract time to expiration, measured in years.
+    expirations = np.array(
+        [option.T for option in request.options],
+        dtype=float,
+    )
+
+    # Extract continuously compounded risk-free rates.
+    interest_rates = np.array(
+        [option.r for option in request.options],
+        dtype=float,
+    )
+
+    # Extract annualized volatility values.
+    volatilities = np.array(
+        [option.sigma for option in request.options],
+        dtype=float,
+    )
+
+    # Extract continuously compounded dividend yields.
+    dividend_yields = np.array(
+        [option.q for option in request.options],
+        dtype=float,
+    )
+
+    # ========================================================
+    # CALCULATE VECTORIZED PRICES AND GREEKS
+    # ========================================================
+
+    # Process the entire batch in one NumPy operation.
+    #
+    # The function returns a dictionary containing ten
+    # NumPy arrays, one for each output field.
+    #
+    # Each array has one entry per option contract.
+    vectorized_results = greeks_options_vectorized(
+        S=stock_prices,
+        K=strikes,
+        T=expirations,
+        r=interest_rates,
+        sigma=volatilities,
+        q=dividend_yields,
+    )
+
+    # ========================================================
+    # DEFINE OUTPUT FIELD ORDER
+    # ========================================================
+
+    # Keep the response fields consistent with the original
+    # BlackScholes.greeks() method.
+    output_fields = (
+        "call_price",
+        "put_price",
+        "call_delta",
+        "put_delta",
+        "gamma",
+        "vega",
+        "call_theta",
+        "put_theta",
+        "call_rho",
+        "put_rho",
+    )
+
+    # ========================================================
+    # BUILD JSON-COMPATIBLE RESULTS
+    # ========================================================
+
+    results = []
+
+    # Iterate over the original contract positions.
+    #
+    # Although the mathematical calculations are vectorized,
+    # a Python loop is still needed to build individual JSON
+    # objects for the API response.
+    #
+    # This does not change the fact that the pricing and
+    # Greeks calculations themselves are vectorized.
+    for index in range(len(request.options)):
+
+        contract_result = {}
+
+        # Extract each of the ten calculated outputs.
+        for field in output_fields:
+
+            value = float(vectorized_results[field][index])
+
+            # Undefined analytical Greeks are represented
+            # internally using NumPy NaN values.
+            #
+            # JSON does not support NaN as a standard value.
+            #
+            # Convert NaN into Python None, which FastAPI
+            # serializes as JSON null.
+            if math.isnan(value):
+
+                contract_result[field] = None
+
+            else:
+
+                # Match the scalar Black-Scholes engine's
+                # four-decimal rounding convention.
+                contract_result[field] = round(value, 4)
+
+        results.append(contract_result)
+
+    # ========================================================
+    # RETURN BATCH RESPONSE
+    # ========================================================
+
     return {
         "count": len(results),
         "results": results,

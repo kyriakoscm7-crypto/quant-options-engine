@@ -4,23 +4,27 @@
 
 **A Python-based quantitative options analytics platform featuring Black-Scholes-Merton pricing, analytical Greeks, implied volatility estimation, real market-data integration, and high-performance NumPy vectorization.**
 
-Built using a modular architecture with a REST API, interactive volatility visualizations, automated testing, Docker containerization, and GitHub Actions continuous integration.
+Built with a modular architecture, a FastAPI REST API, interactive Plotly volatility visualizations, automated testing, Docker, and GitHub Actions continuous integration.
 
-The project combines quantitative finance concepts with software engineering practices, emphasizing numerical correctness, reproducible performance measurements, and automated quality assurance.
+The project emphasizes numerical correctness, reproducible performance measurements, and automated software quality assurance.
 
 ## Project Highlights
 
-| Metric | Result |
+| Metric | Verified Local Result |
 |---|---|
 | Standalone Vectorized Pricing Throughput | **3.62 million options/second** |
 | Standalone Pricing Speedup | **262.89× faster** |
 | FastAPI Batch Pricing Throughput | **100,637 options/second** |
 | FastAPI Batch Pricing Speedup | **50.19× faster** |
-| Automated Tests | **209 passing** |
-| Overall Code Coverage | **89%** |
-| FastAPI Coverage | **97%** |
-| Vectorized Pricing Module Coverage | **100%** |
-| REST API Endpoints | **6** |
+| Standalone Vectorized Greeks Throughput | **3.87 million options/second** |
+| Standalone Pricing + Greeks Speedup | **944.76× faster** |
+| FastAPI Batch Greeks Throughput | **42,463 options/second** |
+| FastAPI Batch Greeks Speedup | **27.48× faster** |
+| Automated Tests | **299 passing** |
+| Overall Code Coverage | **90%** |
+| FastAPI Coverage | **98%** |
+| Vectorized Pricing and Greeks Module Coverage | **100%** |
+| REST API Endpoints | **7** |
 | Maximum Batch API Size | **10,000 contracts/request** |
 | Continuous Integration | **GitHub Actions** |
 | Containerization | **Docker** |
@@ -28,11 +32,14 @@ The project combines quantitative finance concepts with software engineering pra
 
 Performance measurements were performed locally on an Apple Silicon MacBook Pro using Python 3.11.
 
-The standalone pricing benchmark compares scalar and vectorized implementations of European call and put pricing.
+The four performance comparisons measure different workflows:
 
-The API benchmark compares repeated individual FastAPI requests against a single vectorized batch request.
+1. Standalone scalar versus vectorized option pricing.
+2. Individual versus batch FastAPI pricing requests.
+3. Standalone scalar versus vectorized option pricing and Greeks.
+4. Individual versus batch FastAPI Greeks requests.
 
-**These benchmarks measure different workflows and should not be interpreted as equivalent performance measurements.**
+**These benchmarks measure different operations and overhead. Their speedup figures should not be interpreted as equivalent performance measurements.**
 
 ---
 
@@ -64,7 +71,7 @@ Capabilities include:
 
 - Batch European call and put pricing.
 - NumPy broadcasting across input arrays.
-- Support for varying strikes, maturities, volatility, and interest rates.
+- Support for varying underlying prices, strikes, maturities, volatilities, and interest rates.
 - Continuous dividend yields.
 - Expired-option handling.
 - Zero-volatility handling.
@@ -76,9 +83,11 @@ The vectorized implementation achieved a measured **262.89× speedup** when pric
 
 The optimized pricing engine is also accessible through the REST API.
 
-### 3. Analytical Option Greeks
+### 3. Vectorized Analytical Option Greeks
 
-The original pricing engine calculates the following risk sensitivities:
+The project supports analytical option Greeks through both its original scalar pricing engine and its optimized NumPy implementation.
+
+The following risk sensitivities are calculated:
 
 | Greek | Description |
 |---|---|
@@ -90,12 +99,41 @@ The original pricing engine calculates the following risk sensitivities:
 
 The implementation uses the following conventions:
 
-- Delta and gamma are expressed relative to a $1 underlying price movement.
+- Delta and gamma are expressed relative to changes in the underlying price.
 - Vega measures sensitivity to a 1-percentage-point volatility change.
 - Theta represents calendar-day time decay.
 - Rho measures sensitivity to a 1-percentage-point interest rate change.
 
-The vectorized engine currently calculates call and put prices. Analytical Greeks remain available through the original pricing engine.
+The vectorized Greeks engine calculates ten outputs for each option contract:
+
+1. Call price.
+2. Put price.
+3. Call delta.
+4. Put delta.
+5. Gamma.
+6. Vega.
+7. Call theta.
+8. Put theta.
+9. Call rho.
+10. Put rho.
+
+The optimized implementation supports:
+
+- NumPy array broadcasting.
+- Multiple contracts with different financial parameters.
+- Continuous dividend yields.
+- Expired options.
+- Zero-volatility options.
+- Validation of invalid or non-finite inputs.
+- Numerical consistency with the scalar Black-Scholes engine.
+
+Undefined analytical Greeks are represented internally using NumPy `NaN` values.
+
+When accessed through FastAPI, undefined Greeks are converted into JSON `null`.
+
+The standalone vectorized Greeks benchmark achieved a measured **944.76× speedup** when calculating prices and Greeks for 100,000 European option contracts.
+
+This represents approximately a **99.89% reduction in execution time** for the measured workflow.
 
 ### 4. Implied Volatility Estimation
 
@@ -129,7 +167,7 @@ The market-data layer separates external data retrieval from the pricing and vis
 
 Exposes quantitative pricing and market-data functionality through a REST API.
 
-The application provides six endpoints:
+The application provides seven endpoints:
 
 | Method | Endpoint | Description |
 |---|---|---|
@@ -139,6 +177,7 @@ The application provides six endpoints:
 | POST | `/api/v1/options/implied-volatility` | Numerical implied volatility estimation |
 | GET | `/api/v1/market/options/{ticker}` | Yahoo Finance option-chain market data |
 | POST | `/api/v1/options/batch-price` | Vectorized pricing for up to 10,000 contracts |
+| POST | `/api/v1/options/batch-greeks` | Vectorized prices and Greeks for up to 10,000 contracts |
 
 Additional features include:
 
@@ -146,8 +185,9 @@ Additional features include:
 - Automatic input validation using Pydantic.
 - Interactive Swagger documentation.
 - Automated endpoint tests.
-- Numerical validation of batch-pricing results.
-- Request-size restrictions for batch pricing.
+- Numerical validation of batch results.
+- Request-size restrictions.
+- Structured error responses.
 
 #### Vectorized Batch Pricing API
 
@@ -171,6 +211,47 @@ A local benchmark demonstrated a **50.19× speedup** for 10,000 contracts compar
 
 This improvement reflects the combined benefits of batching requests and using vectorized calculations.
 
+#### Vectorized Batch Greeks API
+
+The batch Greeks endpoint accepts between **1 and 10,000 European option contracts** in a single request.
+
+**Endpoint:**
+
+`POST /api/v1/options/batch-greeks`
+
+The endpoint uses the same validated request model as the existing batch-pricing endpoint.
+
+After validation, the application converts the contract parameters into NumPy arrays and performs one vectorized calculation.
+
+Each result includes:
+
+- Call price.
+- Put price.
+- Call delta.
+- Put delta.
+- Gamma.
+- Vega.
+- Call theta.
+- Put theta.
+- Call rho.
+- Put rho.
+
+The endpoint:
+
+- Processes multiple contracts in one request.
+- Preserves the original contract order.
+- Returns all ten outputs for each contract.
+- Rounds numerical results to four decimal places.
+- Converts undefined Greeks into JSON `null`.
+- Supports expired and zero-volatility contracts.
+- Rejects invalid parameters with HTTP 422.
+- Rejects batches containing more than 10,000 contracts.
+- Uses the vectorized Greeks engine without duplicating the financial calculations.
+
+A local benchmark demonstrated a **27.48× speedup** for 10,000 contracts compared with sending 10,000 individual Greeks requests through FastAPI's TestClient.
+
+This represents approximately a **96.36% reduction in execution time** for the measured API workflow.
+
 ### 7. Interactive Volatility Visualizations
 
 Uses Plotly to visualize implied volatility across option strikes and expiration dates.
@@ -187,12 +268,14 @@ Includes:
 
 ## Performance Benchmarking
 
-The project includes two complementary performance benchmarks:
+The project includes four complementary performance benchmarks:
 
 1. **Standalone pricing benchmark:** Compares scalar and vectorized Python pricing workflows.
-2. **FastAPI benchmark:** Compares repeated single-option API requests against one batch-pricing request.
+2. **FastAPI batch pricing benchmark:** Compares repeated single-option API requests against one batch-pricing request.
+3. **Standalone Greeks benchmark:** Compares scalar and vectorized pricing and Greeks calculations.
+4. **FastAPI batch Greeks benchmark:** Compares repeated single-option Greeks requests against one batch Greeks request.
 
-Both benchmarks verify numerical consistency between the compared implementations.
+All four benchmarks verify numerical consistency between the compared implementations.
 
 ### Benchmark 1: Standalone Pricing Engine
 
@@ -367,33 +450,243 @@ This represents an approximately **98.01% reduction in execution time** for the 
 
 The benchmark demonstrates that the batch API can process substantially more contracts per second than repeated sequential individual requests under the tested conditions.
 
-#### Why the API Speedup Differs from the Standalone Speedup
+---
 
-The standalone benchmark achieved a 262.89× speedup.
+### Benchmark 3: Standalone Vectorized Greeks Performance
 
-The API benchmark achieved a 50.19× speedup.
+The third benchmark evaluates the performance improvement from vectorizing analytical option Greeks.
 
-These results are not contradictory.
+The original implementation uses the scalar `BlackScholes.greeks()` method.
 
-The standalone benchmark primarily measures pricing workflow performance.
+The optimized implementation uses `greeks_options_vectorized()` to process complete NumPy arrays.
 
-The API benchmark includes additional application overhead, including:
+Both implementations calculate:
+
+- Call price.
+- Put price.
+- Call delta.
+- Put delta.
+- Gamma.
+- Vega.
+- Call theta.
+- Put theta.
+- Call rho.
+- Put rho.
+
+#### Greeks Benchmark Methodology
+
+The benchmark:
+
+1. Generates deterministic option parameters.
+2. Uses identical contracts for both implementations.
+3. Calculates all ten outputs for every contract.
+4. Verifies numerical consistency.
+5. Warms up both implementations.
+6. Repeats each workload five times.
+7. Uses median execution times.
+8. Calculates throughput and speedup.
+9. Saves the results to a CSV file.
+
+Three workloads were evaluated:
+
+- 1,000 option contracts.
+- 10,000 option contracts.
+- 100,000 option contracts.
+
+The scalar implementation processes each contract individually.
+
+The vectorized implementation processes entire arrays of financial parameters.
+
+#### Standalone Greeks Benchmark Results
+
+| Contracts | Scalar Engine | Vectorized Engine | Speedup |
+|---|---:|---:|---:|
+| 1,000 | 0.244534 s | 0.000579 s | **422.06×** |
+| 10,000 | 2.452822 s | 0.003051 s | **803.94×** |
+| 100,000 | 24.421484 s | 0.025850 s | **944.76×** |
+
+#### Standalone Greeks Throughput
+
+| Workload | Scalar Engine | Vectorized Engine |
+|---|---:|---:|
+| 1,000 options | 4,089 options/sec | 1,725,998 options/sec |
+| 10,000 options | 4,077 options/sec | 3,277,614 options/sec |
+| 100,000 options | 4,095 options/sec | **3,868,541 options/sec** |
+
+#### Key Standalone Greeks Result
+
+For 100,000 European option contracts:
+
+**Original scalar implementation:**
+
+- Execution time: 24.421484 seconds.
+- Throughput: 4,095 options per second.
+
+**Vectorized implementation:**
+
+- Execution time: 0.025850 seconds.
+- Throughput: 3,868,541 options per second.
+
+**Measured improvement: 944.76× faster.**
+
+This represents an approximately **99.89% reduction in execution time** for the measured workload.
+
+Numerical verification passed for all three workloads.
+
+The scalar implementation includes Python object construction and four-decimal rounding.
+
+The vectorized implementation preserves full floating-point precision.
+
+The benchmark measures complete local calculation workflows rather than isolating the execution time of individual mathematical formulas.
+
+---
+
+### Benchmark 4: FastAPI Batch Greeks Performance
+
+The fourth benchmark evaluates the performance of the new Batch Greeks API.
+
+It compares sending individual Greeks requests against submitting the same contracts in one vectorized batch request.
+
+#### Workflow A: Individual Greeks Requests
+
+Each contract is submitted separately to:
+
+```text
+POST /api/v1/options/greeks
+```
+
+For 10,000 contracts, the application processes 10,000 individual requests.
+
+Each request performs:
+
+- FastAPI request handling.
+- Pydantic validation.
+- Scalar Black-Scholes calculations.
+- Analytical Greeks calculations.
+- JSON response construction.
+- Response serialization and decoding.
+
+#### Workflow B: Vectorized Batch Greeks Request
+
+All contracts are submitted together to:
+
+```text
+POST /api/v1/options/batch-greeks
+```
+
+For 10,000 contracts, the application processes one request.
+
+The workflow includes:
+
+- FastAPI request handling.
+- Pydantic validation of all contracts.
+- Conversion into NumPy arrays.
+- Vectorized pricing and Greeks calculations.
+- JSON response construction.
+- Response serialization and decoding.
+
+#### Batch Greeks API Benchmark Methodology
+
+The benchmark uses FastAPI's `TestClient` to execute requests directly against the application.
+
+The benchmark:
+
+1. Generates deterministic option contracts.
+2. Uses identical contracts for both workflows.
+3. Verifies numerical consistency across all ten output fields.
+4. Warms up both endpoints.
+5. Repeats each workload five times.
+6. Uses median execution times.
+7. Calculates throughput and speedup.
+8. Saves the results to a CSV file.
+
+The workloads are:
+
+- 100 contracts.
+- 1,000 contracts.
+- 10,000 contracts.
+
+Individual requests are executed sequentially.
+
+The benchmark does not measure network latency or concurrent users.
+
+#### Batch Greeks API Benchmark Results
+
+| Contracts | Individual Requests | Single Batch Request | Speedup |
+|---|---:|---:|---:|
+| 100 | 0.066370 s | 0.002973 s | **22.32×** |
+| 1,000 | 0.646701 s | 0.024437 s | **26.46×** |
+| 10,000 | 6.471921 s | 0.235500 s | **27.48×** |
+
+#### Batch Greeks API Throughput
+
+| Workload | Individual Requests | Batch Request |
+|---|---:|---:|
+| 100 options | 1,507 options/sec | 33,636 options/sec |
+| 1,000 options | 1,546 options/sec | 40,921 options/sec |
+| 10,000 options | 1,545 options/sec | **42,463 options/sec** |
+
+#### Key Batch Greeks API Result
+
+For 10,000 European option contracts:
+
+**Individual API requests:**
+
+- Number of requests: 10,000.
+- Execution time: 6.471921 seconds.
+- Throughput: 1,545 options per second.
+
+**Vectorized batch API:**
+
+- Number of requests: 1.
+- Execution time: 0.235500 seconds.
+- Throughput: 42,463 options per second.
+
+**Measured improvement: 27.48× faster.**
+
+This represents an approximately **96.36% reduction in execution time** for the measured workflow.
+
+Numerical verification passed for every workload.
+
+---
+
+### Why the Benchmark Speedups Differ
+
+The four benchmarks measure different operations and application overhead.
+
+The standalone pricing benchmark calculates two prices per contract.
+
+The standalone Greeks benchmark calculates ten outputs per contract.
+
+The API benchmarks include additional processing:
 
 - Request routing.
 - Pydantic validation.
-- JSON processing.
-- Response generation.
-- TestClient request handling.
+- JSON serialization and decoding.
+- Response construction.
+- TestClient overhead.
 
-The API benchmark also compares one batch request against many separate requests, so its speedup reflects both request consolidation and vectorized pricing.
+The Batch Greeks API also returns more data per contract than the Batch Pricing API.
 
-The results should not be interpreted as isolating the performance contribution of NumPy alone.
+Additionally, the API benchmarks compare one batch request against many individual requests, so the speedup reflects both request consolidation and vectorized calculations.
 
-#### API Benchmark Limitations
+**These benchmarks do not isolate NumPy's performance contribution from all other overhead.**
 
-The benchmark measures in-process FastAPI request handling using `TestClient`.
+### Benchmark Limitations
 
-It does not include:
+The benchmarks were executed locally on an Apple Silicon MacBook Pro using Python 3.11.
+
+Results may vary depending on:
+
+- Processor performance.
+- Python version.
+- Installed dependencies.
+- System load.
+- Memory availability.
+
+The API benchmarks use FastAPI's in-process `TestClient`.
+
+They do not include:
 
 - Real network latency.
 - Production Uvicorn server performance.
@@ -404,7 +697,7 @@ It does not include:
 - Database operations.
 - Production monitoring overhead.
 
-The reported throughput is therefore **in-process benchmark throughput**, not a claim about production HTTP server capacity.
+The reported API throughput is therefore **in-process benchmark throughput**, not a claim about production HTTP server capacity.
 
 ---
 
@@ -422,17 +715,29 @@ Run the scalar-versus-vectorized pricing benchmark:
 python -m benchmarks.benchmark_vectorized
 ```
 
-Run the FastAPI performance benchmark:
+Run the FastAPI batch-pricing benchmark:
 
 ```bash
 python -m benchmarks.benchmark_api
 ```
 
-The API benchmark runs directly against the FastAPI application using `TestClient`.
+Run the scalar-versus-vectorized Greeks benchmark:
+
+```bash
+python -m benchmarks.benchmark_vectorized_greeks
+```
+
+Run the FastAPI Batch Greeks benchmark:
+
+```bash
+python -m benchmarks.benchmark_batch_greeks_api
+```
+
+The API benchmarks run directly against the FastAPI application using `TestClient`.
 
 A separate server is not required.
 
-The benchmark may take several minutes because it performs repeated individual API requests.
+The benchmarks may take several minutes because they perform repeated scalar calculations and individual API requests.
 
 #### Benchmark Output Files
 
@@ -442,16 +747,18 @@ Results are saved to:
 benchmarks/results/
 ├── black_scholes_benchmark.csv
 ├── vectorized_comparison.csv
-└── api_comparison.csv
+├── api_comparison.csv
+├── vectorized_greeks_comparison.csv
+└── batch_greeks_api_comparison.csv
 ```
 
 The original benchmark measures call pricing, put pricing, and full valuation with analytical Greeks separately.
 
-The vectorized comparison measures both call and put pricing together.
+The vectorized pricing comparison measures both call and put pricing together.
 
-The API comparison measures the complete in-process request workflows.
+The vectorized Greeks comparison measures prices and all analytical Greeks.
 
-Results depend on processor performance, installed dependencies, Python version, and system load.
+The two API comparisons measure complete in-process request workflows.
 
 ---
 
@@ -519,6 +826,8 @@ Responsible for:
 - Analytical Greeks.
 - Implied volatility estimation.
 - Vectorized batch pricing.
+- Vectorized analytical Greeks.
+- Numerical validation of financial calculations.
 
 ### Market-Data Layer
 
@@ -535,7 +844,9 @@ Responsible for:
 
 - Exposing quantitative functionality through FastAPI.
 - Validating incoming requests.
-- Supporting single-contract and batch option pricing.
+- Supporting single-contract pricing and Greeks.
+- Supporting vectorized batch pricing.
+- Supporting vectorized batch Greeks.
 - Enforcing batch request-size limits.
 - Returning structured JSON responses.
 - Providing application health monitoring.
@@ -554,6 +865,7 @@ Responsible for:
 
 - Measuring scalar pricing performance.
 - Measuring vectorized pricing performance.
+- Measuring scalar and vectorized Greeks performance.
 - Comparing individual and batch API workflows.
 - Verifying numerical consistency during performance comparisons.
 - Saving reproducible benchmark results.
@@ -607,12 +919,16 @@ quant-options-engine/
 │
 ├── benchmarks/
 │   ├── benchmark_api.py
+│   ├── benchmark_batch_greeks_api.py
 │   ├── benchmark_black_scholes.py
 │   ├── benchmark_vectorized.py
+│   ├── benchmark_vectorized_greeks.py
 │   └── results/
 │       ├── api_comparison.csv
+│       ├── batch_greeks_api_comparison.csv
 │       ├── black_scholes_benchmark.csv
-│       └── vectorized_comparison.csv
+│       ├── vectorized_comparison.csv
+│       └── vectorized_greeks_comparison.csv
 │
 ├── docs/
 │   └── images/
@@ -622,6 +938,7 @@ quant-options-engine/
 │
 ├── tests/
 │   ├── test_api.py
+│   ├── test_batch_greeks_api.py
 │   ├── test_batch_pricing_api.py
 │   ├── test_black_scholes.py
 │   ├── test_implied_volatility.py
@@ -629,6 +946,7 @@ quant-options-engine/
 │   ├── test_multi_expiration.py
 │   ├── test_multi_expiration_extended.py
 │   ├── test_vectorized_black_scholes.py
+│   ├── test_vectorized_greeks.py
 │   ├── test_volatility_smile.py
 │   ├── test_volatility_surface.py
 │   └── test_yahoo_client_extended.py
@@ -688,7 +1006,7 @@ python -m pip install -r requirements.txt
 Start the FastAPI application:
 
 ```bash
-uvicorn app.api.main:app --reload
+python -m uvicorn app.api.main:app --reload
 ```
 
 Open the interactive API documentation:
@@ -700,7 +1018,7 @@ The Swagger interface allows users to explore available endpoints, submit reques
 If port 8000 is already in use, start the application on another port:
 
 ```bash
-uvicorn app.api.main:app --reload --port 8001
+python -m uvicorn app.api.main:app --reload --port 8001
 ```
 
 Then open:
@@ -802,7 +1120,36 @@ print("Put prices:", puts)
 
 NumPy broadcasting allows a single stock price, interest rate, or volatility value to be combined with arrays of strike prices and expiration times.
 
-### Example: Vectorized Batch Pricing Through FastAPI
+### Example: Vectorized Greeks in Python
+
+The optimized engine can calculate prices and analytical Greeks for multiple contracts simultaneously.
+
+```python
+from app.pricing.vectorized_black_scholes import (
+    greeks_options_vectorized,
+)
+
+results = greeks_options_vectorized(
+    S=100,
+    K=[90, 100, 110],
+    T=1.0,
+    r=0.05,
+    sigma=0.20,
+    q=0.0,
+)
+
+print("Call prices:", results["call_price"])
+print("Call deltas:", results["call_delta"])
+print("Vega:", results["vega"])
+```
+
+The function returns a dictionary containing ten NumPy arrays.
+
+Each array contains one result for every option contract.
+
+---
+
+## Example: Vectorized Batch Pricing Through FastAPI
 
 **Endpoint:**
 
@@ -812,7 +1159,7 @@ POST /api/v1/options/batch-price
 
 The endpoint accepts between 1 and 10,000 contracts per request.
 
-#### Example Request
+### Example Request
 
 ```json
 {
@@ -845,7 +1192,7 @@ The endpoint accepts between 1 and 10,000 contracts per request.
 }
 ```
 
-#### Example Response
+### Example Response
 
 ```json
 {
@@ -873,9 +1220,86 @@ The API returned HTTP 200 with three option-pricing results.
 
 Each result corresponds to the contract at the same position in the request.
 
-#### Request Validation
+---
 
-The endpoint returns HTTP 422 when:
+## Example: Vectorized Batch Greeks Through FastAPI
+
+**Endpoint:**
+
+```text
+POST /api/v1/options/batch-greeks
+```
+
+The endpoint accepts between 1 and 10,000 contracts per request.
+
+### Example Request
+
+```json
+{
+  "options": [
+    {
+      "S": 100,
+      "K": 100,
+      "T": 1,
+      "r": 0.05,
+      "sigma": 0.2,
+      "q": 0
+    },
+    {
+      "S": 110,
+      "K": 100,
+      "T": 0,
+      "r": 0.05,
+      "sigma": 0.2,
+      "q": 0
+    }
+  ]
+}
+```
+
+### Example Response
+
+```json
+{
+  "count": 2,
+  "results": [
+    {
+      "call_price": 10.4506,
+      "put_price": 5.5735,
+      "call_delta": 0.6368,
+      "put_delta": -0.3632,
+      "gamma": 0.0188,
+      "vega": 0.3752,
+      "call_theta": -0.0176,
+      "put_theta": -0.0045,
+      "call_rho": 0.5323,
+      "put_rho": -0.4189
+    },
+    {
+      "call_price": 10.0,
+      "put_price": 0.0,
+      "call_delta": null,
+      "put_delta": null,
+      "gamma": null,
+      "vega": null,
+      "call_theta": null,
+      "put_theta": null,
+      "call_rho": null,
+      "put_rho": null
+    }
+  ]
+}
+```
+
+The first contract demonstrates a standard Black-Scholes-Merton valuation.
+
+The second contract has expired.
+
+Its option prices equal their intrinsic values, while the analytical Greeks are undefined and returned as JSON `null`.
+
+### Batch API Request Validation
+
+Both batch endpoints return HTTP 422 when:
 
 - The options list is empty.
 - More than 10,000 contracts are submitted.
@@ -885,15 +1309,18 @@ The endpoint returns HTTP 422 when:
 - A parameter is invalid or non-finite.
 - Unexpected request fields are supplied.
 
-Each contract is validated before the pricing operation begins.
+Each contract is validated before the vectorized calculation begins.
 
 ---
 
 ## Automated Testing
 
-The project includes **209 automated tests** covering quantitative calculations, market-data processing, API behavior, and visualizations.
+The project includes **299 automated tests** covering quantitative calculations, market-data processing, API behavior, and visualizations.
 
-The batch-pricing milestone introduced **37 additional tests**.
+Recent milestones introduced:
+
+- 43 tests for vectorized Greeks calculations.
+- 47 tests for the Batch Greeks API.
 
 ### Test Coverage
 
@@ -901,7 +1328,7 @@ Latest verified local results:
 
 | Component | Coverage |
 |---|---:|
-| FastAPI | **97%** |
+| FastAPI | **98%** |
 | Yahoo Finance Client | 95% |
 | Multiple-Expiration Processing | 90% |
 | Original Black-Scholes Engine | 90% |
@@ -909,7 +1336,7 @@ Latest verified local results:
 | Implied Volatility Solver | 78% |
 | Volatility Smile | 79% |
 | 3D Volatility Visualization | 63% |
-| **Overall** | **89%** |
+| **Overall** | **90%** |
 
 The test suite covers:
 
@@ -923,14 +1350,16 @@ The test suite covers:
 - Multiple-expiration data retrieval.
 - Volatility visualization generation.
 - Vectorized batch pricing.
+- Vectorized analytical Greeks.
 - NumPy broadcasting.
 - Expired and zero-volatility options.
-- Numerical agreement between scalar and vectorized pricing.
+- Numerical agreement between scalar and vectorized implementations.
 - Batch API request validation.
 - Batch API response formatting.
 - Preservation of contract order.
 - Maximum batch-size enforcement.
-- Consistency between single-contract and batch-pricing endpoints.
+- Consistency between single-contract and batch endpoints.
+- Undefined Greeks represented as JSON `null`.
 
 ### Run Tests Locally
 
@@ -941,8 +1370,8 @@ python -m pytest tests/ -q --cov=app --cov-report=term-missing
 Latest verified local result:
 
 ```text
-209 passed, 1 warning
-TOTAL 490 54 89%
+299 passed, 1 warning in 3.93s
+TOTAL 564 54 90%
 ```
 
 The warning originates from a Starlette dependency deprecation notice and does not indicate a failed test.
@@ -1015,7 +1444,9 @@ The workflow:
 4. Checks the application's `/health` endpoint.
 5. Verifies that the containerized API responds successfully.
 
-Both jobs have been successfully executed through GitHub Actions.
+Both jobs have been successfully executed through GitHub Actions for previous milestones.
+
+The latest Batch Greeks changes will be verified through CI after they are committed and pushed.
 
 The workflow status is displayed at the top of this README.
 
@@ -1064,9 +1495,14 @@ Vectorization replaces repeated scalar Python operations with array-based numeri
 
 NumPy and SciPy perform many array operations using optimized numerical routines, reducing Python-level execution overhead.
 
-In this project, vectorization substantially improves throughput for batch European option pricing.
+In this project, vectorization substantially improves throughput for:
 
-The optimized calculations can be accessed directly through Python or through the FastAPI batch-pricing endpoint.
+- European call and put pricing.
+- Analytical option Greeks.
+- Batch pricing API requests.
+- Batch Greeks API requests.
+
+The optimized calculations can be accessed directly through Python or through the FastAPI endpoints.
 
 ---
 
@@ -1118,11 +1554,12 @@ Observed volatility patterns may contain outliers caused by market-data limitati
 - Measurements were performed on a local Apple Silicon MacBook Pro.
 - Results may vary with hardware, software versions, and system load.
 - Benchmarks use generated option parameters rather than live trading workloads.
-- The vectorized implementation calculates call and put prices, not analytical Greeks.
+- The vectorized implementation calculates both prices and analytical Greeks.
 - Standalone pricing throughput excludes market-data retrieval, API overhead, and network latency.
 - API benchmark throughput includes in-process request handling but excludes real network latency.
-- The API benchmark uses sequential individual requests rather than concurrent clients.
+- API benchmarks use sequential individual requests rather than concurrent clients.
 - The scalar and vectorized implementations have different execution and memory-allocation characteristics.
+- The scalar Greeks implementation rounds outputs, while the vectorized implementation preserves floating-point precision.
 - The batch API supports a maximum of 10,000 contracts per request.
 - Performance results should not be interpreted as production trading-system throughput.
 
@@ -1132,7 +1569,6 @@ Observed volatility patterns may contain outliers caused by market-data limitati
 
 Potential future enhancements include:
 
-- Extending vectorized calculations to analytical Greeks.
 - Implementing Monte Carlo option pricing with statistical convergence analysis.
 - Implementing American-style option pricing using binomial trees.
 - Adding finite-difference pricing methods.
