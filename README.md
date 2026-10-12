@@ -215,14 +215,14 @@ docker build -t quant-options-engine .
 ### 2. Start the Container
 
 ```bash
-docker run --rm -p 8000:8000 quant-options-engine
+docker run --rm -p 8080:8080 quant-options-engine
 ```
 
 ### 3. Access the API
 
 Open:
 
-`http://127.0.0.1:8000/docs`
+`http://127.0.0.1:8080/docs`
 
 The FastAPI application is now running inside the Docker container.
 
