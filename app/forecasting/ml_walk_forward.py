@@ -28,6 +28,7 @@ def ml_walk_forward_predictions(
     step: int = 5,
     regularization_c: float = 0.1,
     feature_columns: tuple[str, ...] = FEATURE_COLUMNS,
+    training_only: bool = False,
 ) -> pd.DataFrame:
     """Generate matched ML and benchmark predictions.
 
@@ -67,7 +68,13 @@ def ml_walk_forward_predictions(
         embargo_days=max(horizons),
     )
 
-    development = prices.iloc[:split.validation_end]
+    if not isinstance(training_only, bool):
+        raise ValueError("training_only must be a boolean.")
+
+    development_end = (
+        split.training_end if training_only else split.validation_end
+    )
+    development = prices.iloc[:development_end]
 
     rows = []
 
