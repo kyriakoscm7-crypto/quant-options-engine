@@ -35,6 +35,7 @@ def logistic_probability_forecast(
     training_window: int = 756,
     minimum_samples: int = 120,
     regularization_c: float = 0.1,
+    feature_columns: tuple[str, ...] = FEATURE_COLUMNS,
 ) -> LogisticForecast:
     """Predict direction using only information known at forecast_index.
 
@@ -86,11 +87,25 @@ def logistic_probability_forecast(
 
     history = close_prices.iloc[: forecast_index + 1]
 
+    if (
+        not isinstance(feature_columns, tuple)
+        or not feature_columns
+        or any(
+            not isinstance(feature, str)
+            for feature in feature_columns
+        )
+        or len(set(feature_columns)) != len(feature_columns)
+        or not set(feature_columns).issubset(FEATURE_COLUMNS)
+    ):
+        raise ValueError(
+            "feature_columns must be a nonempty tuple of unique valid features."
+        )
+
     features = build_market_features(history)
     labels = build_forward_labels(history, horizon_days)
 
     current_features = features.iloc[[forecast_index]][
-        list(FEATURE_COLUMNS)
+        list(feature_columns)
     ]
 
     if not np.isfinite(current_features.to_numpy()).all():
@@ -110,7 +125,7 @@ def logistic_probability_forecast(
 
     training_features = features.iloc[
         earliest_index : latest_matured_index + 1
-    ][list(FEATURE_COLUMNS)]
+    ][list(feature_columns)]
 
     training_labels = labels.iloc[
         earliest_index : latest_matured_index + 1

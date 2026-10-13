@@ -134,3 +134,49 @@ def test_invalid_steps_are_rejected(bad_step):
 def test_insufficient_history_is_rejected():
     with pytest.raises(ValueError):
         run_forecast(make_prices(n=300))
+
+
+
+def test_custom_features_work_in_walk_forward():
+    result = ml_walk_forward_predictions(
+        make_prices(),
+        horizons=(5,),
+        training_window=300,
+        step=20,
+        feature_columns=(
+            "momentum_20d",
+            "volatility_60d",
+            "trend_50d",
+            "trend_200d",
+        ),
+    )
+
+    assert not result.empty
+    assert result["ML Probability"].between(0, 1).all()
+
+
+def test_default_features_match_explicit_all_features():
+    from app.forecasting.market_features import FEATURE_COLUMNS
+
+    default = run_forecast()
+
+    explicit = ml_walk_forward_predictions(
+        make_prices(),
+        horizons=(5,),
+        training_window=300,
+        step=20,
+        feature_columns=FEATURE_COLUMNS,
+    )
+
+    pd.testing.assert_frame_equal(default, explicit)
+
+
+def test_invalid_features_rejected_in_walk_forward():
+    with pytest.raises(ValueError, match="feature_columns"):
+        ml_walk_forward_predictions(
+            make_prices(),
+            horizons=(5,),
+            training_window=300,
+            step=20,
+            feature_columns=("invalid_feature",),
+        )

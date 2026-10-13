@@ -5,6 +5,7 @@ import pandas as pd
 
 from app.forecasting.historical_benchmark import historical_up_probability
 from app.forecasting.logistic_forecast import logistic_probability_forecast
+from app.forecasting.market_features import FEATURE_COLUMNS
 from app.forecasting.research_splits import (
     assign_research_periods,
     create_research_split,
@@ -26,6 +27,7 @@ def ml_walk_forward_predictions(
     training_window: int = 756,
     step: int = 5,
     regularization_c: float = 0.1,
+    feature_columns: tuple[str, ...] = FEATURE_COLUMNS,
 ) -> pd.DataFrame:
     """Generate matched ML and benchmark predictions.
 
@@ -82,6 +84,7 @@ def ml_walk_forward_predictions(
                     horizon_days=horizon,
                     training_window=training_window,
                     regularization_c=regularization_c,
+                    feature_columns=feature_columns,
                 )
 
                 historical = historical_up_probability(

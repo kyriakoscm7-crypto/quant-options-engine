@@ -173,3 +173,61 @@ def test_invalid_prices_are_rejected():
 
     with pytest.raises(ValueError):
         forecast(prices)
+
+
+def test_explicit_all_features_match_default():
+    from app.forecasting.market_features import FEATURE_COLUMNS
+
+    default = forecast()
+    explicit = forecast(feature_columns=FEATURE_COLUMNS)
+
+    assert default == explicit
+
+
+def test_custom_feature_subset_produces_valid_probability():
+    result = forecast(
+        feature_columns=(
+            "momentum_20d",
+            "volatility_60d",
+            "trend_50d",
+            "trend_200d",
+        )
+    )
+
+    assert 0 <= result.probability_up <= 1
+
+
+def test_custom_features_preserve_future_leakage_protection():
+    prices = make_prices()
+
+    features = (
+        "momentum_20d",
+        "volatility_60d",
+        "trend_50d",
+        "trend_200d",
+    )
+
+    original = forecast(prices, feature_columns=features)
+
+    modified = prices.copy()
+    modified.iloc[801:] *= 10
+
+    updated = forecast(modified, feature_columns=features)
+
+    assert original == updated
+
+
+@pytest.mark.parametrize(
+    "invalid_features",
+    [
+        (),
+        ("unknown_feature",),
+        ("momentum_20d", "momentum_20d"),
+        ("momentum_20d", 123),
+        ["momentum_20d"],
+        "momentum_20d",
+    ],
+)
+def test_invalid_feature_selections_are_rejected(invalid_features):
+    with pytest.raises(ValueError, match="feature_columns"):
+        forecast(feature_columns=invalid_features)
