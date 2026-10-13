@@ -43,6 +43,7 @@ from app.market_data.stock_history import (  # noqa: E402
 )
 from app.pricing.black_scholes import BlackScholes  # noqa: E402
 from dashboard.market_scanner_page import render_market_scanner  # noqa: E402
+from dashboard.portfolio_page import render_portfolio_manager  # noqa: E402
 
 # ============================================================
 # PAGE CONFIGURATION
@@ -1471,17 +1472,7 @@ elif page == "🔍 Market Scanner":
 
 elif page == "💼 Portfolio Manager":
 
-    st.title("💼 Portfolio Manager")
-
-    st.info(
-        "Coming soon: Track stock holdings and "
-        "analyze portfolio performance and risk."
-    )
-
-    st.write(
-        "Our existing backend already supports "
-        "option portfolio valuation and scenario analysis."
-    )
+    render_portfolio_manager()
 
 
 elif page == "🧠 Strategy Research":
