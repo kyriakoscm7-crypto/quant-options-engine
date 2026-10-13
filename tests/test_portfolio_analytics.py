@@ -727,3 +727,154 @@ def test_analyze_portfolio_risk_sharpe(portfolio, prices):
 
     assert summary.sharpe_ratio is not None
     assert math.isfinite(summary.sharpe_ratio)
+
+
+# ============================================================
+# PORTFOLIO BETA — RELIABILITY AND DATA VALIDATION
+# ============================================================
+
+
+@pytest.mark.parametrize(
+    "invalid_price",
+    [0.0, -100.0, np.inf, -np.inf],
+)
+def test_portfolio_beta_rejects_invalid_benchmark_prices(
+    dates,
+    invalid_price,
+):
+    """Reject benchmark prices that cannot represent valid asset prices."""
+
+    benchmark_prices = pd.Series(
+        [100.0, 105.0, 110.0, 115.0, 120.0],
+        index=dates,
+    )
+
+    benchmark_prices.iloc[2] = invalid_price
+
+    portfolio_returns = pd.Series(
+        [0.01, 0.02, -0.01, 0.03],
+        index=dates[1:],
+    )
+
+    with pytest.raises(ValueError):
+        calculate_portfolio_beta(
+            portfolio_returns,
+            benchmark_prices,
+        )
+
+
+def test_portfolio_beta_rejects_duplicate_benchmark_dates(dates):
+    """Duplicate dates must not create ambiguous benchmark returns."""
+
+    benchmark_prices = pd.Series(
+        [100.0, 105.0, 110.0, 115.0, 120.0],
+        index=[
+            dates[0],
+            dates[1],
+            dates[1],
+            dates[3],
+            dates[4],
+        ],
+    )
+
+    portfolio_returns = pd.Series(
+        [0.01, 0.02, -0.01, 0.03],
+        index=dates[1:],
+    )
+
+    with pytest.raises(ValueError):
+        calculate_portfolio_beta(
+            portfolio_returns,
+            benchmark_prices,
+        )
+
+
+def test_portfolio_beta_rejects_non_datetime_benchmark_index():
+    """Benchmark observations must be associated with trading dates."""
+
+    benchmark_prices = pd.Series(
+        [100.0, 105.0, 110.0, 115.0, 120.0],
+    )
+
+    portfolio_returns = pd.Series(
+        [0.01, 0.02, -0.01, 0.03],
+    )
+
+    with pytest.raises(ValueError):
+        calculate_portfolio_beta(
+            portfolio_returns,
+            benchmark_prices,
+        )
+
+
+def test_portfolio_beta_rejects_infinite_portfolio_returns(dates):
+    """Infinite portfolio returns must never enter covariance calculations."""
+
+    benchmark_prices = pd.Series(
+        [100.0, 105.0, 110.0, 115.0, 120.0],
+        index=dates,
+    )
+
+    portfolio_returns = pd.Series(
+        [0.01, np.inf, -0.01, 0.03],
+        index=dates[1:],
+    )
+
+    with pytest.raises(ValueError):
+        calculate_portfolio_beta(
+            portfolio_returns,
+            benchmark_prices,
+        )
+
+
+def test_portfolio_beta_rejects_duplicate_portfolio_dates(dates):
+    """Duplicate portfolio return dates must be rejected."""
+
+    benchmark_prices = pd.Series(
+        [100.0, 105.0, 110.0, 115.0, 120.0],
+        index=dates,
+    )
+
+    portfolio_returns = pd.Series(
+        [0.01, 0.02, -0.01, 0.03],
+        index=[
+            dates[1],
+            dates[1],
+            dates[3],
+            dates[4],
+        ],
+    )
+
+    with pytest.raises(ValueError):
+        calculate_portfolio_beta(
+            portfolio_returns,
+            benchmark_prices,
+        )
+
+
+def test_portfolio_beta_handles_missing_benchmark_prices(dates):
+    """
+    Missing benchmark prices must not be forward-filled.
+
+    Returns involving the missing observation are excluded.
+    """
+
+    benchmark_prices = pd.Series(
+        [100.0, 105.0, np.nan, 115.0, 120.0],
+        index=dates,
+    )
+
+    portfolio_returns = pd.Series(
+        [0.01, 0.02, -0.01, 0.03],
+        index=dates[1:],
+    )
+
+    # Only two benchmark returns remain valid:
+    # dates[1] and dates[4].
+    result = calculate_portfolio_beta(
+        portfolio_returns,
+        benchmark_prices,
+    )
+
+    assert result is not None
+    assert np.isfinite(result)

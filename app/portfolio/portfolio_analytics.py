@@ -471,29 +471,117 @@ def calculate_portfolio_beta(
         Cov(Portfolio Returns, Benchmark Returns)
         / Var(Benchmark Returns)
 
+    Both return series are aligned by trading date.
+
+    Missing benchmark prices are not forward-filled.
+    Returns involving missing benchmark observations
+    are excluded.
+
+    Invalid prices, infinite values, and duplicate
+    dates are rejected.
+
     Returns None when benchmark variance is zero.
     """
+
+    # Validate input types before accessing pandas methods.
+    if not isinstance(portfolio_returns, pd.Series):
+        raise TypeError(
+            "portfolio_returns must be a pandas Series."
+        )
 
     if not isinstance(benchmark_prices, pd.Series):
         raise TypeError(
             "benchmark_prices must be a pandas Series."
         )
 
-    benchmark = benchmark_prices.sort_index()
+    # Financial observations must have actual trading dates.
+    if not isinstance(portfolio_returns.index, pd.DatetimeIndex):
+        raise ValueError(
+            "Portfolio returns must use a DatetimeIndex."
+        )
 
+    if not isinstance(benchmark_prices.index, pd.DatetimeIndex):
+        raise ValueError(
+            "Benchmark prices must use a DatetimeIndex."
+        )
+
+    # Duplicate dates make the alignment ambiguous.
+    if portfolio_returns.index.has_duplicates:
+        raise ValueError(
+            "Portfolio returns contain duplicate dates."
+        )
+
+    if benchmark_prices.index.has_duplicates:
+        raise ValueError(
+            "Benchmark prices contain duplicate dates."
+        )
+
+    # Convert portfolio returns to numeric values.
+    try:
+        portfolio = pd.to_numeric(
+            portfolio_returns,
+            errors="raise",
+        ).astype(float)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            "Portfolio returns must be numeric."
+        ) from exc
+
+    # Portfolio returns must be finite.
+    # Do not silently discard invalid observations.
+    if not np.isfinite(portfolio.to_numpy()).all():
+        raise ValueError(
+            "Portfolio returns must contain finite values."
+        )
+
+    # Convert benchmark prices to numeric values.
+    try:
+        benchmark = pd.to_numeric(
+            benchmark_prices,
+            errors="raise",
+        ).astype(float)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            "Benchmark prices must be numeric."
+        ) from exc
+
+    # Reject infinity before handling missing observations.
+    if np.isinf(benchmark.to_numpy()).any():
+        raise ValueError(
+            "Benchmark prices cannot contain infinite values."
+        )
+
+    # Nonmissing benchmark prices must be positive.
+    valid_prices = benchmark.dropna()
+
+    if (valid_prices <= 0).any():
+        raise ValueError(
+            "Benchmark prices must be strictly positive."
+        )
+
+    # Sort observations chronologically.
+    portfolio = portfolio.sort_index()
+    benchmark = benchmark.sort_index()
+
+    # Do not forward-fill missing benchmark prices.
+    # pct_change(fill_method=None) produces NaN whenever
+    # the current or immediately preceding price is missing.
     benchmark_returns = benchmark.pct_change(
         fill_method=None
-    ).dropna()
+    )
 
+    # Align both return series using actual trading dates.
     aligned = pd.concat(
         [
-            portfolio_returns.rename("Portfolio"),
+            portfolio.rename("Portfolio"),
             benchmark_returns.rename("Benchmark"),
         ],
         axis=1,
         join="inner",
     ).dropna()
 
+    # At least two paired observations are required
+    # to calculate sample covariance and variance.
     if len(aligned) < 2:
         raise ValueError(
             "At least two aligned return observations "
@@ -504,6 +592,7 @@ def calculate_portfolio_beta(
         aligned["Benchmark"].var(ddof=1)
     )
 
+    # Beta is undefined when the benchmark has no variation.
     if benchmark_variance == 0:
         return None
 
@@ -513,7 +602,16 @@ def calculate_portfolio_beta(
         )
     )
 
-    return covariance / benchmark_variance
+    beta = covariance / benchmark_variance
+
+    if not np.isfinite(beta):
+        raise ValueError(
+            "Portfolio beta calculation produced "
+            "a non-finite result."
+        )
+
+    return beta
+
 
 
 def calculate_risk_contributions(
