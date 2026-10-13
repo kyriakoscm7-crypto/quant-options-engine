@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+echo
+echo "=========================================="
+echo " QUANT INTELLIGENCE — PRE-COMMIT CHECKS"
+echo "=========================================="
+echo
+
+if ! ./scripts/verify_project.sh; then
+    echo
+    echo "COMMIT BLOCKED: Project verification failed."
+    exit 1
+fi
+
+echo
+echo "All quality checks passed. Commit allowed."

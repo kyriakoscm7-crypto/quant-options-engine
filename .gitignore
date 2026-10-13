@@ -1,42 +1,14 @@
-# Python virtual environments
 .venv/
-venv/
-env/
-
-# Python cache files
 __pycache__/
-*.py[cod]
-
-# Testing caches and reports
 .pytest_cache/
-.coverage
-htmlcov/
-
-# macOS files
+.ruff_cache/
+*.py[cod]
 .DS_Store
 
-# Environment variables and secrets
-.env
-.env.*
-!.env.example
+.quality_reports/
+research_results/
+*.bak
+*.pre_*.bak
 
-# Generated HTML visualizations
-volatility_smile.html
-volatility_surface_3d.html
-
-# Local backups
-backups/
-
-# Editor settings
-.vscode/
-.idea/
-
-# Build artifacts
-build/
-dist/
-*.egg-info/
-
-# Python test coverage files
-.coverage
-.coverage.*
-htmlcov/
+calibration_diagnostics_pilot.csv
+probability_shrinkage_experiment.csv
