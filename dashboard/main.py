@@ -42,6 +42,7 @@ from app.market_data.stock_history import (  # noqa: E402
     validate_ticker,
 )
 from app.pricing.black_scholes import BlackScholes  # noqa: E402
+from dashboard.forecast_intelligence_page import render_forecast_intelligence  # noqa: E402
 from dashboard.market_scanner_page import render_market_scanner  # noqa: E402
 from dashboard.portfolio_page import render_portfolio_manager  # noqa: E402
 
@@ -505,6 +506,17 @@ with st.sidebar:
 
     st.divider()
 
+    if "selected_page" not in st.session_state:
+        st.session_state["selected_page"] = "🏠 Overview"
+
+    # Apply navigation requests BEFORE creating the sidebar widget.
+    requested_page = st.session_state.pop(
+        "_navigation_request", None
+    )
+
+    if requested_page is not None:
+        st.session_state["selected_page"] = requested_page
+
     page = st.radio(
         "Navigation",
         [
@@ -515,9 +527,10 @@ with st.sidebar:
             "📈 Scenario Explorer",
             "🔍 Market Scanner",
             "💼 Portfolio Manager",
+            "🧠 Forecast Intelligence",
             "🧠 Strategy Research",
         ],
-        label_visibility="collapsed",
+        label_visibility="collapsed",        key="selected_page",
     )
 
     st.divider()
@@ -612,101 +625,137 @@ if page in [
 
 if page == "🏠 Overview":
 
-    st.title("Quant Intelligence")
+    st.title("🧠 Quant Intelligence")
 
     st.markdown(
-        '<p class="section-caption">'
-        "Quantitative research, derivatives analytics, "
-        "and portfolio intelligence."
-        "</p>",
-        unsafe_allow_html=True,
+        "### Understand the market without needing to be a financial expert."
+    )
+
+    st.write(
+        "Explore stocks, understand options, and learn about "
+        "investment risk using powerful financial analysis "
+        "tools explained in everyday language."
+    )
+
+    st.info(
+        "💡 **New to investing?** Start with Explore Stocks. "
+        "You can learn about a company's price history and "
+        "how much its stock tends to move."
     )
 
     st.divider()
 
-    st.subheader("Platform Overview")
+    st.header("What would you like to explore?")
 
-    col1, col2, col3, col4 = st.columns(4)
+    st.caption(
+        "Choose a tool below. Advanced calculations are still "
+        "available whenever you want to explore further."
+    )
+
+    col1, col2 = st.columns(2)
 
     with col1:
-        st.metric("Pricing Models", "1", "Black-Scholes")
+        st.markdown("### 📈 Explore Stocks")
+        st.write(
+            "Look up a company and understand its historical "
+            "performance, price movements, and trends."
+        )
+
+        if st.button(
+            "Explore Stocks →",
+            use_container_width=True,
+            key="home_stocks",
+        ):
+            st.session_state["_navigation_request"] = "🔎 Stock Explorer"
+            st.rerun()
+
+        st.markdown("### 💰 Options Calculator")
+        st.write(
+            "Estimate what an option might be worth and learn "
+            "how stock prices and time affect its value."
+        )
+
+        if st.button(
+            "Explore Options →",
+            use_container_width=True,
+            key="home_options",
+        ):
+            st.session_state["_navigation_request"] = "💰 Options Lab"
+            st.rerun()
+
+        st.markdown("### 🔍 Discover Stocks")
+        st.write(
+            "Explore stocks using market characteristics "
+            "such as momentum and historical volatility."
+        )
+
+        if st.button(
+            "Discover Stocks →",
+            use_container_width=True,
+            key="home_scanner",
+        ):
+            st.session_state["_navigation_request"] = "🔍 Market Scanner"
+            st.rerun()
 
     with col2:
-        st.metric("API Endpoints", "10")
-
-    with col3:
-        st.metric("Automated Tests", "638")
-
-    with col4:
-        st.metric("Test Coverage", "93%")
-
-    st.markdown("### Research Modules")
-
-    left, middle, right = st.columns(3)
-
-    with left:
-        st.markdown(
-            """
-            <div class="dashboard-card">
-                <h3>🔎 Stock Explorer</h3>
-                <p>
-                    Research historical stock prices,
-                    returns, volatility, and performance.
-                </p>
-            </div>
-            """,
-            unsafe_allow_html=True,
+        st.markdown("### 🛡️ Understand Option Risk")
+        st.write(
+            "See how an option's value may change when "
+            "stock prices, time, or volatility change."
         )
 
-    with middle:
-        st.markdown(
-            """
-            <div class="dashboard-card">
-                <h3>💰 Options Lab</h3>
-                <p>
-                    Price European call and put options
-                    and explore analytical Greeks.
-                </p>
-            </div>
-            """,
-            unsafe_allow_html=True,
+        if st.button(
+            "Understand Risk →",
+            use_container_width=True,
+            key="home_risk",
+        ):
+            st.session_state["_navigation_request"] = "📊 Greeks Analysis"
+            st.rerun()
+
+        st.markdown("### 💼 My Portfolio")
+        st.write(
+            "Explore your investments together and "
+            "understand their combined performance and risk."
         )
 
-    with right:
-        st.markdown(
-            """
-            <div class="dashboard-card">
-                <h3>📈 Scenario Explorer</h3>
-                <p>
-                    Explore theoretical option values
-                    under hypothetical market changes.
-                </p>
-            </div>
-            """,
-            unsafe_allow_html=True,
+        if st.button(
+            "Explore Portfolio →",
+            use_container_width=True,
+            key="home_portfolio",
+        ):
+            st.session_state["_navigation_request"] = "💼 Portfolio Manager"
+            st.rerun()
+
+        st.markdown("### 🧠 AI Forecast Research")
+        st.write(
+            "Discover whether machine learning actually "
+            "improved predictions in our historical experiments."
         )
 
-    st.markdown("### Development Roadmap")
+        if st.button(
+            "Explore Forecast Research →",
+            use_container_width=True,
+            key="home_forecasts",
+        ):
+            st.session_state["_navigation_request"] = "🧠 Forecast Intelligence"
+            st.rerun()
 
-    st.info(
-        "Upcoming: Market Scanner, Portfolio Manager, "
-        "Historical Backtesting, Machine Learning, "
-        "and Quantitative Strategy Research."
+    st.divider()
+
+    st.subheader("How Quant Intelligence Works")
+
+    st.markdown(
+        "**1. Explore:** Choose a stock or financial question.\n\n"
+        "**2. Understand:** View results explained in plain English.\n\n"
+        "**3. Go Deeper:** Explore advanced calculations and charts "
+        "when you're ready."
     )
 
-    st.markdown("### Current Capabilities")
-
-    st.write(
-        "The platform supports historical stock research, "
-        "European option pricing, analytical Greeks, "
-        "implied volatility, vectorized calculations, "
-        "portfolio risk aggregation, and scenario analysis."
+    st.caption(
+        "Quant Intelligence provides financial analysis and "
+        "educational research, not personalized investment advice."
     )
 
-
-# ============================================================
-# STOCK EXPLORER
-# ============================================================
 
 elif page == "🔎 Stock Explorer":
 
@@ -1056,111 +1105,202 @@ elif page == "🔎 Stock Explorer":
 
 elif page == "💰 Options Lab":
 
-    st.title("💰 Options Pricing Lab")
+    st.title("💰 Options Calculator")
+
+    st.write(
+        "Enter your own values to estimate what a stock option "
+        "might be worth."
+    )
+
+    with st.form("options_calculator_form"):
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            calc_stock = st.number_input(
+                "Current stock price ($)",
+                min_value=0.01,
+                value=100.0,
+                step=1.0,
+                help="The current price of one share.",
+            )
+
+            calc_strike = st.number_input(
+                "Strike price ($)",
+                min_value=0.01,
+                value=105.0,
+                step=1.0,
+                help="The price at which the option can be exercised.",
+            )
+
+        with col2:
+            calc_days = st.number_input(
+                "Days until expiration",
+                min_value=0,
+                max_value=3650,
+                value=30,
+                step=1,
+            )
+
+            calc_volatility = st.number_input(
+                "Expected annual volatility (%)",
+                min_value=0.0,
+                max_value=500.0,
+                value=25.0,
+                step=1.0,
+                help="How much the stock price might fluctuate.",
+            )
+
+        with st.expander("⚙️ Advanced Settings"):
+            calc_rate = st.number_input(
+                "Annual risk-free interest rate (%)",
+                min_value=-20.0,
+                max_value=100.0,
+                value=4.0,
+                step=0.25,
+            )
+
+            calc_dividend = st.number_input(
+                "Annual dividend yield (%)",
+                min_value=0.0,
+                max_value=100.0,
+                value=0.0,
+                step=0.25,
+            )
+
+        submitted = st.form_submit_button(
+            "Calculate Option Prices",
+            use_container_width=True,
+        )
+
+    if submitted:
+
+        calculator = BlackScholes(
+            calc_stock,
+            calc_strike,
+            calc_days,
+            calc_rate,
+            calc_volatility,
+            calc_dividend,
+        )
+
+        calculated = calculator.greeks()
+
+        call_price = float(calculated["call_price"])
+        put_price = float(calculated["put_price"])
+
+        st.divider()
+        st.subheader("💵 Your Estimated Option Prices")
+
+        left, right = st.columns(2)
+
+        with left:
+            st.metric(
+                "📈 Call Option",
+                f"${call_price:,.2f}",
+            )
+            st.caption(
+                f"About ${call_price * 100:,.2f} "
+                "for a standard 100-share contract."
+            )
+
+        with right:
+            st.metric(
+                "📉 Put Option",
+                f"${put_price:,.2f}",
+            )
+            st.caption(
+                f"About ${put_price * 100:,.2f} "
+                "for a standard 100-share contract."
+            )
+
+        st.info(
+            "These are theoretical estimates, not live "
+            "market prices or guaranteed purchase costs."
+        )
+
+        st.subheader("💡 What Do These Results Mean?")
+
+        st.write(
+            "**Call:** An option giving you the right to buy "
+            "shares at the strike price."
+        )
+
+        st.write(
+            "**Put:** An option giving you the right to sell "
+            "shares at the strike price."
+        )
+
+        st.write(
+            "The estimated values depend on the stock price, "
+            "strike price, expiration, volatility, interest "
+            "rate, and dividend yield you entered."
+        )
+
+        with st.expander("🔬 Advanced Analytics"):
+
+            st.subheader("Option Greeks")
+
+            greek_data = pd.DataFrame(
+                {
+                    "Greek": [
+                        "Delta", "Gamma", "Vega", "Theta", "Rho"
+                    ],
+                    "Call": [
+                        calculated["call_delta"],
+                        calculated["gamma"],
+                        calculated["vega"],
+                        calculated["call_theta"],
+                        calculated["call_rho"],
+                    ],
+                    "Put": [
+                        calculated["put_delta"],
+                        calculated["gamma"],
+                        calculated["vega"],
+                        calculated["put_theta"],
+                        calculated["put_rho"],
+                    ],
+                }
+            )
+
+            st.dataframe(
+                greek_data,
+                hide_index=True,
+                use_container_width=True,
+            )
+
+            st.markdown("### What Do These Numbers Mean?")
+
+            st.write(
+                "**Delta:** Estimated option price change "
+                "for a $1 stock price movement."
+            )
+
+            st.write(
+                "**Gamma:** How quickly Delta changes."
+            )
+
+            st.write(
+                "**Vega:** Sensitivity to changes in volatility."
+            )
+
+            st.write(
+                "**Theta:** Sensitivity to the passage of time."
+            )
+
+            st.write(
+                "**Rho:** Sensitivity to interest rate changes."
+            )
+
+    else:
+        st.info(
+            "👆 Enter your values and click "
+            "**Calculate Option Prices** to see your results."
+        )
 
     st.caption(
-        "European option pricing using the "
-        "Black-Scholes-Merton model."
-    )
-
-    st.info(
-        "Adjust the parameters in the sidebar. "
-        "Results update automatically."
-    )
-
-    call_col, put_col = st.columns(2)
-
-    with call_col:
-
-        st.metric(
-            "European Call Price",
-            f"${results['call_price']:,.4f}",
-        )
-
-    with put_col:
-
-        st.metric(
-            "European Put Price",
-            f"${results['put_price']:,.4f}",
-        )
-
-    st.divider()
-
-    st.subheader("Option Greeks")
-
-    greek_data = pd.DataFrame(
-        {
-            "Greek": [
-                "Delta",
-                "Gamma",
-                "Vega",
-                "Theta",
-                "Rho",
-            ],
-            "Call": [
-                results["call_delta"],
-                results["gamma"],
-                results["vega"],
-                results["call_theta"],
-                results["call_rho"],
-            ],
-            "Put": [
-                results["put_delta"],
-                results["gamma"],
-                results["vega"],
-                results["put_theta"],
-                results["put_rho"],
-            ],
-        }
-    )
-
-    st.dataframe(
-        greek_data,
-        hide_index=True,
-        use_container_width=True,
-    )
-
-    st.markdown("### Understanding the Greeks")
-
-    with st.expander("Delta — Stock Price Sensitivity"):
-
-        st.write(
-            "Estimates how much the option price changes "
-            "when the underlying stock moves by $1."
-        )
-
-    with st.expander("Gamma — Delta Sensitivity"):
-
-        st.write(
-            "Measures how quickly Delta changes "
-            "as the stock price moves."
-        )
-
-    with st.expander("Vega — Volatility Sensitivity"):
-
-        st.write(
-            "Estimates the option price change for a "
-            "1 percentage-point increase in volatility."
-        )
-
-    with st.expander("Theta — Time Decay"):
-
-        st.write(
-            "Measures the approximate option price change "
-            "from one calendar day passing."
-        )
-
-    with st.expander("Rho — Interest Rate Sensitivity"):
-
-        st.write(
-            "Estimates the option price change for a "
-            "1 percentage-point increase in interest rates."
-        )
-
-    st.warning(
-        "Black-Scholes assumes European-style exercise "
-        "and simplified market conditions. Theoretical "
-        "prices are not guaranteed market prices."
+        "Educational Black–Scholes estimates. "
+        "Not personalized investment advice."
     )
 
 
@@ -1473,6 +1613,11 @@ elif page == "🔍 Market Scanner":
 elif page == "💼 Portfolio Manager":
 
     render_portfolio_manager()
+
+
+elif page == "🧠 Forecast Intelligence":
+
+    render_forecast_intelligence()
 
 
 elif page == "🧠 Strategy Research":
