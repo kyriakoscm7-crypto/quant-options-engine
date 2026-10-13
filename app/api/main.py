@@ -1,14 +1,41 @@
+"""
+Quant Options Engine REST API.
+
+Provides endpoints for:
+- Health checks.
+- European option pricing.
+- Analytical option Greeks.
+- Implied volatility.
+- Yahoo Finance option-chain data.
+- Vectorized batch option pricing.
+- Vectorized batch option Greeks.
+- Portfolio theoretical valuation.
+- Portfolio aggregate Greeks.
+- Portfolio scenario analysis.
+
+All pricing and risk calculations reuse the project's
+existing quantitative analytics modules.
+"""
+
 import logging
 import math
 
 import numpy as np
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, ConfigDict, Field
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from starlette.concurrency import run_in_threadpool
 
 from app.market_data.yahoo_client import fetch_option_chain
 from app.pricing.black_scholes import BlackScholes
 from app.pricing.implied_volatility import implied_volatility
+from app.pricing.portfolio import OptionPosition, PortfolioAnalytics
+from app.pricing.scenario_analysis import (
+    MarketScenario,
+    PortfolioScenarioAnalysis,
+)
 from app.pricing.vectorized_black_scholes import (
     greeks_options_vectorized,
     price_options_vectorized,
@@ -18,14 +45,10 @@ from app.pricing.vectorized_black_scholes import (
 # LOGGING CONFIGURATION
 # ============================================================
 
-# Create a dedicated logger for this Python module.
+# Create a dedicated logger for this module.
 #
 # __name__ identifies the module as "app.api.main".
-# This allows application logs to be organized by module
-# instead of using Python's global/root logger.
-#
-# When an unexpected error occurs, this logger can record
-# the error message and traceback for debugging.
+# This allows logs to be organized by module.
 logger = logging.getLogger(__name__)
 
 
@@ -33,92 +56,440 @@ logger = logging.getLogger(__name__)
 # FASTAPI APPLICATION
 # ============================================================
 
-# Create the FastAPI application.
+# Version 1.3.0 adds portfolio analytics and scenario endpoints.
 app = FastAPI(
     title="Quant Options Engine",
     description="Options pricing and quantitative analytics REST API.",
-    version="1.2.0",
+    version="1.3.0",
 )
 
 
 # ============================================================
-# REQUEST MODELS
+# SAFE REQUEST VALIDATION ERROR HANDLER
 # ============================================================
 
-# Define the structure of an incoming option-pricing request.
+def make_validation_error_json_safe(value):
+    """
+    Recursively convert validation-error details into JSON-safe values.
+
+    FastAPI includes the rejected input in validation errors.
+
+    When that input is NaN, Infinity, or -Infinity, the default
+    JSON response serializer can raise ValueError because those
+    floating-point values are not permitted in standard JSON.
+
+    Convert non-finite floats into descriptive strings while
+    preserving the original validation error information.
+    """
+
+    if isinstance(value, float):
+
+        if math.isnan(value):
+            return "NaN"
+
+        if math.isinf(value):
+            return "Infinity" if value > 0 else "-Infinity"
+
+        return value
+
+    if isinstance(value, dict):
+        return {
+            str(key): make_validation_error_json_safe(item)
+            for key, item in value.items()
+        }
+
+    if isinstance(value, (list, tuple)):
+        return [
+            make_validation_error_json_safe(item)
+            for item in value
+        ]
+
+    return value
+
+
+@app.exception_handler(RequestValidationError)
+async def safe_request_validation_error_handler(
+    request: Request,
+    exc: RequestValidationError,
+):
+    """
+    Return HTTP 422 for invalid requests without JSON serialization errors.
+
+    The handler preserves FastAPI's normal validation-error structure:
+
+        {"detail": [...]}
+
+    Non-finite numbers in error details are represented as strings.
+    """
+
+    safe_errors = make_validation_error_json_safe(
+        exc.errors()
+    )
+
+    return JSONResponse(
+        status_code=422,
+        content=jsonable_encoder(
+            {"detail": safe_errors}
+        ),
+    )
+
+
+# ============================================================
+# REQUEST MODEL 1: INDIVIDUAL OPTION
+# ============================================================
+
 class OptionRequest(BaseModel):
+    """
+    Validate inputs for individual European option calculations.
+    """
 
     # Reject unexpected request fields.
     model_config = ConfigDict(extra="forbid")
 
-    # Current stock price.
+    # Current underlying asset price.
     S: float = Field(gt=0, allow_inf_nan=False)
 
     # Option strike price.
     K: float = Field(gt=0, allow_inf_nan=False)
 
-    # Time remaining until expiration, measured in years.
+    # Time remaining until expiration, in years.
     T: float = Field(ge=0, allow_inf_nan=False)
 
-    # Continuously compounded annual risk-free rate.
+    # Annual continuously compounded risk-free rate.
     r: float = Field(allow_inf_nan=False)
 
     # Annualized volatility as a decimal.
     sigma: float = Field(ge=0, allow_inf_nan=False)
 
-    # Continuously compounded annual dividend yield.
+    # Continuous dividend yield.
     q: float = Field(default=0.0, allow_inf_nan=False)
 
 
-# Define the structure of a batch-pricing request.
-#
-# This model is shared by both batch endpoints:
-#
-# POST /api/v1/options/batch-price
-# POST /api/v1/options/batch-greeks
-#
-# Sharing the model guarantees consistent validation.
-class BatchOptionRequest(BaseModel):
+# ============================================================
+# REQUEST MODEL 2: BATCH OPTIONS
+# ============================================================
 
-    # Reject unexpected fields at the outer request level.
+class BatchOptionRequest(BaseModel):
+    """
+    Validate a batch of European option contracts.
+
+    Shared by:
+    - /api/v1/options/batch-price
+    - /api/v1/options/batch-greeks
+    """
+
     model_config = ConfigDict(extra="forbid")
 
-    # Accept between 1 and 10,000 option contracts.
-    #
-    # Each contract uses OptionRequest, so every item
-    # receives the same validation as the single-option API.
+    # Restrict batch size to between 1 and 10,000 options.
     options: list[OptionRequest] = Field(
         min_length=1,
         max_length=10_000,
     )
 
 
-# Define the inputs required to calculate implied volatility.
-class ImpliedVolatilityRequest(BaseModel):
+# ============================================================
+# REQUEST MODEL 3: IMPLIED VOLATILITY
+# ============================================================
 
-    # Reject unexpected JSON fields.
+class ImpliedVolatilityRequest(BaseModel):
+    """
+    Validate inputs for the implied-volatility solver.
+    """
+
     model_config = ConfigDict(extra="forbid")
 
-    # Observed option market price.
+    # Observed market price of the option.
     market_price: float = Field(ge=0, allow_inf_nan=False)
 
-    # Current underlying stock price.
+    # Underlying asset price.
     S: float = Field(gt=0, allow_inf_nan=False)
 
-    # Option strike price.
+    # Strike price.
     K: float = Field(gt=0, allow_inf_nan=False)
 
-    # Time remaining until expiration in years.
+    # Time to expiration must be strictly positive.
     T: float = Field(gt=0, allow_inf_nan=False)
 
-    # Annual risk-free interest rate.
+    # Annual risk-free rate.
     r: float = Field(allow_inf_nan=False)
 
-    # Option type: call or put.
-    option_type: str = Field(default="call", pattern="^(call|put)$")
+    # Supported option types.
+    option_type: str = Field(
+        default="call",
+        pattern="^(call|put)$",
+    )
 
-    # Annual dividend yield.
+    # Continuous dividend yield.
     q: float = Field(default=0.0, allow_inf_nan=False)
+
+
+# ============================================================
+# REQUEST MODEL 4: PORTFOLIO OPTION POSITION
+# ============================================================
+
+class PortfolioPositionRequest(BaseModel):
+    """
+    Validate one option position submitted to the portfolio API.
+
+    quantity:
+        Positive = long contracts.
+        Negative = short contracts.
+
+    multiplier:
+        Number of underlying units represented by one contract.
+
+    Each position contains its own strike, expiration,
+    volatility, interest rate, and dividend yield.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    # European call or put.
+    option_type: str = Field(pattern="^(call|put)$")
+
+    # Signed number of contracts.
+    #
+    # strict=True prevents floats such as 10.5
+    # from being converted into integers.
+    quantity: int = Field(strict=True)
+
+    # Current underlying price.
+    S: float = Field(gt=0, allow_inf_nan=False)
+
+    # Strike price.
+    K: float = Field(gt=0, allow_inf_nan=False)
+
+    # Time to expiration in years.
+    T: float = Field(ge=0, allow_inf_nan=False)
+
+    # Annual risk-free rate.
+    r: float = Field(allow_inf_nan=False)
+
+    # Annualized volatility.
+    sigma: float = Field(ge=0, allow_inf_nan=False)
+
+    # Continuous dividend yield.
+    q: float = Field(default=0.0, allow_inf_nan=False)
+
+    # Standard equity options typically use 100.
+    multiplier: int = Field(
+        default=100,
+        gt=0,
+        strict=True,
+    )
+
+    # ========================================================
+    # VALIDATE NONZERO QUANTITY
+    # ========================================================
+
+    @model_validator(mode="after")
+    def validate_quantity(self):
+        """
+        Reject positions containing zero contracts.
+        """
+
+        if self.quantity == 0:
+            raise ValueError(
+                "quantity cannot be zero."
+            )
+
+        return self
+
+
+# ============================================================
+# REQUEST MODEL 5: PORTFOLIO
+# ============================================================
+
+class PortfolioRequest(BaseModel):
+    """
+    Validate a portfolio containing European option positions.
+
+    This version supports a single underlying asset.
+
+    Therefore, all positions must share the same
+    current underlying price S.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    # Require between 1 and 10,000 positions.
+    positions: list[PortfolioPositionRequest] = Field(
+        min_length=1,
+        max_length=10_000,
+    )
+
+    # ========================================================
+    # VALIDATE COMMON UNDERLYING PRICE
+    # ========================================================
+
+    @model_validator(mode="after")
+    def validate_underlying_prices(self):
+        """
+        Ensure every position uses the same underlying price.
+        """
+
+        first_price = self.positions[0].S
+
+        for position in self.positions[1:]:
+
+            if position.S != first_price:
+                raise ValueError(
+                    "All positions must use the same "
+                    "underlying price S."
+                )
+
+        return self
+
+
+# ============================================================
+# REQUEST MODEL 6: MARKET SCENARIO
+# ============================================================
+
+class MarketScenarioRequest(BaseModel):
+    """
+    Validate one hypothetical market scenario.
+
+    price_change_pct:
+        Percentage change in the underlying price.
+
+        Example:
+            -5.0 means the stock decreases by 5%.
+
+    volatility_change:
+        Absolute change in annualized volatility.
+
+        Example:
+            +0.05 means volatility increases
+            by 5 percentage points.
+
+    days_forward:
+        Number of calendar days to advance.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    # Descriptive scenario name.
+    name: str = Field(min_length=1)
+
+    # Percentage stock-price change.
+    #
+    # Greater than -100 prevents a zero or
+    # negative underlying price.
+    price_change_pct: float = Field(
+        default=0.0,
+        gt=-100,
+        allow_inf_nan=False,
+    )
+
+    # Absolute change in annualized volatility.
+    volatility_change: float = Field(
+        default=0.0,
+        allow_inf_nan=False,
+    )
+
+    # Nonnegative calendar-day advancement.
+    days_forward: float = Field(
+        default=0.0,
+        ge=0,
+        allow_inf_nan=False,
+    )
+
+    # ========================================================
+    # VALIDATE NONEMPTY SCENARIO NAME
+    # ========================================================
+
+    @model_validator(mode="after")
+    def validate_name(self):
+        """
+        Reject names containing only whitespace.
+        """
+
+        if not self.name.strip():
+            raise ValueError(
+                "Scenario name cannot be blank."
+            )
+
+        return self
+
+
+# ============================================================
+# REQUEST MODEL 7: PORTFOLIO SCENARIO ANALYSIS
+# ============================================================
+
+class PortfolioScenarioRequest(PortfolioRequest):
+    """
+    Validate a portfolio and its hypothetical market scenarios.
+
+    Inherits the portfolio position validation from
+    PortfolioRequest and adds the scenario collection.
+    """
+
+    # Require between 1 and 100 scenarios.
+    #
+    # With the maximum 10,000 positions, this allows
+    # up to 1,000,000 scenario-position combinations.
+    scenarios: list[MarketScenarioRequest] = Field(
+        min_length=1,
+        max_length=100,
+    )
+
+    # ========================================================
+    # VALIDATE UNIQUE SCENARIO NAMES
+    # ========================================================
+
+    @model_validator(mode="after")
+    def validate_unique_scenario_names(self):
+        """
+        Reject duplicate scenario names.
+        """
+
+        names = [
+            scenario.name
+            for scenario in self.scenarios
+        ]
+
+        if len(names) != len(set(names)):
+            raise ValueError(
+                "Scenario names must be unique."
+            )
+
+        return self
+
+
+# ============================================================
+# HELPER: BUILD PORTFOLIO ENGINE
+# ============================================================
+
+def build_portfolio_engine(
+    positions: list[PortfolioPositionRequest],
+):
+    """
+    Convert validated API position models into OptionPosition objects.
+
+    This helper is shared by all portfolio endpoints.
+
+    It prevents duplication of position conversion logic.
+    """
+
+    # Convert each Pydantic model into a validated
+    # OptionPosition dataclass.
+    portfolio_positions = [
+        OptionPosition(
+            option_type=position.option_type,
+            quantity=position.quantity,
+            S=position.S,
+            K=position.K,
+            T=position.T,
+            r=position.r,
+            sigma=position.sigma,
+            q=position.q,
+            multiplier=position.multiplier,
+        )
+        for position in positions
+    ]
+
+    # Return the existing portfolio analytics engine.
+    return PortfolioAnalytics(portfolio_positions)
 
 
 # ============================================================
@@ -307,14 +678,6 @@ def calculate_batch_option_prices(request: BatchOptionRequest):
     # Convert the validated option contracts into NumPy arrays.
     #
     # Each array contains one parameter for every contract.
-    # For example, strikes might contain:
-    #
-    # [90.0, 100.0, 110.0]
-    #
-    # NumPy arrays allow the pricing engine to process
-    # the entire batch instead of using a Python loop
-    # to price every contract individually.
-
     stock_prices = np.array(
         [option.S for option in request.options],
         dtype=float,
@@ -346,8 +709,6 @@ def calculate_batch_option_prices(request: BatchOptionRequest):
     )
 
     # Calculate every call and put price in one vectorized operation.
-    #
-    # Both arrays preserve the order of the incoming contracts.
     call_prices, put_prices = price_options_vectorized(
         S=stock_prices,
         K=strikes,
@@ -357,13 +718,7 @@ def calculate_batch_option_prices(request: BatchOptionRequest):
         q=dividend_yields,
     )
 
-    # Build the JSON-compatible response.
-    #
-    # zip() pairs the call and put price for each contract.
-    #
-    # float() converts NumPy numbers into standard Python floats.
-    # round() keeps the response consistent with the existing
-    # single-option pricing endpoint.
+    # Convert NumPy results into JSON-compatible floats.
     results = [
         {
             "call_price": round(float(call), 4),
@@ -376,7 +731,6 @@ def calculate_batch_option_prices(request: BatchOptionRequest):
         )
     ]
 
-    # Return the number of priced contracts and their prices.
     return {
         "count": len(results),
         "results": results,
@@ -394,18 +748,6 @@ def calculate_batch_option_greeks(request: BatchOptionRequest):
 
     Accepts between 1 and 10,000 option contracts.
 
-    Each result contains:
-    - Call price
-    - Put price
-    - Call delta
-    - Put delta
-    - Gamma
-    - Vega
-    - Call theta
-    - Put theta
-    - Call rho
-    - Put rho
-
     Undefined Greeks are returned as JSON null.
     """
 
@@ -413,37 +755,31 @@ def calculate_batch_option_greeks(request: BatchOptionRequest):
     # CONVERT VALIDATED INPUTS INTO NUMPY ARRAYS
     # ========================================================
 
-    # Extract stock prices from all submitted contracts.
     stock_prices = np.array(
         [option.S for option in request.options],
         dtype=float,
     )
 
-    # Extract strike prices.
     strikes = np.array(
         [option.K for option in request.options],
         dtype=float,
     )
 
-    # Extract time to expiration, measured in years.
     expirations = np.array(
         [option.T for option in request.options],
         dtype=float,
     )
 
-    # Extract continuously compounded risk-free rates.
     interest_rates = np.array(
         [option.r for option in request.options],
         dtype=float,
     )
 
-    # Extract annualized volatility values.
     volatilities = np.array(
         [option.sigma for option in request.options],
         dtype=float,
     )
 
-    # Extract continuously compounded dividend yields.
     dividend_yields = np.array(
         [option.q for option in request.options],
         dtype=float,
@@ -453,12 +789,6 @@ def calculate_batch_option_greeks(request: BatchOptionRequest):
     # CALCULATE VECTORIZED PRICES AND GREEKS
     # ========================================================
 
-    # Process the entire batch in one NumPy operation.
-    #
-    # The function returns a dictionary containing ten
-    # NumPy arrays, one for each output field.
-    #
-    # Each array has one entry per option contract.
     vectorized_results = greeks_options_vectorized(
         S=stock_prices,
         K=strikes,
@@ -472,8 +802,6 @@ def calculate_batch_option_greeks(request: BatchOptionRequest):
     # DEFINE OUTPUT FIELD ORDER
     # ========================================================
 
-    # Keep the response fields consistent with the original
-    # BlackScholes.greeks() method.
     output_fields = (
         "call_price",
         "put_price",
@@ -493,47 +821,215 @@ def calculate_batch_option_greeks(request: BatchOptionRequest):
 
     results = []
 
-    # Iterate over the original contract positions.
-    #
-    # Although the mathematical calculations are vectorized,
-    # a Python loop is still needed to build individual JSON
-    # objects for the API response.
-    #
-    # This does not change the fact that the pricing and
-    # Greeks calculations themselves are vectorized.
     for index in range(len(request.options)):
 
         contract_result = {}
 
-        # Extract each of the ten calculated outputs.
         for field in output_fields:
 
             value = float(vectorized_results[field][index])
 
-            # Undefined analytical Greeks are represented
-            # internally using NumPy NaN values.
-            #
-            # JSON does not support NaN as a standard value.
-            #
-            # Convert NaN into Python None, which FastAPI
-            # serializes as JSON null.
+            # Convert undefined Greeks into JSON null.
             if math.isnan(value):
 
                 contract_result[field] = None
 
             else:
 
-                # Match the scalar Black-Scholes engine's
-                # four-decimal rounding convention.
+                # Match the scalar engine's rounding convention.
                 contract_result[field] = round(value, 4)
 
         results.append(contract_result)
-
-    # ========================================================
-    # RETURN BATCH RESPONSE
-    # ========================================================
 
     return {
         "count": len(results),
         "results": results,
     }
+
+
+# ============================================================
+# ENDPOINT 8: PORTFOLIO THEORETICAL VALUATION
+# ============================================================
+
+@app.post("/api/v1/portfolio/value")
+def calculate_portfolio_value(request: PortfolioRequest):
+    """
+    Calculate theoretical portfolio value and position breakdown.
+
+    Accepts between 1 and 10,000 European option positions.
+
+    Returns:
+    - Number of positions.
+    - Gross and net contract counts.
+    - Total theoretical portfolio value.
+    - Individual position values.
+
+    Notes
+    -----
+    This endpoint intentionally returns valuation information
+    without exposing aggregate portfolio Greeks.
+
+    For the complete risk report, use:
+    POST /api/v1/portfolio/greeks
+    """
+
+    # ========================================================
+    # BUILD PORTFOLIO
+    # ========================================================
+
+    portfolio = build_portfolio_engine(request.positions)
+
+    # ========================================================
+    # CALCULATE PORTFOLIO ANALYTICS
+    # ========================================================
+
+    # The existing engine calculates prices and Greeks
+    # together in one vectorized operation.
+    report = portfolio.calculate()
+
+    # ========================================================
+    # BUILD VALUATION-ONLY POSITION RESULTS
+    # ========================================================
+
+    # Return pricing fields without individual Greeks.
+    positions = [
+        {
+            "position_index": position["position_index"],
+            "option_type": position["option_type"],
+            "quantity": position["quantity"],
+            "multiplier": position["multiplier"],
+            "S": position["S"],
+            "K": position["K"],
+            "T": position["T"],
+            "r": position["r"],
+            "sigma": position["sigma"],
+            "q": position["q"],
+            "option_price": position["option_price"],
+            "position_value": position["position_value"],
+        }
+        for position in report["positions"]
+    ]
+
+    # ========================================================
+    # RETURN VALUATION REPORT
+    # ========================================================
+
+    return {
+        "position_count": report["position_count"],
+        "total_contracts": report["total_contracts"],
+        "net_contracts": report["net_contracts"],
+        "portfolio_value": report["portfolio_value"],
+        "positions": positions,
+    }
+
+
+# ============================================================
+# ENDPOINT 9: PORTFOLIO AGGREGATE GREEKS
+# ============================================================
+
+@app.post("/api/v1/portfolio/greeks")
+def calculate_portfolio_greeks(request: PortfolioRequest):
+    """
+    Calculate portfolio theoretical value and aggregate Greeks.
+
+    Returns the complete report produced by PortfolioAnalytics.
+
+    Includes:
+    - Portfolio value.
+    - Aggregate delta.
+    - Aggregate gamma.
+    - Aggregate vega.
+    - Aggregate theta.
+    - Aggregate rho.
+    - Position-level Greek contributions.
+
+    Undefined Greeks are returned as JSON null.
+    """
+
+    # Build the validated portfolio engine.
+    portfolio = build_portfolio_engine(request.positions)
+
+    # Reuse the existing vectorized portfolio implementation.
+    #
+    # This avoids duplicating Greeks formulas inside the API.
+    return portfolio.calculate()
+
+
+# ============================================================
+# ENDPOINT 10: PORTFOLIO SCENARIO ANALYSIS
+# ============================================================
+
+@app.post("/api/v1/portfolio/scenarios")
+def calculate_portfolio_scenarios(
+    request: PortfolioScenarioRequest,
+):
+    """
+    Reprice an options portfolio under hypothetical scenarios.
+
+    Each scenario can modify:
+    - Underlying price.
+    - Annualized volatility.
+    - Time remaining until expiration.
+
+    Returns:
+    - Original theoretical portfolio value.
+    - Scenario theoretical portfolio values.
+    - Scenario theoretical P&L.
+    - Normalized scenario value changes.
+    - Position-level scenario P&L.
+
+    Scenario results are not forecasts or realized trading P&L.
+    """
+
+    # ========================================================
+    # BUILD PORTFOLIO
+    # ========================================================
+
+    portfolio = build_portfolio_engine(request.positions)
+
+    # ========================================================
+    # CONVERT API SCENARIOS INTO DOMAIN MODELS
+    # ========================================================
+
+    scenarios = [
+        MarketScenario(
+            name=scenario.name,
+            price_change_pct=scenario.price_change_pct,
+            volatility_change=scenario.volatility_change,
+            days_forward=scenario.days_forward,
+        )
+        for scenario in request.scenarios
+    ]
+
+    # ========================================================
+    # CREATE SCENARIO ANALYSIS ENGINE
+    # ========================================================
+
+    analysis = PortfolioScenarioAnalysis(
+        portfolio=portfolio,
+        scenarios=scenarios,
+    )
+
+    # ========================================================
+    # CALCULATE SCENARIO REPORT
+    # ========================================================
+
+    try:
+
+        # The scenario engine checks whether the shocks
+        # produce valid market parameters.
+        #
+        # For example, a -0.30 volatility shock is invalid
+        # for a position with starting volatility 0.20.
+        return analysis.calculate()
+
+    except ValueError as exc:
+
+        # Convert domain validation errors into HTTP 422.
+        #
+        # Without this conversion, an invalid volatility
+        # scenario would produce an internal server error.
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        ) from exc

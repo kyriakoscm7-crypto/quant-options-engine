@@ -2,7 +2,7 @@
 
 [![Quant Options Engine CI](https://github.com/kyriakoscm7-crypto/quant-options-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/kyriakoscm7-crypto/quant-options-engine/actions/workflows/ci.yml)
 
-**A Python-based quantitative options analytics platform featuring Black-Scholes-Merton pricing, analytical Greeks, implied volatility estimation, real market-data integration, and high-performance NumPy vectorization.**
+**A Python-based quantitative options analytics platform featuring Black-Scholes-Merton pricing, analytical Greeks, implied volatility estimation, real market-data integration, high-performance NumPy vectorization, portfolio risk analytics, and market scenario analysis.**
 
 Built with a modular architecture, a FastAPI REST API, interactive Plotly volatility visualizations, automated testing, Docker, and GitHub Actions continuous integration.
 
@@ -20,11 +20,16 @@ The project emphasizes numerical correctness, reproducible performance measureme
 | Standalone Pricing + Greeks Speedup | **944.76× faster** |
 | FastAPI Batch Greeks Throughput | **42,463 options/second** |
 | FastAPI Batch Greeks Speedup | **27.48× faster** |
-| Automated Tests | **299 passing** |
-| Overall Code Coverage | **90%** |
-| FastAPI Coverage | **98%** |
+| Portfolio Valuation Throughput | **297,201 positions/second** |
+| Scenario Analysis Throughput | **1,408,945 scenario-position combinations/second** |
+| Largest Scenario Benchmark | **1,000,000 combinations in 0.710 seconds** |
+| Automated Tests | **638 passing** |
+| Overall Code Coverage | **93%** |
+| FastAPI Coverage | **99%** |
 | Vectorized Pricing and Greeks Module Coverage | **100%** |
-| REST API Endpoints | **7** |
+| Portfolio Analytics Coverage | **100%** |
+| Scenario Analysis Coverage | **98%** |
+| REST API Endpoints | **10** |
 | Maximum Batch API Size | **10,000 contracts/request** |
 | Continuous Integration | **GitHub Actions** |
 | Containerization | **Docker** |
@@ -32,12 +37,14 @@ The project emphasizes numerical correctness, reproducible performance measureme
 
 Performance measurements were performed locally on an Apple Silicon MacBook Pro using Python 3.11.
 
-The four performance comparisons measure different workflows:
+The performance benchmarks measure different workflows:
 
 1. Standalone scalar versus vectorized option pricing.
 2. Individual versus batch FastAPI pricing requests.
 3. Standalone scalar versus vectorized option pricing and Greeks.
 4. Individual versus batch FastAPI Greeks requests.
+5. Portfolio valuation and aggregate Greeks across different portfolio sizes.
+6. Portfolio scenario analysis across different scenario-position workloads.
 
 **These benchmarks measure different operations and overhead. Their speedup figures should not be interpreted as equivalent performance measurements.**
 
@@ -167,7 +174,7 @@ The market-data layer separates external data retrieval from the pricing and vis
 
 Exposes quantitative pricing and market-data functionality through a REST API.
 
-The application provides seven endpoints:
+The application provides ten endpoints:
 
 | Method | Endpoint | Description |
 |---|---|---|
@@ -178,6 +185,9 @@ The application provides seven endpoints:
 | GET | `/api/v1/market/options/{ticker}` | Yahoo Finance option-chain market data |
 | POST | `/api/v1/options/batch-price` | Vectorized pricing for up to 10,000 contracts |
 | POST | `/api/v1/options/batch-greeks` | Vectorized prices and Greeks for up to 10,000 contracts |
+| POST | `/api/v1/portfolio/value` | Portfolio theoretical valuation and position breakdown |
+| POST | `/api/v1/portfolio/greeks` | Portfolio valuation, aggregate Greeks, and position exposures |
+| POST | `/api/v1/portfolio/scenarios` | Hypothetical portfolio repricing and scenario P&L |
 
 Additional features include:
 
@@ -252,7 +262,84 @@ A local benchmark demonstrated a **27.48× speedup** for 10,000 contracts compar
 
 This represents approximately a **96.36% reduction in execution time** for the measured API workflow.
 
-### 7. Interactive Volatility Visualizations
+### 7. Portfolio Valuation and Aggregate Greeks
+
+The portfolio analytics engine evaluates collections of European call and put positions using the existing vectorized Black-Scholes-Merton implementation.
+
+Each position specifies:
+
+- Call or put option type.
+- Signed contract quantity: positive for long, negative for short.
+- Underlying asset price.
+- Strike price.
+- Time to expiration.
+- Risk-free interest rate.
+- Annualized volatility.
+- Continuous dividend yield.
+- Contract multiplier, defaulting to 100.
+
+The current implementation supports portfolios containing options on a single underlying asset. All positions must use the same current underlying price.
+
+The engine calculates:
+
+- Theoretical portfolio value.
+- Total absolute contract count.
+- Net signed contract count.
+- Aggregate portfolio delta.
+- Aggregate portfolio gamma.
+- Aggregate portfolio vega.
+- Aggregate portfolio theta.
+- Aggregate portfolio rho.
+- Individual option prices, position values, and Greek contributions.
+
+Position values and Greek exposures account for signed quantities and contract multipliers.
+
+The implementation uses vectorized calculations instead of creating a separate scalar pricing engine for every position.
+
+Undefined analytical Greeks are represented as JSON `null` in API responses.
+
+#### Portfolio API Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/v1/portfolio/value` | Theoretical portfolio valuation and individual position values |
+| POST | `/api/v1/portfolio/greeks` | Complete portfolio valuation and aggregate Greek exposures |
+
+Both endpoints accept between 1 and 10,000 option positions.
+
+### 8. Portfolio Market Scenario Analysis
+
+The scenario analysis engine reprices an options portfolio under hypothetical market conditions.
+
+Each scenario supports three independent changes:
+
+| Scenario Input | Meaning | Example |
+|---|---|---|
+| `price_change_pct` | Percentage change in the underlying price | `-5.0` means a 5% decline |
+| `volatility_change` | Absolute change in annualized volatility | `0.05` means an increase of 5 percentage points |
+| `days_forward` | Calendar days elapsed | `7` advances time by one week |
+
+For each scenario, the engine:
+
+1. Adjusts the underlying price.
+2. Adjusts the volatility of each option position.
+3. Reduces time to expiration, without allowing negative remaining maturity.
+4. Reprices the portfolio using vectorized calculations.
+5. Calculates the new theoretical portfolio value.
+6. Calculates scenario P&L relative to the original theoretical value.
+7. Reports position-level theoretical value changes.
+
+Scenario percentage returns are normalized using the absolute original portfolio value when that value is nonzero.
+
+The API accepts between 1 and 100 scenarios per request.
+
+**Endpoint:** `POST /api/v1/portfolio/scenarios`
+
+The maximum supported request contains 10,000 positions and 100 scenarios, representing 1,000,000 scenario-position combinations.
+
+These scenarios are hypothetical model repricings. They are not forecasts, probability-weighted risk measures, or realized trading P&L.
+
+### 9. Interactive Volatility Visualizations
 
 Uses Plotly to visualize implied volatility across option strikes and expiration dates.
 
@@ -650,9 +737,55 @@ Numerical verification passed for every workload.
 
 ---
 
+### Benchmark 5: Portfolio Valuation and Aggregate Greeks
+
+This benchmark measures the complete portfolio analytics calculation, including theoretical valuation, aggregate Greeks, and position-level reporting.
+
+Portfolios contain deterministic synthetic European call and put positions with varying strikes, maturities, rates, volatilities, dividend yields, and signed quantities.
+
+Portfolio construction is excluded from the timed section.
+
+Each workload is warmed up once and timed five times. The median execution time is reported.
+
+| Portfolio Size | Median Execution Time | Throughput |
+|---|---:|---:|
+| 100 positions | 0.000637 s | 156,996 positions/sec |
+| 1,000 positions | 0.003739 s | 267,445 positions/sec |
+| **10,000 positions** | **0.033647 s** | **297,201 positions/sec** |
+
+**Key result:** The engine valued and calculated aggregate Greeks for 10,000 positions in approximately **33.6 milliseconds**.
+
+The benchmark verifies that individual position values reconcile with the reported portfolio value.
+
+### Benchmark 6: Portfolio Scenario Analysis
+
+This benchmark measures hypothetical portfolio repricing across multiple market scenarios.
+
+Each timed execution includes vectorized scenario calculations and construction of detailed scenario-level and position-level reports.
+
+Portfolio and scenario object construction is excluded from the timed section.
+
+| Portfolio Size | Scenarios | Combinations | Median Execution Time | Throughput |
+|---|---:|---:|---:|---:|
+| 100 positions | 10 | 1,000 | 0.000875 s | 1,142,802 combinations/sec |
+| 1,000 positions | 50 | 50,000 | 0.031888 s | 1,568,004 combinations/sec |
+| **10,000 positions** | **100** | **1,000,000** | **0.709751 s** | **1,408,945 combinations/sec** |
+
+**Key result:** The engine processed **1 million scenario-position combinations in approximately 0.71 seconds**.
+
+The benchmark verifies that:
+
+- Scenario P&L equals the difference between shocked and original theoretical portfolio values.
+- Position-level scenario P&L reconciles with portfolio-level scenario P&L.
+- Reported numerical results are finite for the generated test inputs.
+
+The benchmark measures local Python execution, including detailed result construction. It does not measure HTTP network throughput or concurrent requests.
+
+---
+
 ### Why the Benchmark Speedups Differ
 
-The four benchmarks measure different operations and application overhead.
+The pricing and Greeks comparison benchmarks measure different operations and application overhead. The portfolio benchmarks additionally measure aggregate risk calculations and hypothetical scenario repricing.
 
 The standalone pricing benchmark calculates two prices per contract.
 
@@ -733,6 +866,12 @@ Run the FastAPI Batch Greeks benchmark:
 python -m benchmarks.benchmark_batch_greeks_api
 ```
 
+Run the portfolio valuation and scenario analysis benchmarks:
+
+```bash
+python -m benchmarks.benchmark_portfolio
+```
+
 The API benchmarks run directly against the FastAPI application using `TestClient`.
 
 A separate server is not required.
@@ -749,7 +888,9 @@ benchmarks/results/
 ├── vectorized_comparison.csv
 ├── api_comparison.csv
 ├── vectorized_greeks_comparison.csv
-└── batch_greeks_api_comparison.csv
+├── batch_greeks_api_comparison.csv
+├── portfolio_valuation_comparison.csv
+└── portfolio_scenario_comparison.csv
 ```
 
 The original benchmark measures call pricing, put pricing, and full valuation with analytical Greeks separately.
@@ -827,6 +968,8 @@ Responsible for:
 - Implied volatility estimation.
 - Vectorized batch pricing.
 - Vectorized analytical Greeks.
+- Portfolio theoretical valuation and aggregate Greeks.
+- Vectorized portfolio market scenario analysis.
 - Numerical validation of financial calculations.
 
 ### Market-Data Layer
@@ -847,6 +990,7 @@ Responsible for:
 - Supporting single-contract pricing and Greeks.
 - Supporting vectorized batch pricing.
 - Supporting vectorized batch Greeks.
+- Exposing portfolio valuation, risk, and scenario endpoints.
 - Enforcing batch request-size limits.
 - Returning structured JSON responses.
 - Providing application health monitoring.
@@ -867,6 +1011,7 @@ Responsible for:
 - Measuring vectorized pricing performance.
 - Measuring scalar and vectorized Greeks performance.
 - Comparing individual and batch API workflows.
+- Measuring portfolio valuation and scenario analysis throughput.
 - Verifying numerical consistency during performance comparisons.
 - Saving reproducible benchmark results.
 
@@ -910,6 +1055,8 @@ quant-options-engine/
 │   │   ├── __init__.py
 │   │   ├── black_scholes.py
 │   │   ├── implied_volatility.py
+│   │   ├── portfolio.py
+│   │   ├── scenario_analysis.py
 │   │   └── vectorized_black_scholes.py
 │   │
 │   └── visualization/
@@ -923,12 +1070,15 @@ quant-options-engine/
 │   ├── benchmark_black_scholes.py
 │   ├── benchmark_vectorized.py
 │   ├── benchmark_vectorized_greeks.py
+│   ├── benchmark_portfolio.py
 │   └── results/
 │       ├── api_comparison.csv
 │       ├── batch_greeks_api_comparison.csv
 │       ├── black_scholes_benchmark.csv
 │       ├── vectorized_comparison.csv
-│       └── vectorized_greeks_comparison.csv
+│       ├── vectorized_greeks_comparison.csv
+│       ├── portfolio_valuation_comparison.csv
+│       └── portfolio_scenario_comparison.csv
 │
 ├── docs/
 │   └── images/
@@ -945,6 +1095,9 @@ quant-options-engine/
 │   ├── test_market_data.py
 │   ├── test_multi_expiration.py
 │   ├── test_multi_expiration_extended.py
+│   ├── test_portfolio.py
+│   ├── test_portfolio_api.py
+│   ├── test_scenario_analysis.py
 │   ├── test_vectorized_black_scholes.py
 │   ├── test_vectorized_greeks.py
 │   ├── test_volatility_smile.py
@@ -1313,14 +1466,126 @@ Each contract is validated before the vectorized calculation begins.
 
 ---
 
+## Example: Portfolio Risk Analytics Through FastAPI
+
+### Portfolio Valuation and Greeks
+
+**Endpoint:** `POST /api/v1/portfolio/greeks`
+
+Example request:
+
+```json
+{
+  "positions": [
+    {
+      "option_type": "call",
+      "quantity": 2,
+      "S": 100,
+      "K": 100,
+      "T": 1,
+      "r": 0.05,
+      "sigma": 0.2,
+      "q": 0,
+      "multiplier": 100
+    },
+    {
+      "option_type": "put",
+      "quantity": -1,
+      "S": 100,
+      "K": 95,
+      "T": 0.5,
+      "r": 0.05,
+      "sigma": 0.25,
+      "q": 0,
+      "multiplier": 100
+    }
+  ]
+}
+```
+
+The response contains the portfolio's theoretical value, aggregate Greeks, and a detailed breakdown of each position's contribution.
+
+Positive quantities represent long option positions; negative quantities represent short option positions.
+
+To retrieve theoretical valuation without aggregate Greeks, submit the same request to:
+
+`POST /api/v1/portfolio/value`
+
+### Portfolio Scenario Analysis
+
+**Endpoint:** `POST /api/v1/portfolio/scenarios`
+
+Example request:
+
+```json
+{
+  "positions": [
+    {
+      "option_type": "call",
+      "quantity": 2,
+      "S": 100,
+      "K": 100,
+      "T": 1,
+      "r": 0.05,
+      "sigma": 0.2
+    },
+    {
+      "option_type": "put",
+      "quantity": -1,
+      "S": 100,
+      "K": 95,
+      "T": 0.5,
+      "r": 0.05,
+      "sigma": 0.25
+    }
+  ],
+  "scenarios": [
+    {
+      "name": "No Change"
+    },
+    {
+      "name": "Market Decline",
+      "price_change_pct": -5,
+      "volatility_change": 0.05,
+      "days_forward": 7
+    },
+    {
+      "name": "Market Rally",
+      "price_change_pct": 5,
+      "volatility_change": -0.03,
+      "days_forward": 7
+    }
+  ]
+}
+```
+
+The response includes:
+
+- Original theoretical portfolio value.
+- Scenario names and market shocks.
+- Repriced theoretical portfolio value for each scenario.
+- Scenario theoretical P&L.
+- Scenario percentage return, when defined.
+- Position-level original and shocked values.
+- Position-level theoretical P&L.
+
+A scenario that decreases an option's volatility below zero is rejected with HTTP 422.
+
+Invalid request fields, non-finite financial inputs, duplicate scenario names, and inconsistent underlying prices are also rejected.
+
+---
+
 ## Automated Testing
 
-The project includes **299 automated tests** covering quantitative calculations, market-data processing, API behavior, and visualizations.
+The project includes **638 automated tests** covering quantitative calculations, market-data processing, API behavior, and visualizations.
 
 Recent milestones introduced:
 
 - 43 tests for vectorized Greeks calculations.
 - 47 tests for the Batch Greeks API.
+- 113 tests for portfolio valuation and aggregate Greeks.
+- 118 tests for portfolio scenario analysis.
+- 108 tests for the portfolio API endpoints.
 
 ### Test Coverage
 
@@ -1328,15 +1593,17 @@ Latest verified local results:
 
 | Component | Coverage |
 |---|---:|
-| FastAPI | **98%** |
+| FastAPI | **99%** |
 | Yahoo Finance Client | 95% |
 | Multiple-Expiration Processing | 90% |
 | Original Black-Scholes Engine | 90% |
 | Vectorized Black-Scholes Engine | **100%** |
+| Portfolio Analytics | **100%** |
+| Portfolio Scenario Analysis | **98%** |
 | Implied Volatility Solver | 78% |
 | Volatility Smile | 79% |
 | 3D Volatility Visualization | 63% |
-| **Overall** | **90%** |
+| **Overall** | **93%** |
 
 The test suite covers:
 
@@ -1360,6 +1627,11 @@ The test suite covers:
 - Maximum batch-size enforcement.
 - Consistency between single-contract and batch endpoints.
 - Undefined Greeks represented as JSON `null`.
+- Portfolio valuation and aggregate Greek exposure calculations.
+- Long and short option positions with contract multipliers.
+- Portfolio scenario repricing and P&L reconciliation.
+- Scenario input validation and HTTP 422 responses.
+- Portfolio API response structures and financial consistency.
 
 ### Run Tests Locally
 
@@ -1370,8 +1642,8 @@ python -m pytest tests/ -q --cov=app --cov-report=term-missing
 Latest verified local result:
 
 ```text
-299 passed, 1 warning in 3.93s
-TOTAL 564 54 90%
+638 passed, 1 warning in 5.08s
+TOTAL 850 56 93%
 ```
 
 The warning originates from a Starlette dependency deprecation notice and does not indicate a failed test.
@@ -1446,7 +1718,7 @@ The workflow:
 
 Both jobs have been successfully executed through GitHub Actions for previous milestones.
 
-The latest Batch Greeks changes will be verified through CI after they are committed and pushed.
+The new portfolio analytics and scenario analysis changes will be verified through CI after they are committed and pushed.
 
 The workflow status is displayed at the top of this README.
 
@@ -1488,6 +1760,20 @@ A volatility smile describes how implied volatility varies across strike prices 
 Examining implied volatility across different expiration dates helps illustrate the term structure of implied volatility.
 
 The project's 3D visualization combines strike-relative moneyness, time to expiration, and implied volatility into an interactive chart.
+
+### Portfolio Risk Aggregation
+
+Portfolio Greeks combine position-level option sensitivities after accounting for contract quantities and multipliers.
+
+Long and short positions contribute signed exposures. Aggregate Greeks describe local sensitivity to changes in model inputs, not guaranteed future profit or loss.
+
+### Scenario Analysis
+
+Scenario analysis evaluates how a portfolio's theoretical value changes under specified hypothetical market shocks.
+
+The engine adjusts the underlying price, volatility, and remaining time to expiration before repricing each position.
+
+Scenario P&L is the difference between shocked and original theoretical portfolio values. It is not a probability estimate or realized trading result.
 
 ### Numerical Vectorization
 
@@ -1549,6 +1835,17 @@ It is not a calibrated, interpolated, or arbitrage-free volatility surface.
 
 Observed volatility patterns may contain outliers caused by market-data limitations or pricing-model assumptions.
 
+### Portfolio Analytics Limitations
+
+- The portfolio engine currently supports one underlying asset per portfolio.
+- Portfolio positions are limited to European call and put options.
+- Position values are theoretical model valuations, not executable market quotes.
+- Portfolio Greeks describe local model sensitivities and may change substantially under large market moves.
+- Scenario analysis uses deterministic hypothetical shocks, not probability-weighted forecasts.
+- The scenario model holds interest rates and dividend yields constant while changing price, volatility, and time.
+- Portfolio scenario analysis does not model transaction costs, liquidity, margin requirements, or execution risk.
+- Large scenario requests can require substantial memory because detailed position-level results are returned.
+
 ### Performance Benchmark Limitations
 
 - Measurements were performed on a local Apple Silicon MacBook Pro.
@@ -1561,6 +1858,9 @@ Observed volatility patterns may contain outliers caused by market-data limitati
 - The scalar and vectorized implementations have different execution and memory-allocation characteristics.
 - The scalar Greeks implementation rounds outputs, while the vectorized implementation preserves floating-point precision.
 - The batch API supports a maximum of 10,000 contracts per request.
+- Portfolio endpoints support a maximum of 10,000 positions.
+- Scenario requests support a maximum of 100 scenarios.
+- Portfolio benchmark throughput includes local calculation and report construction, not HTTP networking.
 - Performance results should not be interpreted as production trading-system throughput.
 
 ---
@@ -1572,7 +1872,8 @@ Potential future enhancements include:
 - Implementing Monte Carlo option pricing with statistical convergence analysis.
 - Implementing American-style option pricing using binomial trees.
 - Adding finite-difference pricing methods.
-- Developing portfolio-level risk analytics and aggregate Greeks.
+- Extending portfolio risk analytics to multiple underlying assets.
+- Adding historical and probability-based portfolio risk measures such as Value at Risk.
 - Incorporating estimated dividend yields into market-data implied volatility calculations.
 - Improving quote-quality filters and volatility outlier detection.
 - Developing interpolated and calibrated volatility surfaces.
