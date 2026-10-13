@@ -19,6 +19,7 @@ from app.forecasting.shrinkage_ensemble import add_ensemble_predictions
 class ResearchRunResult:
     scores: pd.DataFrame
     data_quality: pd.DataFrame
+    predictions: pd.DataFrame | None = None
 
 
 def calculate_probability_scores(
@@ -82,6 +83,7 @@ def run_research(
 
     score_rows = []
     quality_rows = []
+    prediction_frames = []
 
     for stock in stocks:
         print(f"Evaluating {stock.ticker} ({stock.sector})...", flush=True)
@@ -188,6 +190,11 @@ def run_research(
 
             score_rows.extend(stock_score_rows)
 
+            prediction_frame = validation.copy()
+            prediction_frame.insert(0, "Stock", stock.ticker)
+            prediction_frame.insert(1, "Sector", stock.sector)
+            prediction_frames.append(prediction_frame)
+
             quality_rows.append(quality)
 
         except Exception as exc:
@@ -196,6 +203,11 @@ def run_research(
             quality_rows.append(quality)
 
     return ResearchRunResult(
+        predictions=(
+            pd.concat(prediction_frames, ignore_index=True)
+            if prediction_frames
+            else pd.DataFrame()
+        ),
         scores=pd.DataFrame(
             score_rows,
             columns=[
