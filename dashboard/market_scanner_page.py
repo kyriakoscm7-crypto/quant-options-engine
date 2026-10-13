@@ -21,6 +21,7 @@ from app.market_data.market_scanner import (
     normalize_tickers,
     scan_market,
 )
+from app.market_data.market_signal_labels import classify_market_signal
 from app.market_data.stock_ranking import (
     DEFAULT_RANKING_FACTORS,
     rank_stocks,
@@ -310,6 +311,52 @@ def render_market_scanner() -> None:
     )
 
     # --------------------------------------------------------
+    # --------------------------------------------------------
+    # BEGINNER-FRIENDLY STOCK DISCOVERY
+    # --------------------------------------------------------
+
+    st.subheader("🧭 Beginner-Friendly Stock Discovery")
+
+    st.caption(
+        "Quickly understand historical price momentum. "
+        "Green and red describe observed trends, "
+        "not buy or sell recommendations."
+    )
+
+    discovery = ranked.copy()
+
+    signal_results = discovery.apply(
+        lambda row: classify_market_signal(
+            row["1M Momentum (%)"],
+            row["3M Momentum (%)"],
+            row["Ranking Status"],
+        ),
+        axis=1,
+    )
+
+    discovery["Market Signal"] = signal_results.map(
+        lambda result: result[0]
+    )
+
+    discovery["Explanation"] = signal_results.map(
+        lambda result: result[1]
+    )
+
+    discovery_columns = [
+        "Ticker",
+        "Market Signal",
+        "Explanation",
+    ]
+
+    st.dataframe(
+        discovery[discovery_columns],
+        hide_index=True,
+        use_container_width=True,
+    )
+
+    st.divider()
+
+    # --------------------------------------------------------
     # LEADERBOARD
     # --------------------------------------------------------
 
@@ -370,6 +417,223 @@ def render_market_scanner() -> None:
             ),
         },
     )
+
+    # --------------------------------------------------------
+    # GAP & VOLUME OPPORTUNITY DISCOVERY
+    # --------------------------------------------------------
+
+    st.divider()
+
+    st.subheader("🔎 Gap & Volume Opportunity Discovery")
+
+    st.caption(
+        "Find unusual opening gaps and trading-volume activity "
+        "among the stocks in your selected scan. "
+        "These are descriptive signals, not forecasts."
+    )
+
+    gap_columns = [
+        "Ticker",
+        "Quant Score",
+        "Opening Gap (%)",
+        "Relative Volume",
+        "Gap Z-Score",
+        "Gap Signal Date",
+        "Gap Status",
+    ]
+
+    missing_columns = [
+        column
+        for column in gap_columns
+        if column not in ranked.columns
+    ]
+
+    if missing_columns:
+        st.warning(
+            "Gap Intelligence results are not available in "
+            "this scan. Run a new scan to refresh the data."
+        )
+
+    else:
+        gap_results = ranked[gap_columns].copy()
+
+        available = gap_results[
+            gap_results["Gap Status"] == "OK"
+        ].copy()
+
+        filter_a, filter_b, filter_c = st.columns(3)
+
+        with filter_a:
+            gap_direction = st.selectbox(
+                "Gap Direction",
+                ["All", "Gap Up", "Gap Down"],
+                key="gap_filter_direction",
+            )
+
+        with filter_b:
+            minimum_gap = st.number_input(
+                "Minimum Absolute Gap (%)",
+                min_value=0.0,
+                value=0.0,
+                step=0.5,
+                key="gap_filter_minimum",
+            )
+
+        with filter_c:
+            minimum_volume = st.number_input(
+                "Minimum Relative Volume (×)",
+                min_value=0.0,
+                value=0.0,
+                step=0.5,
+                key="gap_filter_volume",
+            )
+
+        filter_d, filter_e = st.columns(2)
+
+        with filter_d:
+            minimum_z_score = st.number_input(
+                "Minimum Absolute Gap Z-Score",
+                min_value=0.0,
+                value=0.0,
+                step=0.5,
+                key="gap_filter_z_score",
+            )
+
+        with filter_e:
+            sort_method = st.selectbox(
+                "Sort Opportunities By",
+                [
+                    "Largest Absolute Gap",
+                    "Highest Relative Volume",
+                    "Most Unusual Gap",
+                    "Highest Quant Score",
+                ],
+                key="gap_sort_method",
+            )
+
+        numeric_columns = [
+            "Opening Gap (%)",
+            "Relative Volume",
+            "Gap Z-Score",
+            "Quant Score",
+        ]
+
+        for column in numeric_columns:
+            available[column] = pd.to_numeric(
+                available[column],
+                errors="coerce",
+            )
+
+        available = available.dropna(
+            subset=[
+                "Opening Gap (%)",
+                "Relative Volume",
+            ]
+        )
+
+        if gap_direction == "Gap Up":
+            available = available[
+                available["Opening Gap (%)"] > 0
+            ]
+
+        elif gap_direction == "Gap Down":
+            available = available[
+                available["Opening Gap (%)"] < 0
+            ]
+
+        available = available[
+            available["Opening Gap (%)"].abs()
+            >= minimum_gap
+        ]
+
+        available = available[
+            available["Relative Volume"]
+            >= minimum_volume
+        ]
+
+        if minimum_z_score > 0:
+            available = available[
+                available["Gap Z-Score"].abs()
+                >= minimum_z_score
+            ]
+
+        if sort_method == "Largest Absolute Gap":
+            available["_Sort"] = (
+                available["Opening Gap (%)"].abs()
+            )
+
+        elif sort_method == "Highest Relative Volume":
+            available["_Sort"] = available["Relative Volume"]
+
+        elif sort_method == "Most Unusual Gap":
+            available["_Sort"] = (
+                available["Gap Z-Score"].abs()
+            )
+
+        else:
+            available["_Sort"] = available["Quant Score"]
+
+        available = available.sort_values(
+            "_Sort",
+            ascending=False,
+            na_position="last",
+        ).drop(columns="_Sort")
+
+        st.metric(
+            "Matching Opportunities",
+            len(available),
+        )
+
+        if available.empty:
+            st.info(
+                "No stocks match the selected gap and "
+                "volume filters. Try reducing the thresholds."
+            )
+
+        else:
+            st.dataframe(
+                available,
+                hide_index=True,
+                width="stretch",
+                column_config={
+                    "Quant Score": st.column_config.NumberColumn(
+                        "Quant Score",
+                        format="%.2f",
+                    ),
+                    "Opening Gap (%)": st.column_config.NumberColumn(
+                        "Opening Gap (%)",
+                        format="%+.2f%%",
+                    ),
+                    "Relative Volume": st.column_config.NumberColumn(
+                        "Relative Volume",
+                        format="%.2f×",
+                    ),
+                    "Gap Z-Score": st.column_config.NumberColumn(
+                        "Gap Z-Score",
+                        format="%+.2f",
+                    ),
+                },
+            )
+
+        unavailable_count = int(
+            (gap_results["Gap Status"] != "OK").sum()
+        )
+
+        if unavailable_count:
+            st.warning(
+                f"Gap analysis was unavailable for "
+                f"{unavailable_count} stock(s). "
+                "These stocks were excluded from the "
+                "opportunity filters."
+            )
+
+        st.caption(
+            "Gap statistics currently exclude the newest "
+            "downloaded session as a precaution against "
+            "incomplete daily data. Check Gap Signal Date "
+            "before interpreting results. Quant Scores are "
+            "unchanged and are not probabilities."
+        )
 
     # --------------------------------------------------------
     # QUANT SCORE CHART

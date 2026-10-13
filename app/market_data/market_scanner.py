@@ -1,3 +1,4 @@
+
 """
 Multi-stock market scanner for Quant Intelligence.
 
@@ -18,6 +19,8 @@ from collections.abc import Iterable
 import numpy as np
 import pandas as pd
 
+from app.market_data.gap_intelligence import calculate_gap_volume_signals
+from app.market_data.market_sessions import get_market_session_status
 from app.market_data.stock_history import (
     calculate_stock_statistics,
     fetch_stock_history,
@@ -354,6 +357,12 @@ def scan_market(
             "Maximum Drawdown (%)": None,
             "Relative to SPY (%)": None,
             "Trading Days": None,
+            "Opening Gap (%)": None,
+            "Relative Volume": None,
+            "Gap Z-Score": None,
+            "Gap Signal Date": None,
+            "Gap Status": "Unavailable",
+            "Scanned At (UTC)": None,
             "Status": "OK",
         }
 
@@ -375,6 +384,47 @@ def scan_market(
             statistics = calculate_stock_statistics(
                 history
             )
+
+            try:
+                latest_session_date = history["Date"].iloc[-1]
+
+                session_status = get_market_session_status(
+                    latest_session_date
+                )
+
+                latest_session_complete = (
+                    session_status.is_completed
+                )
+
+                gap_result = calculate_gap_volume_signals(
+                    history,
+                    ticker=symbol,
+                    lookback=20,
+                    latest_session_complete=latest_session_complete,
+                )
+
+                row["Opening Gap (%)"] = (
+                    gap_result.opening_gap_pct
+                )
+
+                row["Relative Volume"] = (
+                    gap_result.relative_volume
+                )
+
+                row["Gap Z-Score"] = (
+                    gap_result.gap_z_score
+                )
+
+                row["Gap Signal Date"] = (
+                    gap_result.latest_date.date().isoformat()
+                )
+
+                row["Gap Status"] = "OK"
+
+            except (ValueError, TypeError) as gap_exc:
+                row["Gap Status"] = (
+                    f"Unavailable: {gap_exc}"
+                )
 
             row["Latest Close"] = statistics[
                 "latest_close"
@@ -424,6 +474,10 @@ def scan_market(
             row["Status"] = (
                 f"ERROR: {exc}"
             )
+
+        row["Scanned At (UTC)"] = (
+            pd.Timestamp.now(tz="UTC").isoformat()
+        )
 
         results.append(
             row
