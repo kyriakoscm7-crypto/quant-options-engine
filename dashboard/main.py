@@ -42,6 +42,7 @@ from app.market_data.stock_history import (  # noqa: E402
     validate_ticker,
 )
 from app.pricing.black_scholes import BlackScholes  # noqa: E402
+from dashboard.market_scanner_page import render_market_scanner  # noqa: E402
 
 # ============================================================
 # PAGE CONFIGURATION
@@ -491,6 +492,15 @@ with st.sidebar:
     st.markdown("## 📈 QUANT INTELLIGENCE")
 
     st.caption("Quant Options Engine")
+
+    st.markdown(
+        "<div style='color: #94a3b8; font-size: 13px; "
+        "font-weight: 500; margin-top: -8px;'>"
+        "Developed by <span style='color: #60a5fa; "
+        "font-weight: 600;'>Kyriakos Margaritis</span>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
 
     st.divider()
 
@@ -1456,18 +1466,7 @@ elif page == "📈 Scenario Explorer":
 
 elif page == "🔍 Market Scanner":
 
-    st.title("🔍 Market Scanner")
-
-    st.info(
-        "Coming soon: Search supported stocks for "
-        "momentum, volatility, and other quantitative "
-        "research signals."
-    )
-
-    st.write(
-        "Signals will require historical validation "
-        "before being treated as actionable research."
-    )
+    render_market_scanner()
 
 
 elif page == "💼 Portfolio Manager":

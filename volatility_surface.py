@@ -1,8 +1,9 @@
 import numpy as np
 import pandas as pd
 import yfinance as yf
-from scipy.optimize import brentq
 from black_scholes import BlackScholes
+from scipy.optimize import brentq
+
 
 def implied_volatility(market_price, S, K, T, r, option_type='call'):
     """
