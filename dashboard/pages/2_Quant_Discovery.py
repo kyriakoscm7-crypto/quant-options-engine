@@ -29,6 +29,31 @@ def cached_rankings(tickers, horizon):
 initialize_database()
 
 st.title("💎 Quant Discovery")
+
+with st.expander("🔧 Deployment Diagnostics"):
+    import sqlite3
+
+    from app.discovery import database as discovery_db
+
+    st.write("Selected database:", str(discovery_db.DATABASE_PATH))
+    st.write(
+        "Deployment snapshot exists:",
+        discovery_db.DEPLOYMENT_DATABASE_PATH.exists(),
+    )
+    st.write(
+        "Local database exists:",
+        discovery_db.LOCAL_DATABASE_PATH.exists(),
+    )
+
+    if discovery_db.DATABASE_PATH.exists():
+        with sqlite3.connect(discovery_db.DATABASE_PATH) as connection:
+            count = connection.execute(
+                "SELECT COUNT(*) FROM companies"
+            ).fetchone()[0]
+        st.write("Companies in selected database:", count)
+    else:
+        st.error("Selected database file does not exist.")
+
 st.caption(
     "Find technically strong stocks across different investment horizons."
 )
