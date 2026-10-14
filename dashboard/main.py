@@ -1,3 +1,4 @@
+
 """
 Quant Options Engine — Quant Intelligence Dashboard.
 
@@ -15,7 +16,6 @@ Run from the project root:
 Historical market data is for research and education.
 It is not a prediction or investment recommendation.
 """
-
 import sys
 from pathlib import Path
 
@@ -23,6 +23,11 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+
+from app.intelligence.catalyst_engine import analyze_headline
+from app.intelligence.news_engine import fetch_company_news
+from app.intelligence.risk_engine import calculate_risk_metrics
+from app.intelligence.risk_interpreter import interpret_risk_metrics
 
 # ============================================================
 # PROJECT IMPORT CONFIGURATION
@@ -369,17 +374,31 @@ def make_comparison_chart(
         ["Date", "Close"]
     ].copy()
 
-    # Normalize to calendar dates so timezone representations
-    # do not prevent matching daily observations.
+    # Preserve intraday timestamps when comparing short periods.
+    # Daily observations are matched by trading date.
     stock["Date"] = pd.to_datetime(
         stock["Date"],
         utc=True,
-    ).dt.date
+    )
 
     benchmark["Date"] = pd.to_datetime(
         benchmark["Date"],
         utc=True,
-    ).dt.date
+    )
+
+    def is_intraday(frame: pd.DataFrame) -> bool:
+        timestamps = frame["Date"].sort_values().dropna()
+        differences = timestamps.diff().dropna()
+        return bool(
+            not differences.empty
+            and differences.min() < pd.Timedelta(hours=12)
+        )
+
+    intraday = is_intraday(stock) or is_intraday(benchmark)
+
+    if not intraday:
+        stock["Date"] = stock["Date"].dt.date
+        benchmark["Date"] = benchmark["Date"].dt.date
 
     stock = stock.rename(
         columns={"Close": "Stock"}
@@ -526,6 +545,7 @@ with st.sidebar:
             "📊 Greeks Analysis",
             "📈 Scenario Explorer",
             "🔍 Market Scanner",
+            "💎 Quant Discovery",
             "💼 Portfolio Manager",
             "🧠 Forecast Intelligence",
             "🧠 Strategy Research",
@@ -787,16 +807,16 @@ elif page == "🔎 Stock Explorer":
         selected_period = st.selectbox(
             "Historical Period",
             [
+                "1d",
+                "5d",
                 "1mo",
                 "3mo",
                 "6mo",
                 "1y",
-                "2y",
                 "5y",
-                "10y",
                 "max",
             ],
-            index=3,
+            index=5,
         )
 
     with chart_col:
@@ -843,6 +863,93 @@ elif page == "🔎 Stock Explorer":
                 history
             )
 
+            # QUANT_RISK_INTELLIGENCE_V1
+            # Use independent daily history for consistent risk statistics.
+            st.markdown("### Risk Intelligence")
+            st.caption(
+                "Historical risk calculated from approximately one year "
+                "of daily prices, independent of the chart timeframe."
+            )
+
+            try:
+                risk_stock_history = fetch_stock_history(
+                    ticker, period="1y"
+                )
+                risk_spy_history = fetch_stock_history(
+                    "SPY", period="1y"
+                )
+
+                risk_metrics = calculate_risk_metrics(
+                    risk_stock_history,
+                    risk_spy_history,
+                )
+
+                # QUANT_PERSONALIZED_RISK_V2
+                risk_explanations = interpret_risk_metrics(risk_metrics)
+
+                def format_risk(value, suffix="", decimals=2):
+                    if value is None:
+                        return "N/A"
+                    return f"{value:.{decimals}f}{suffix}"
+
+                risk_cols = st.columns(5)
+
+                risk_items = [
+                    (
+                        "1Y Volatility",
+                        format_risk(
+                            risk_metrics["annualized_volatility_pct"], "%"
+                        ),
+                        risk_explanations["annualized_volatility_pct"],
+                    ),
+                    (
+                        "1Y Max Drawdown",
+                        format_risk(
+                            risk_metrics["maximum_drawdown_pct"], "%"
+                        ),
+                        risk_explanations["maximum_drawdown_pct"],
+                    ),
+                    (
+                        "Sharpe Ratio",
+                        format_risk(risk_metrics["sharpe_ratio"]),
+                        risk_explanations["sharpe_ratio"],
+                    ),
+                    (
+                        "Market Sensitivity (Beta)",
+                        format_risk(risk_metrics["beta_vs_spy"]),
+                        risk_explanations["beta_vs_spy"],
+                    ),
+                    (
+                        "Market Correlation",
+                        format_risk(risk_metrics["correlation_vs_spy"]),
+                        risk_explanations["correlation_vs_spy"],
+                    ),
+                ]
+
+                for column, (label, value, explanation) in zip(
+                    risk_cols, risk_items
+                ):
+                    with column:
+                        st.metric(label, value)
+                        st.caption(explanation)
+
+                st.caption(
+                    f"Daily price observations: "
+                    f"{risk_metrics['daily_observations']} | "
+                    f"SPY overlapping dates: "
+                    f"{risk_metrics['benchmark_overlap_days']}"
+                )
+
+            except (ValueError, KeyError, TypeError, OSError) as exc:
+                st.info(f"Risk Intelligence unavailable: {exc}")
+
+            # QUANT_INTRADAY_STATISTICS_V1
+            # Intraday returns must not be annualized as daily returns.
+            is_intraday_period = selected_period in ("1d", "5d")
+
+            if is_intraday_period:
+                statistics["annualized_volatility_pct"] = None
+
         except (ValueError, RuntimeError) as exc:
 
             st.error(
@@ -866,6 +973,259 @@ elif page == "🔎 Stock Explorer":
         f"{latest_observation.strftime('%Y-%m-%d')} | "
         f"Data may be delayed or incomplete."
     )
+
+    # --------------------------------------------------------
+    # STOCK INTELLIGENCE — BEGINNER SUMMARY
+    # --------------------------------------------------------
+
+    # --------------------------------------------------------
+    # INVESTMENT RECOMMENDATION ENGINE
+    # --------------------------------------------------------
+
+    from app.intelligence.recommendation_engine import assess_stock
+
+    # Always use a dedicated five-year history for research scoring.
+    # Chart selections must not change the investment assessment.
+    # The scoring engine evaluates its most recent 252 observations.
+    try:
+        assessment_history = fetch_stock_history(
+            ticker,
+            period="5y",
+        )
+    except (ValueError, RuntimeError, KeyError) as exc:
+        st.warning(
+            f"Unable to retrieve investment rating history: {exc}"
+        )
+        assessment_history = history
+
+    try:
+        assessment = assess_stock(assessment_history)
+    except (ValueError, TypeError, KeyError) as exc:
+        st.warning(f"Investment assessment unavailable: {exc}")
+        assessment = None
+
+    if assessment is not None:
+
+        st.markdown("### ⭐ Investment Rating")
+
+        rating_col1, rating_col2, rating_col3 = st.columns(3)
+
+        with rating_col1:
+            if assessment.score is None:
+                st.metric("Investment Score", "N/A")
+            else:
+                st.metric(
+                    "Investment Score",
+                    f"{assessment.score}/100",
+                )
+
+        with rating_col2:
+            recommendation_labels = {
+                "STRONG TECHNICAL SIGNAL": "STRONG",
+                "FAVORABLE TECHNICAL SIGNAL": "FAVORABLE",
+                "NEUTRAL / MIXED": "NEUTRAL",
+                "CAUTION": "CAUTION",
+                "UNFAVORABLE TECHNICAL SIGNAL": "UNFAVORABLE",
+                "INSUFFICIENT EVIDENCE": "N/A",
+            }
+
+            short_recommendation = recommendation_labels.get(
+                assessment.recommendation,
+                "UNKNOWN",
+            )
+
+            st.metric(
+                "Technical Recommendation",
+                short_recommendation,
+            )
+
+        with rating_col3:
+            st.metric(
+                "Historical Risk",
+                assessment.risk.replace(
+                    "Lower Historical Volatility",
+                    "Low",
+                ),
+            )
+
+        st.write(
+            f"**Market Outlook:** {assessment.outlook}"
+        )
+
+        st.caption(
+            f"Prediction reliability: {assessment.reliability}"
+        )
+
+        with st.expander("🔍 Why did this stock receive this rating?"):
+            for reason in assessment.reasons:
+                st.write(f"• {reason}")
+
+            st.info(
+                "This score summarizes historical technical "
+                "signals. It is not a probability of profit "
+                "or a validated BUY/SELL recommendation."
+            )
+
+        st.divider()
+
+
+    # QUANT_INTELLIGENCE_NEWS_PANEL_V1
+    st.markdown("---")
+    st.markdown("### 📰 News Intelligence")
+    st.caption(
+        "Recent company headlines from Google News. "
+        "News does not currently affect investment scores."
+    )
+
+    @st.cache_data(ttl=900, show_spinner=False)
+    def _cached_company_news(symbol: str):
+        return fetch_company_news(symbol, days=7, limit=12)
+
+    try:
+        with st.spinner("Retrieving recent company news..."):
+            news_articles = _cached_company_news(ticker)
+
+        if not news_articles:
+            st.info("No recent articles found for this ticker.")
+        else:
+            st.caption(f"{len(news_articles)} recent articles")
+
+            for article in news_articles:
+                st.markdown(f"**{article['title']}**")
+
+            catalysts = analyze_headline(article["title"])
+
+            if catalysts:
+                for catalyst in catalysts:
+                    if catalyst.direction == "Potentially Positive":
+                        icon = "🟢"
+                    elif catalyst.direction == "Potentially Negative":
+                        icon = "🔴"
+                    else:
+                        icon = "🟡"
+
+                    st.caption(
+                        f"{icon} {catalyst.direction} — {catalyst.category}"
+                    )
+                    st.caption(catalyst.explanation)
+            else:
+                st.caption("⚪ No recognized catalyst")
+                st.caption(
+                    f"{article['publisher']} · "
+                    f"{article['published'][:10]}"
+                )
+                st.link_button("Read article ↗", article["url"])
+
+    except Exception as exc:
+        st.warning(f"News temporarily unavailable: {exc}")
+
+    st.markdown("## 🧠 Stock Intelligence")
+
+    st.caption(
+        "A simple explanation of the asset's historical "
+        "performance and risk. These measurements describe "
+        "the past and do not guarantee future returns."
+    )
+
+    latest_price = float(statistics["latest_close"])
+    historical_return = float(statistics["total_return_pct"])
+    annual_volatility = statistics["annualized_volatility_pct"]
+
+    # Describe historical direction without claiming to predict prices.
+    if historical_return > 3:
+        trend_label = "📈 Positive historical trend"
+        trend_explanation = (
+            "The asset increased in price over the selected period."
+        )
+    elif historical_return < -3:
+        trend_label = "📉 Negative historical trend"
+        trend_explanation = (
+            "The asset decreased in price over the selected period."
+        )
+    else:
+        trend_label = "➡️ Relatively flat historical trend"
+        trend_explanation = (
+            "The asset's overall price change was relatively small "
+            "over the selected period."
+        )
+
+    # These are descriptive volatility bands, not validated risk scores.
+    if annual_volatility is None:
+        risk_label = "Unknown"
+        risk_explanation = "Not enough data to estimate volatility."
+    elif annual_volatility < 20:
+        risk_label = "Lower historical volatility"
+        risk_explanation = (
+            "Price fluctuations were relatively small "
+            "on an annualized basis."
+        )
+    elif annual_volatility < 40:
+        risk_label = "Moderate historical volatility"
+        risk_explanation = (
+            "The asset experienced meaningful price fluctuations."
+        )
+    else:
+        risk_label = "Higher historical volatility"
+        risk_explanation = (
+            "The asset experienced substantial price fluctuations."
+        )
+
+    summary_col1, summary_col2, summary_col3 = st.columns(3)
+
+    with summary_col1:
+        st.metric("💵 Latest Available Price", f"${latest_price:,.2f}")
+
+    with summary_col2:
+        st.metric("📈 Historical Return", f"{historical_return:+.2f}%")
+
+    with summary_col3:
+        short_risk_label = {
+            "Lower historical volatility": "Low",
+            "Moderate historical volatility": "Moderate",
+            "Higher historical volatility": "High",
+            "Unknown": "Unknown",
+        }.get(risk_label, "Unknown")
+
+        st.metric(
+            "⚠️ Historical Risk",
+            short_risk_label,
+        )
+
+    st.markdown("### 📋 What Does This Mean?")
+
+    st.write(f"**Price trend:** {trend_label}")
+    st.write(trend_explanation)
+
+    st.write(f"**Risk:** {risk_label}")
+    st.write(risk_explanation)
+
+    st.info(
+        "🎯 Prediction confidence: Not yet validated. "
+        "We will only display confidence ratings after "
+        "testing forecast reliability on unseen historical data."
+    )
+
+    with st.expander("🔬 How These Measurements Work"):
+        st.write(
+            "**Historical return:** The percentage change in price "
+            "over the selected historical period."
+        )
+        st.write(
+            "**Annualized volatility:** A statistical measure of "
+            "how much daily returns have fluctuated, expressed "
+            "on an annualized basis."
+        )
+        st.write(
+            "**Historical trend:** A simple description based on "
+            "the total return over the selected period. "
+            "It is not a forecast."
+        )
+        st.write(
+            "**Risk labels:** Descriptive volatility categories, "
+            "not personalized investment risk assessments."
+        )
+
+    st.divider()
 
     # --------------------------------------------------------
     # MAIN STATISTICS
@@ -911,7 +1271,11 @@ elif page == "🔎 Stock Explorer":
         ]
 
         st.metric(
-            "Annualized Volatility",
+            (
+                "Annualized Volatility"
+                if selected_period not in ("1d", "5d")
+                else "Annualized Volatility (Daily)"
+            ),
             (
                 f"{volatility_value:.2f}%"
                 if volatility_value is not None
@@ -956,7 +1320,11 @@ elif page == "🔎 Stock Explorer":
     with risk2:
 
         st.metric(
-            "Daily Observations",
+            (
+                "Intraday Observations"
+                if selected_period in ("1d", "5d")
+                else "Daily Observations"
+            ),
             str(statistics["trading_days"]),
         )
 
@@ -1112,46 +1480,159 @@ elif page == "💰 Options Lab":
         "might be worth."
     )
 
+    st.subheader("Step 1 — Find an Asset")
+
+    st.caption(
+        "Search by ticker symbol. Supports stocks, ETFs, and "
+        "supported cryptocurrencies."
+    )
+
+    ticker_input = st.text_input(
+        "Stock, ETF, or cryptocurrency ticker",
+        value="AAPL",
+        placeholder="Examples: AAPL, SPY, NVDA, BTC-USD",
+        key="options_ticker_search",
+    )
+
+    st.caption(
+        "Examples: AAPL · MSFT · NVDA · TSLA · SPY · QQQ · "
+        "BTC-USD · ETH-USD"
+    )
+
+    selected_stock_price = 100.0
+    ticker = ticker_input.strip().upper()
+
+    if ticker:
+        try:
+            history = fetch_stock_history(ticker, period="1mo")
+
+            if history is None or history.empty:
+                st.error(
+                    f"No market data found for {ticker}. "
+                    "Check the ticker symbol and try again."
+                )
+            else:
+                close_data = history["Close"].dropna()
+
+                if close_data.empty:
+                    st.error(
+                        f"No valid closing prices were found for {ticker}."
+                    )
+                else:
+                    latest_close = float(close_data.iloc[-1])
+
+                    if latest_close <= 0:
+                        st.error(
+                            f"The latest price for {ticker} is invalid."
+                        )
+                    else:
+                        selected_stock_price = latest_close
+
+                        latest_index = close_data.index[-1]
+
+                        if hasattr(latest_index, "strftime"):
+                            latest_date = latest_index.strftime(
+                                "%B %d, %Y"
+                            )
+                        else:
+                            latest_date = "date unavailable"
+
+                        st.success(
+                            f"{ticker} — Latest available closing price: "
+                            f"${latest_close:,.2f} ({latest_date})"
+                        )
+
+        except Exception as exc:
+            st.error(
+                f"Unable to retrieve market data for {ticker}. "
+                f"Details: {exc}"
+            )
+    else:
+        st.info(
+            "Enter a ticker symbol above, or use the manual "
+            "stock price below."
+        )
+
+    st.subheader("Step 2 — What Do You Want to Explore?")
+
+    direction = st.radio(
+        "Which direction do you want to explore?",
+        ["📈 Price going UP (Call)", "📉 Price going DOWN (Put)"],
+        horizontal=True,
+        key="options_direction",
+        help=(
+            "A call gives the holder the right to buy at the strike price. "
+            "A put gives the holder the right to sell at the strike price."
+        ),
+    )
+
+    is_call = "Call" in direction
+
+    st.subheader("Step 3 — Set Up Your Option")
+
+    st.caption(
+        "We've provided starting values. You can change any of them."
+    )
+
     with st.form("options_calculator_form"):
+
+        calc_stock = st.number_input(
+            "💵 Current price of the asset ($)",
+            min_value=0.01,
+            value=float(selected_stock_price),
+            step=1.0,
+            help="The latest available price, or your own estimate.",
+        )
 
         col1, col2 = st.columns(2)
 
         with col1:
-            calc_stock = st.number_input(
-                "Current stock price ($)",
-                min_value=0.01,
-                value=100.0,
-                step=1.0,
-                help="The current price of one share.",
-            )
-
             calc_strike = st.number_input(
-                "Strike price ($)",
+                "🎯 At what price would you buy or sell?",
                 min_value=0.01,
-                value=105.0,
+                value=round(float(selected_stock_price), 2),
                 step=1.0,
-                help="The price at which the option can be exercised.",
+                help=(
+                    "This is called the strike price. "
+                    "It determines the price at which the option "
+                    "gives you the right to buy (call) or sell (put). "
+                    "Actual contracts offer specific strike prices."
+                ),
             )
 
         with col2:
-            calc_days = st.number_input(
-                "Days until expiration",
-                min_value=0,
-                max_value=3650,
-                value=30,
-                step=1,
+            calc_days = st.selectbox(
+                "📅 How long should the option last?",
+                [7, 14, 30, 60, 90, 180, 365],
+                index=2,
+                format_func=lambda days: f"{days} days",
+                help=(
+                    "This represents the number of days until expiration. "
+                    "More time generally makes options more valuable."
+                ),
             )
 
-            calc_volatility = st.number_input(
-                "Expected annual volatility (%)",
-                min_value=0.0,
-                max_value=500.0,
-                value=25.0,
-                step=1.0,
-                help="How much the stock price might fluctuate.",
-            )
+        calc_volatility = st.slider(
+            "📊 How much might the price fluctuate?",
+            min_value=5,
+            max_value=150,
+            value=25,
+            step=5,
+            format="%d%%",
+            help=(
+                "This is annualized volatility. Higher volatility "
+                "generally increases option prices. The default "
+                "is illustrative, not calculated from market data."
+            ),
+        )
 
-        with st.expander("⚙️ Advanced Settings"):
+        st.caption(
+            "💡 Not sure? Leave volatility at 25% for an "
+            "illustrative calculation. This is not a measured "
+            "volatility estimate for your selected asset."
+        )
+
+        with st.expander("⚙️ Advanced Settings — Optional"):
             calc_rate = st.number_input(
                 "Annual risk-free interest rate (%)",
                 min_value=-20.0,
@@ -1169,7 +1650,7 @@ elif page == "💰 Options Lab":
             )
 
         submitted = st.form_submit_button(
-            "Calculate Option Prices",
+            "💰 Calculate My Option Estimate",
             use_container_width=True,
         )
 
@@ -1189,52 +1670,57 @@ elif page == "💰 Options Lab":
         call_price = float(calculated["call_price"])
         put_price = float(calculated["put_price"])
 
+        selected_price = call_price if is_call else put_price
+        option_name = "Call" if is_call else "Put"
+        contract_estimate = selected_price * 100
+
+        break_even = (
+            calc_strike + selected_price
+            if is_call
+            else calc_strike - selected_price
+        )
+
         st.divider()
-        st.subheader("💵 Your Estimated Option Prices")
+        st.subheader("Step 4 — Your Estimated Result")
 
-        left, right = st.columns(2)
-
-        with left:
-            st.metric(
-                "📈 Call Option",
-                f"${call_price:,.2f}",
-            )
-            st.caption(
-                f"About ${call_price * 100:,.2f} "
-                "for a standard 100-share contract."
-            )
-
-        with right:
-            st.metric(
-                "📉 Put Option",
-                f"${put_price:,.2f}",
-            )
-            st.caption(
-                f"About ${put_price * 100:,.2f} "
-                "for a standard 100-share contract."
-            )
-
-        st.info(
-            "These are theoretical estimates, not live "
-            "market prices or guaranteed purchase costs."
+        st.metric(
+            f"💰 Estimated {option_name} Option Value",
+            f"${contract_estimate:,.2f} per standard contract",
         )
 
-        st.subheader("💡 What Do These Results Mean?")
-
-        st.write(
-            "**Call:** An option giving you the right to buy "
-            "shares at the strike price."
+        st.caption(
+            f"Approximately ${selected_price:,.2f} per share × "
+            "100 shares. This is a theoretical estimate, "
+            "not a live market quote."
         )
 
-        st.write(
-            "**Put:** An option giving you the right to sell "
-            "shares at the strike price."
-        )
+        st.markdown("### What Does This Mean?")
 
-        st.write(
-            "The estimated values depend on the stock price, "
-            "strike price, expiration, volatility, interest "
-            "rate, and dividend yield you entered."
+        if is_call:
+            st.write(
+                f"You are exploring a **call option**, which gives "
+                f"you the right to buy the asset at "
+                f"**${calc_strike:,.2f} per share**."
+            )
+            st.write(
+                f"Your estimated **break-even price at expiration** "
+                f"is **${break_even:,.2f}**."
+            )
+        else:
+            st.write(
+                f"You are exploring a **put option**, which gives "
+                f"you the right to sell the asset at "
+                f"**${calc_strike:,.2f} per share**."
+            )
+            st.write(
+                f"Your estimated **break-even price at expiration** "
+                f"is **${break_even:,.2f}**."
+            )
+
+        st.warning(
+            "⚠️ Options involve risk. If you purchase an option, "
+            "you can lose the entire premium paid. "
+            "These estimates do not include trading fees."
         )
 
         with st.expander("🔬 Advanced Analytics"):
@@ -1609,6 +2095,17 @@ elif page == "🔍 Market Scanner":
 
     render_market_scanner()
 
+
+elif page == "💎 Quant Discovery":
+    import runpy
+
+    discovery_page = (
+        Path(__file__).resolve().parent
+        / "pages"
+        / "2_Quant_Discovery.py"
+    )
+
+    runpy.run_path(str(discovery_page), run_name="__main__")
 
 elif page == "💼 Portfolio Manager":
 

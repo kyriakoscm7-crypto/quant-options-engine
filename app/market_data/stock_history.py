@@ -17,16 +17,7 @@ import pandas as pd
 import yfinance as yf
 
 # Supported historical periods.
-SUPPORTED_PERIODS = {
-    "1mo",
-    "3mo",
-    "6mo",
-    "1y",
-    "2y",
-    "5y",
-    "10y",
-    "max",
-}
+SUPPORTED_PERIODS = {'5y', '1mo', '10y', '1d', '3mo', '1y', '5d', 'max', '6mo', '2y'}
 
 # Approximate number of U.S. equity trading days per year.
 TRADING_DAYS_PER_YEAR = 252
@@ -94,7 +85,7 @@ def fetch_stock_history(
     try:
         history = yf.Ticker(symbol).history(
             period=period,
-            interval="1d",
+            interval={"1d": "5m", "5d": "15m"}.get(period, "1d"),
             auto_adjust=True,
             actions=False,
         )
