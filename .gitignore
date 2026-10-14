@@ -76,3 +76,6 @@ data/discovery_symbol_directory.csv
 
 # Development backups
 *.before_*
+
+# Local quantitative backtesting datasets and generated reports
+/deployment_data/backtesting/
