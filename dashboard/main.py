@@ -1248,7 +1248,11 @@ elif page == "🔎 Stock Explorer":
         ]
 
         st.metric(
-            "Latest Daily Change",
+            (
+                "Latest Bar Change"
+                if selected_period in ("1d", "5d")
+                else "Latest Daily Change"
+            ),
             (
                 f"{daily_change:+.2f}%"
                 if daily_change is not None
@@ -1422,17 +1426,33 @@ elif page == "🔎 Stock Explorer":
 
     st.subheader("Historical Market Data")
 
+    is_intraday = selected_period in ("1d", "5d")
+
     st.caption(
-        "Adjusted historical daily prices. "
-        "The latest observation may be incomplete."
+        (
+            "Adjusted historical intraday prices. "
+            "Timestamps are shown in UTC. "
+            "The latest observation may be incomplete."
+        )
+        if is_intraday
+        else (
+            "Adjusted historical daily prices. "
+            "The latest observation may be incomplete."
+        )
     )
 
     display_history = history.copy()
 
-    display_history["Date"] = pd.to_datetime(
+    timestamps = pd.to_datetime(
         display_history["Date"],
         utc=True,
-    ).dt.strftime("%Y-%m-%d")
+    )
+
+    display_history["Date"] = timestamps.dt.strftime(
+        "%Y-%m-%dT%H:%M:%S%z"
+        if is_intraday
+        else "%Y-%m-%d"
+    )
 
     st.dataframe(
         display_history.sort_values(
