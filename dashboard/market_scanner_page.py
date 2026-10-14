@@ -628,10 +628,11 @@ def render_market_scanner() -> None:
             )
 
         st.caption(
-            "Gap statistics currently exclude the newest "
-            "downloaded session as a precaution against "
-            "incomplete daily data. Check Gap Signal Date "
-            "before interpreting results. Quant Scores are "
+            "Gap statistics use the latest eligible trading "
+            "session. The newest downloaded session is included "
+            "when it is considered complete and excluded when "
+            "it may still be incomplete. Check Gap Signal Date "
+            "to identify the session used. Quant Scores are "
             "unchanged and are not probabilities."
         )
 
