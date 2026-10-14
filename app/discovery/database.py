@@ -6,10 +6,25 @@ import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+LOCAL_DATABASE_PATH = (
+    PROJECT_ROOT / "data" / "quant_discovery.db"
+)
+
+DEPLOYMENT_DATABASE_PATH = (
+    PROJECT_ROOT
+    / "deployment_data"
+    / "discovery"
+    / "quant_discovery_snapshot.db"
+)
+
 DATABASE_PATH = (
-    Path(__file__).resolve().parents[2]
-    / "data"
-    / "quant_discovery.db"
+    LOCAL_DATABASE_PATH
+    if LOCAL_DATABASE_PATH.exists()
+    else DEPLOYMENT_DATABASE_PATH
+    if DEPLOYMENT_DATABASE_PATH.exists()
+    else LOCAL_DATABASE_PATH
 )
 
 

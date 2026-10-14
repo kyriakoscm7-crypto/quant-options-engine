@@ -6,11 +6,26 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-RESULTS_PATH = (
-    Path(__file__).resolve().parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+LOCAL_RESULTS_PATH = (
+    PROJECT_ROOT
     / "research_results"
     / "milestone_11_8"
     / "combined_feature_experiments.csv"
+)
+
+DEPLOYMENT_RESULTS_PATH = (
+    PROJECT_ROOT
+    / "deployment_data"
+    / "forecast"
+    / "combined_feature_experiments.csv"
+)
+
+RESULTS_PATH = (
+    LOCAL_RESULTS_PATH
+    if LOCAL_RESULTS_PATH.exists()
+    else DEPLOYMENT_RESULTS_PATH
 )
 
 STOCK_NAMES = {
