@@ -1,4 +1,4 @@
-# Quant Options Engine
+# Quant Intelligence — Quant Options Engine
 
 [![Quant Options Engine CI](https://github.com/kyriakoscm7-crypto/quant-options-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/kyriakoscm7-crypto/quant-options-engine/actions/workflows/ci.yml)
 
@@ -47,6 +47,99 @@ The performance benchmarks measure different workflows:
 6. Portfolio scenario analysis across different scenario-position workloads.
 
 **These benchmarks measure different operations and overhead. Their speedup figures should not be interpreted as equivalent performance measurements.**
+
+---
+
+
+## Quant Intelligence — Interactive Research Dashboard
+
+Quant Intelligence expands the original options-pricing engine into
+an interactive stock, options, and quantitative research platform.
+
+### Dashboard Features
+
+**Stock Explorer**
+- Historical and intraday stock charts.
+- Technical indicators and momentum analysis.
+- SPY market benchmarking.
+- Financial news and potential catalysts.
+- Company and ticker search.
+
+**Risk Intelligence**
+- Annualized historical volatility.
+- Maximum drawdown.
+- Historical Sharpe ratio.
+- Beta relative to SPY.
+- Market correlation.
+- Contextual risk explanations.
+
+**Strategy Research**
+- Existing strategy research and analysis tools.
+
+**Quant Discovery**
+- SQLite company database.
+- Mega-, large-, mid-, small-, micro-, and nano-cap classifications.
+- Penny-stock classification.
+- Company and ticker search.
+- Experimental 5-day, 1-month, and 1-year research rankings.
+- Exchange-listed symbol-directory ingestion.
+- Resumable bulk company importer.
+- Batch historical price downloads.
+- Liquidity and data-quality eligibility checks.
+- Precomputed ranking storage in SQLite.
+
+### Development Snapshot — October 2026
+
+| Component | Status |
+|---|---|
+| Stock Explorer | Implemented |
+| Risk Intelligence | Implemented |
+| Strategy Research | Implemented |
+| Quant Discovery interface | Implemented |
+| Company universe importer | Implemented |
+| Resumable bulk importer | Implemented |
+| Batch ranking pipeline | Implemented |
+| Cached rankings connected to dashboard | Planned |
+| Automated ranking refresh | Planned |
+| Public deployment | Planned |
+
+The local development database contained 359 company records,
+with 237 companies ranked by the batch pipeline.
+
+These are historical development counts, not live market totals.
+
+The SQLite database is local and excluded from Git.
+
+### Run the Dashboard
+
+Activate your Python environment and start Streamlit:
+
+    python -m streamlit run dashboard/main.py --server.port 8503
+
+### Quant Discovery Backend
+
+Import additional companies:
+
+    python -m app.discovery.bulk_import --limit 250 --delay 1.0
+
+Calculate technical research rankings:
+
+    python -m app.discovery.ranking_pipeline --batch-size 40
+
+The batch-ranking pipeline is implemented, but its cached results
+have not yet been connected to the dashboard interface.
+
+### Development Roadmap
+
+1. Connect cached rankings to Quant Discovery.
+2. Improve security-type classification and data validation.
+3. Expand the supported company universe.
+4. Add historical backtesting and ranking evaluation.
+5. Automate ranking refreshes.
+6. Prepare public cloud deployment.
+
+**Disclaimer:** Research scores are experimental indicators,
+not investment recommendations or validated return predictions.
 
 ---
 
