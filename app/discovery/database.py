@@ -20,22 +20,32 @@ DEPLOYMENT_DATABASE_PATH = (
 )
 
 def select_database_path():
-    """Prefer the deployed snapshot on Streamlit Cloud."""
-    import os
+    """Select a populated database, preserving the local database when available."""
+    import sqlite3
 
-    running_on_streamlit_cloud = (
-        os.environ.get("STREAMLIT_SHARING_MODE") is not None
-        or Path("/mount/src").exists()
-    )
+    def company_count(path):
+        if not path.exists():
+            return 0
 
-    if running_on_streamlit_cloud and DEPLOYMENT_DATABASE_PATH.exists():
+        try:
+            with sqlite3.connect(f"file:{path}?mode=ro", uri=True) as connection:
+                return connection.execute(
+                    "SELECT COUNT(*) FROM companies"
+                ).fetchone()[0]
+        except sqlite3.Error:
+            return 0
+
+    local_count = company_count(LOCAL_DATABASE_PATH)
+    deployment_count = company_count(DEPLOYMENT_DATABASE_PATH)
+
+    if local_count > 0:
+        return LOCAL_DATABASE_PATH
+
+    if deployment_count > 0:
         return DEPLOYMENT_DATABASE_PATH
 
     if LOCAL_DATABASE_PATH.exists():
         return LOCAL_DATABASE_PATH
-
-    if DEPLOYMENT_DATABASE_PATH.exists():
-        return DEPLOYMENT_DATABASE_PATH
 
     return LOCAL_DATABASE_PATH
 
