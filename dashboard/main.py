@@ -1557,8 +1557,21 @@ elif page == "💰 Options Lab":
 
                         latest_index = close_data.index[-1]
 
-                        if hasattr(latest_index, "strftime"):
-                            latest_date = latest_index.strftime(
+                        if "Date" in history.columns:
+                            latest_timestamp = pd.to_datetime(
+                                history.loc[latest_index, "Date"],
+                                errors="coerce",
+                                utc=True,
+                            )
+                        else:
+                            latest_timestamp = pd.to_datetime(
+                                latest_index,
+                                errors="coerce",
+                                utc=True,
+                            )
+
+                        if pd.notna(latest_timestamp):
+                            latest_date = latest_timestamp.strftime(
                                 "%B %d, %Y"
                             )
                         else:
