@@ -1090,30 +1090,38 @@ elif page == "🔎 Stock Explorer":
             st.caption(f"{len(news_articles)} recent articles")
 
             for article in news_articles:
-                st.markdown(f"**{article['title']}**")
+                title = article.get("title") or "Untitled article"
+                publisher = article.get("publisher") or "Unknown publisher"
+                published = str(article.get("published") or "")
+                article_url = article.get("url")
 
-            catalysts = analyze_headline(article["title"])
+                st.markdown(f"**{title}**")
 
-            if catalysts:
-                for catalyst in catalysts:
-                    if catalyst.direction == "Potentially Positive":
-                        icon = "🟢"
-                    elif catalyst.direction == "Potentially Negative":
-                        icon = "🔴"
-                    else:
-                        icon = "🟡"
+                catalysts = analyze_headline(title)
 
-                    st.caption(
-                        f"{icon} {catalyst.direction} — {catalyst.category}"
+                if catalysts:
+                    for catalyst in catalysts:
+                        st.caption(
+                            f"🔵 {catalyst.label}: "
+                            f"{catalyst.explanation}"
+                        )
+                else:
+                    st.caption("⚪ No recognized catalyst")
+
+                publication_date = published[:10] if published else "Date unavailable"
+                st.caption(f"{publisher} · {publication_date}")
+
+                if article_url and str(article_url).startswith(
+                    ("https://", "http://")
+                ):
+                    st.link_button(
+                        "Read article ↗",
+                        article_url,
                     )
-                    st.caption(catalyst.explanation)
-            else:
-                st.caption("⚪ No recognized catalyst")
-                st.caption(
-                    f"{article['publisher']} · "
-                    f"{article['published'][:10]}"
-                )
-                st.link_button("Read article ↗", article["url"])
+                else:
+                    st.caption("Article link unavailable")
+
+                st.divider()
 
     except Exception as exc:
         st.warning(f"News temporarily unavailable: {exc}")
