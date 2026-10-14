@@ -36,14 +36,17 @@ with st.expander("🔧 Deployment Diagnostics"):
     from app.discovery import database as discovery_db
 
     st.write("Selected database:", str(discovery_db.DATABASE_PATH))
-    st.write(
-        "Deployment snapshot exists:",
-        discovery_db.DEPLOYMENT_DATABASE_PATH.exists(),
+    project_root = Path(__file__).resolve().parents[2]
+    deployment_path = (
+        project_root
+        / "deployment_data"
+        / "discovery"
+        / "quant_discovery_snapshot.db"
     )
-    st.write(
-        "Local database exists:",
-        discovery_db.LOCAL_DATABASE_PATH.exists(),
-    )
+    local_path = project_root / "data" / "quant_discovery.db"
+
+    st.write("Deployment snapshot exists:", deployment_path.exists())
+    st.write("Local database exists:", local_path.exists())
 
     if discovery_db.DATABASE_PATH.exists():
         with sqlite3.connect(discovery_db.DATABASE_PATH) as connection:
