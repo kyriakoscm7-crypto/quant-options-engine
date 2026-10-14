@@ -11,8 +11,8 @@ Phase A:
 Financial calculations are delegated to the existing
 app.portfolio.portfolio_manager module.
 
-Historical performance and risk analytics will be
-integrated in subsequent phases.
+Historical portfolio performance analysis is available.
+Additional risk analytics remain under development.
 """
 
 import io
@@ -174,8 +174,8 @@ def render_portfolio_manager() -> None:
     st.info(
         "Phase A — Portfolio Builder. Prices are entered "
         "manually and are not live market quotes. "
-        "Historical performance and risk analytics "
-        "will be added in the next development phase."
+        "Historical portfolio performance analysis is available "
+        "below. Additional risk analytics remain under development."
     )
 
     st.subheader("1. Build Your Portfolio")
@@ -385,8 +385,8 @@ def render_portfolio_manager() -> None:
             - Values are not live brokerage valuations.
             - No trading costs, taxes, or cash balances are included.
             - All prices are assumed to be in USD.
-            - Historical performance and risk metrics are not
-              calculated in this initial phase.
+            - Historical performance analysis is available below.
+            - Additional portfolio risk analytics are not yet implemented.
             """
         )
 

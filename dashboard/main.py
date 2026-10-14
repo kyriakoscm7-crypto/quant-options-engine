@@ -1808,7 +1808,7 @@ elif page == "💰 Options Lab":
     else:
         st.info(
             "👆 Enter your values and click "
-            "**Calculate Option Prices** to see your results."
+            "**💰 Calculate My Option Estimate** to see your results."
         )
 
     st.caption(
