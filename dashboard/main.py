@@ -24,22 +24,21 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from app.intelligence.catalyst_engine import analyze_headline
-from app.intelligence.news_engine import fetch_company_news
-from app.intelligence.risk_engine import calculate_risk_metrics
-from app.intelligence.risk_interpreter import interpret_risk_metrics
-
 # ============================================================
 # PROJECT IMPORT CONFIGURATION
 # ============================================================
 
-# Resolve the repository root so the dashboard can import
-# existing modules from the project's app/ package.
+# Add the repository root before importing project modules.
+# This supports both local runs and Streamlit Cloud.
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from app.intelligence.catalyst_engine import analyze_headline  # noqa: E402
+from app.intelligence.news_engine import fetch_company_news  # noqa: E402
+from app.intelligence.risk_engine import calculate_risk_metrics  # noqa: E402
+from app.intelligence.risk_interpreter import interpret_risk_metrics  # noqa: E402
 from app.market_data.stock_history import (  # noqa: E402
     calculate_normalized_performance,
     calculate_stock_statistics,
