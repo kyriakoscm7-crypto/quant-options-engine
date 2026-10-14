@@ -1656,12 +1656,12 @@ elif page == "💰 Options Lab":
     if submitted:
 
         calculator = BlackScholes(
-            calc_stock,
-            calc_strike,
-            calc_days,
-            calc_rate,
-            calc_volatility,
-            calc_dividend,
+            S=calc_stock,
+            K=calc_strike,
+            T=calc_days / 365.0,
+            r=calc_rate / 100.0,
+            sigma=calc_volatility / 100.0,
+            q=calc_dividend / 100.0,
         )
 
         calculated = calculator.greeks()
