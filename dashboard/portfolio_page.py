@@ -185,8 +185,13 @@ def render_portfolio_manager() -> None:
         "prices per share. Add or remove rows as needed."
     )
 
+    if "portfolio_saved_holdings" not in st.session_state:
+        st.session_state["portfolio_saved_holdings"] = (
+            DEFAULT_HOLDINGS.copy(deep=True)
+        )
+
     edited_holdings = st.data_editor(
-        DEFAULT_HOLDINGS,
+        st.session_state["portfolio_saved_holdings"],
         num_rows="dynamic",
         hide_index=True,
         use_container_width=True,
@@ -212,6 +217,10 @@ def render_portfolio_manager() -> None:
                 required=True,
             ),
         },
+    )
+
+    st.session_state["portfolio_saved_holdings"] = (
+        edited_holdings.copy(deep=True)
     )
 
     try:
