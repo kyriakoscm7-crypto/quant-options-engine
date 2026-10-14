@@ -19,13 +19,28 @@ DEPLOYMENT_DATABASE_PATH = (
     / "quant_discovery_snapshot.db"
 )
 
-DATABASE_PATH = (
-    LOCAL_DATABASE_PATH
-    if LOCAL_DATABASE_PATH.exists()
-    else DEPLOYMENT_DATABASE_PATH
-    if DEPLOYMENT_DATABASE_PATH.exists()
-    else LOCAL_DATABASE_PATH
-)
+def select_database_path():
+    """Prefer the deployed snapshot on Streamlit Cloud."""
+    import os
+
+    running_on_streamlit_cloud = (
+        os.environ.get("STREAMLIT_SHARING_MODE") is not None
+        or Path("/mount/src").exists()
+    )
+
+    if running_on_streamlit_cloud and DEPLOYMENT_DATABASE_PATH.exists():
+        return DEPLOYMENT_DATABASE_PATH
+
+    if LOCAL_DATABASE_PATH.exists():
+        return LOCAL_DATABASE_PATH
+
+    if DEPLOYMENT_DATABASE_PATH.exists():
+        return DEPLOYMENT_DATABASE_PATH
+
+    return LOCAL_DATABASE_PATH
+
+
+DATABASE_PATH = select_database_path()
 
 
 @contextmanager
