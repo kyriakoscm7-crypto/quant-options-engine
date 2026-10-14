@@ -79,6 +79,7 @@ def simulate_portfolio(
     horizon: str,
     config: BacktestConfig = BacktestConfig(),
     ranking_function=None,
+    trade_ledger: list[dict] | None = None,
 ) -> pd.DataFrame:
     """Simulate monthly top-ranked stock portfolios.
 
@@ -184,6 +185,26 @@ def simulate_portfolio(
                     * (1 - config.transaction_cost)
                 )
 
+                if trade_ledger is not None:
+                    trade_value = shares_to_sell * price
+                    fee = trade_value * config.transaction_cost
+
+                    trade_ledger.append(
+                        {
+                            "Date": execution_date,
+                            "Ticker": ticker,
+                            "Action": "SELL",
+                            "Shares": shares_to_sell,
+                            "Execution Price": price,
+                            "Trade Value": trade_value,
+                            "Transaction Fee": fee,
+                            "Cash Before": (
+                                cash - trade_value + fee
+                            ),
+                            "Cash After": cash,
+                        }
+                    )
+
                 remaining = shares - shares_to_sell
 
                 if remaining <= 1e-12:
@@ -229,6 +250,24 @@ def simulate_portfolio(
                 )
 
                 cash -= cost
+
+                if trade_ledger is not None:
+                    trade_ledger.append(
+                        {
+                            "Date": execution_date,
+                            "Ticker": ticker,
+                            "Action": "BUY",
+                            "Shares": purchase_value / price,
+                            "Execution Price": price,
+                            "Trade Value": purchase_value,
+                            "Transaction Fee": (
+                                purchase_value
+                                * config.transaction_cost
+                            ),
+                            "Cash Before": cash + cost,
+                            "Cash After": cash,
+                        }
+                    )
 
         # Small negative values caused by floating-point rounding
         # are treated as zero, but meaningful deficits are errors.
