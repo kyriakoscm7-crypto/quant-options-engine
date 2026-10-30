@@ -4,6 +4,8 @@ import re
 
 import streamlit as st
 
+from dashboard.home_analytics import render_options_preview
+
 
 def render_html(content):
     """Render HTML as one continuous string."""
@@ -101,6 +103,10 @@ font-size:12px;
 
     )
 
+    render_options_preview()
+
+    st.divider()
+
     st.markdown("### Explore the Platform")
     st.caption(
         "Professional analytics. Powerful research. "
@@ -158,11 +164,11 @@ font-size:12px;
         ),
     ]
 
-    for row_start in range(0, len(modules), 3):
-        columns = st.columns(3, gap="medium")
+    for row_start in range(0, len(modules), 2):
+        columns = st.columns(2, gap="large")
 
         for column, module in zip(
-            columns, modules[row_start:row_start + 3]
+            columns, modules[row_start:row_start + 2]
         ):
             number, title, description, destination, label = module
 

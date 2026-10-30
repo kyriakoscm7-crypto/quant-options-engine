@@ -57,7 +57,7 @@ from dashboard.premium_home import render_premium_home  # noqa: E402
 
 st.set_page_config(
     page_title="Quant Intelligence | Quant Options Engine",
-    page_icon="📈",
+    page_icon=str(Path(__file__).parent / "assets" / "qi_favicon.png"),
     layout="wide",
     initial_sidebar_state="expanded",
 )
