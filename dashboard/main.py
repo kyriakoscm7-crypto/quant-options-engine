@@ -49,6 +49,7 @@ from app.pricing.black_scholes import BlackScholes  # noqa: E402
 from dashboard.forecast_intelligence_page import render_forecast_intelligence  # noqa: E402
 from dashboard.market_scanner_page import render_market_scanner  # noqa: E402
 from dashboard.portfolio_page import render_portfolio_manager  # noqa: E402
+from dashboard.premium_home import render_premium_home  # noqa: E402
 
 # ============================================================
 # PAGE CONFIGURATION
@@ -137,6 +138,17 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+
+
+# Load Quant Intelligence premium styling.
+premium_css = (
+    Path(__file__).parent / "premium_theme.css"
+).read_text(encoding="utf-8")
+
+st.markdown(
+    f"<style>{premium_css}</style>",
+    unsafe_allow_html=True,
+)
 
 # ============================================================
 # CACHE MARKET DATA
@@ -509,61 +521,70 @@ def make_comparison_chart(
 
 with st.sidebar:
 
-    st.markdown("## 📈 QUANT INTELLIGENCE")
-
-    st.caption("Quant Options Engine")
-
-    st.markdown(
-        "<div style='color: #94a3b8; font-size: 13px; "
-        "font-weight: 500; margin-top: -8px;'>"
-        "Developed by <span style='color: #60a5fa; "
-        "font-weight: 600;'>Kyriakos Margaritis</span>"
-        "</div>",
-        unsafe_allow_html=True,
+    st.html(
+        '<div class="qi-brand">'
+        '<div class="qi-brand-mark">QI</div>'
+        '<div>'
+        '<div class="qi-brand-name">QUANT INTELLIGENCE</div>'
+        '<div class="qi-brand-subtitle">RESEARCH TERMINAL</div>'
+        '</div></div>'
     )
 
-    st.divider()
+    st.caption("WORKSPACE")
+
+    navigation_pages = [
+        ("🏠 Overview", "Overview"),
+        ("🔎 Stock Explorer", "Stock Explorer"),
+        ("💰 Options Lab", "Options Lab"),
+        ("📊 Greeks Analysis", "Greeks Analysis"),
+        ("📈 Scenario Explorer", "Scenario Explorer"),
+        ("🔍 Market Scanner", "Market Scanner"),
+        ("💎 Quant Discovery", "Quant Discovery"),
+        ("💼 Portfolio Manager", "Portfolio Manager"),
+        ("🧠 Forecast Intelligence", "Forecast Intelligence"),
+        ("🧠 Strategy Research", "Strategy Research"),
+    ]
 
     if "selected_page" not in st.session_state:
         st.session_state["selected_page"] = "🏠 Overview"
 
-    # Apply navigation requests BEFORE creating the sidebar widget.
     requested_page = st.session_state.pop(
         "_navigation_request", None
     )
 
-    if requested_page is not None:
+    valid_pages = [route for route, _ in navigation_pages]
+
+    if requested_page in valid_pages:
         st.session_state["selected_page"] = requested_page
 
-    page = st.radio(
-        "Navigation",
-        [
-            "🏠 Overview",
-            "🔎 Stock Explorer",
-            "💰 Options Lab",
-            "📊 Greeks Analysis",
-            "📈 Scenario Explorer",
-            "🔍 Market Scanner",
-            "💎 Quant Discovery",
-            "💼 Portfolio Manager",
-            "🧠 Forecast Intelligence",
-            "🧠 Strategy Research",
-        ],
-        label_visibility="collapsed",        key="selected_page",
+    for index, (route, label) in enumerate(navigation_pages):
+        active = st.session_state["selected_page"] == route
+
+        if st.button(
+            label,
+            key=f"qi_navigation_{index}",
+            type="primary" if active else "secondary",
+            use_container_width=True,
+        ):
+            st.session_state["selected_page"] = route
+            st.rerun()
+
+    page = st.session_state["selected_page"]
+
+    st.divider()
+    st.caption("SYSTEM STATUS")
+
+    st.html(
+        '<div class="qi-system-status">'
+        '<span class="qi-status-dot"></span>'
+        'PRICING ENGINE ONLINE'
+        '</div>'
     )
 
+    st.caption("Quant Intelligence · Research Build")
     st.divider()
-
-    st.caption("PLATFORM STATUS")
-
-    st.success("● Pricing Engine Online")
-
-    st.caption("Research platform — development build")
-
-    st.divider()
-
     st.caption(
-        "Educational and research software. "
+        "Independent quantitative research platform. "
         "Not investment advice."
     )
 
@@ -642,138 +663,9 @@ if page in [
 # OVERVIEW
 # ============================================================
 
+
 if page == "🏠 Overview":
-
-    st.title("🧠 Quant Intelligence")
-
-    st.markdown(
-        "### Understand the market without needing to be a financial expert."
-    )
-
-    st.write(
-        "Explore stocks, understand options, and learn about "
-        "investment risk using powerful financial analysis "
-        "tools explained in everyday language."
-    )
-
-    st.info(
-        "💡 **New to investing?** Start with Explore Stocks. "
-        "You can learn about a company's price history and "
-        "how much its stock tends to move."
-    )
-
-    st.divider()
-
-    st.header("What would you like to explore?")
-
-    st.caption(
-        "Choose a tool below. Advanced calculations are still "
-        "available whenever you want to explore further."
-    )
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.markdown("### 📈 Explore Stocks")
-        st.write(
-            "Look up a company and understand its historical "
-            "performance, price movements, and trends."
-        )
-
-        if st.button(
-            "Explore Stocks →",
-            use_container_width=True,
-            key="home_stocks",
-        ):
-            st.session_state["_navigation_request"] = "🔎 Stock Explorer"
-            st.rerun()
-
-        st.markdown("### 💰 Options Calculator")
-        st.write(
-            "Estimate what an option might be worth and learn "
-            "how stock prices and time affect its value."
-        )
-
-        if st.button(
-            "Explore Options →",
-            use_container_width=True,
-            key="home_options",
-        ):
-            st.session_state["_navigation_request"] = "💰 Options Lab"
-            st.rerun()
-
-        st.markdown("### 🔍 Discover Stocks")
-        st.write(
-            "Explore stocks using market characteristics "
-            "such as momentum and historical volatility."
-        )
-
-        if st.button(
-            "Discover Stocks →",
-            use_container_width=True,
-            key="home_scanner",
-        ):
-            st.session_state["_navigation_request"] = "🔍 Market Scanner"
-            st.rerun()
-
-    with col2:
-        st.markdown("### 🛡️ Understand Option Risk")
-        st.write(
-            "See how an option's value may change when "
-            "stock prices, time, or volatility change."
-        )
-
-        if st.button(
-            "Understand Risk →",
-            use_container_width=True,
-            key="home_risk",
-        ):
-            st.session_state["_navigation_request"] = "📊 Greeks Analysis"
-            st.rerun()
-
-        st.markdown("### 💼 My Portfolio")
-        st.write(
-            "Explore your investments together and "
-            "understand their combined performance and risk."
-        )
-
-        if st.button(
-            "Explore Portfolio →",
-            use_container_width=True,
-            key="home_portfolio",
-        ):
-            st.session_state["_navigation_request"] = "💼 Portfolio Manager"
-            st.rerun()
-
-        st.markdown("### 🧠 AI Forecast Research")
-        st.write(
-            "Discover whether machine learning actually "
-            "improved predictions in our historical experiments."
-        )
-
-        if st.button(
-            "Explore Forecast Research →",
-            use_container_width=True,
-            key="home_forecasts",
-        ):
-            st.session_state["_navigation_request"] = "🧠 Forecast Intelligence"
-            st.rerun()
-
-    st.divider()
-
-    st.subheader("How Quant Intelligence Works")
-
-    st.markdown(
-        "**1. Explore:** Choose a stock or financial question.\n\n"
-        "**2. Understand:** View results explained in plain English.\n\n"
-        "**3. Go Deeper:** Explore advanced calculations and charts "
-        "when you're ready."
-    )
-
-    st.caption(
-        "Quant Intelligence provides financial analysis and "
-        "educational research, not personalized investment advice."
-    )
+    render_premium_home()
 
 
 elif page == "🔎 Stock Explorer":
@@ -891,7 +783,6 @@ elif page == "🔎 Stock Explorer":
                         return "N/A"
                     return f"{value:.{decimals}f}{suffix}"
 
-                risk_cols = st.columns(5)
 
                 risk_items = [
                     (
@@ -925,12 +816,23 @@ elif page == "🔎 Stock Explorer":
                     ),
                 ]
 
-                for column, (label, value, explanation) in zip(
-                    risk_cols, risk_items
-                ):
-                    with column:
-                        st.metric(label, value)
-                        st.caption(explanation)
+                with st.container(key="qi_risk_metrics"):
+                    for start in range(0, len(risk_items), 2):
+                        row_items = risk_items[start:start + 2]
+
+                        if len(row_items) == 2:
+                            columns = st.columns(
+                                2, gap="medium", wrap=True
+                            )
+                        else:
+                            columns = [st.container()]
+
+                        for column, (label, value, explanation) in zip(
+                            columns, row_items
+                        ):
+                            with column:
+                                st.metric(label, value)
+                                st.caption(explanation)
 
                 st.caption(
                     f"Daily price observations: "
