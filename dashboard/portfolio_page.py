@@ -172,7 +172,7 @@ def render_portfolio_manager() -> None:
     )
 
     st.info(
-        "Phase A — Portfolio Builder. Prices are entered "
+        "Phase A | Portfolio Builder. Prices are entered "
         "manually and are not live market quotes. "
         "Historical portfolio performance analysis is available "
         "below. Additional risk analytics remain under development."
@@ -588,7 +588,7 @@ def render_historical_performance(
     )
 
     figure.update_layout(
-        title="Portfolio vs SPY — Growth of 100",
+        title="Portfolio vs SPY | Growth of 100",
         xaxis_title="Date",
         yaxis_title="Indexed Value (Start = 100)",
         template="plotly_dark",

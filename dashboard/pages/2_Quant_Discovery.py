@@ -1,4 +1,4 @@
-"""Quant Discovery — simplified research rankings dashboard."""
+"""Quant Discovery | simplified research rankings dashboard."""
 
 import sys
 from pathlib import Path

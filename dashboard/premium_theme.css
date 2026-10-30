@@ -1,4 +1,4 @@
-/* QUANT INTELLIGENCE — PREMIUM DESIGN SYSTEM */
+/* QUANT INTELLIGENCE | PREMIUM DESIGN SYSTEM */
 
 :root {
     --qi-background: #080D1D;
@@ -139,7 +139,7 @@ label:has(input:checked) {
 }
 
 
-/* QUANT INTELLIGENCE — PREMIUM SIDEBAR */
+/* QUANT INTELLIGENCE | PREMIUM SIDEBAR */
 
 .qi-brand {
     display: flex;
@@ -309,4 +309,75 @@ button[data-testid="stBaseButton-primary"] {
     .stApp [data-testid="stMetricValue"] * {
         font-size: 1.55rem !important;
     }
+}
+
+
+/* QI NAVIGATION REFINEMENT V2 */
+.qi-current-location {
+    margin: -0.25rem 0 1rem;
+    padding: 0.65rem 0.8rem;
+    background: rgba(255, 120, 183, 0.07);
+    border-left: 3px solid #FF78B7;
+    border-radius: 0 8px 8px 0;
+    color: #AEBAD4;
+    font-size: 0.86rem;
+    line-height: 1.4;
+}
+.qi-current-location strong {
+    color: #FFFFFF;
+}
+.qi-current-location span {
+    color: #AEBAD4;
+}
+
+section[data-testid="stSidebar"]
+.st-key-qi_navigation [data-testid="stVerticalBlock"] {
+    gap: 0.3rem !important;
+}
+
+section[data-testid="stSidebar"]
+.st-key-qi_navigation button {
+    justify-content: flex-start !important;
+    text-align: left !important;
+    min-height: 2.5rem !important;
+    padding: 0.55rem 0.85rem !important;
+    border-radius: 10px !important;
+    font-weight: 550 !important;
+}
+
+section[data-testid="stSidebar"]
+.st-key-qi_navigation button p {
+    text-align: left !important;
+}
+
+section[data-testid="stSidebar"]
+.st-key-qi_navigation [data-testid="stBaseButton-primary"] {
+    background: rgba(255, 120, 183, 0.13) !important;
+    border: 1px solid rgba(255, 120, 183, 0.42) !important;
+    color: #FF91C5 !important;
+}
+
+section[data-testid="stSidebar"]
+.st-key-qi_subnav {
+    margin: 0.15rem 0 0.55rem 0.65rem;
+    padding-left: 0.65rem;
+    border-left: 2px solid rgba(255, 120, 183, 0.35);
+}
+
+section[data-testid="stSidebar"]
+.st-key-qi_subnav button {
+    min-height: 2.2rem !important;
+    font-size: 0.85rem !important;
+    padding: 0.35rem 0.7rem !important;
+}
+
+
+/* QI DEVELOPER CREDIT */
+.qi-brand-credit {
+    margin-top: 0.45rem;
+    color: #9CAAC5;
+    font-size: 0.72rem;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    line-height: 1.4;
 }

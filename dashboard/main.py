@@ -1,6 +1,6 @@
 
 """
-Quant Options Engine — Quant Intelligence Dashboard.
+Quant Options Engine | Quant Intelligence Dashboard.
 
 Interactive research dashboard providing:
 - Platform overview.
@@ -320,7 +320,7 @@ def make_stock_price_chart(
         )
 
     figure.update_layout(
-        title=f"{ticker} — Historical Price",
+        title=f"{ticker} | Historical Price",
         template="plotly_dark",
         paper_bgcolor="#111c2e",
         plot_bgcolor="#111c2e",
@@ -488,7 +488,7 @@ def make_comparison_chart(
     )
 
     figure.update_layout(
-        title=f"{ticker} vs SPY — Normalized Performance",
+        title=f"{ticker} vs SPY | Normalized Performance",
         template="plotly_dark",
         paper_bgcolor="#111c2e",
         plot_bgcolor="#111c2e",
@@ -527,23 +527,38 @@ with st.sidebar:
         '<div>'
         '<div class="qi-brand-name">QUANT INTELLIGENCE</div>'
         '<div class="qi-brand-subtitle">RESEARCH TERMINAL</div>'
+        '<div class="qi-brand-credit">Developed by Kyriakos Margaritis</div>'
         '</div></div>'
     )
 
-    st.caption("WORKSPACE")
 
-    navigation_pages = [
-        ("🏠 Overview", "Overview"),
-        ("🔎 Stock Explorer", "Stock Explorer"),
-        ("💰 Options Lab", "Options Lab"),
-        ("📊 Greeks Analysis", "Greeks Analysis"),
-        ("📈 Scenario Explorer", "Scenario Explorer"),
-        ("🔍 Market Scanner", "Market Scanner"),
-        ("💎 Quant Discovery", "Quant Discovery"),
-        ("💼 Portfolio Manager", "Portfolio Manager"),
-        ("🧠 Forecast Intelligence", "Forecast Intelligence"),
-        ("🧠 Strategy Research", "Strategy Research"),
+    sections = [
+        ("Dashboard", "🏠 Overview", []),
+        ("Research", "🔎 Stock Explorer", [
+            ("Stock Explorer", "🔎 Stock Explorer"),
+            ("Forecast Intelligence", "🧠 Forecast Intelligence"),
+        ]),
+        ("Discover", "💎 Quant Discovery", [
+            ("Opportunity Discovery", "💎 Quant Discovery"),
+            ("Market Scanner", "🔍 Market Scanner"),
+        ]),
+        ("Portfolio", "💼 Portfolio Manager", []),
+        ("Quant Lab", "💰 Options Lab", [
+            ("Options Lab", "💰 Options Lab"),
+            ("Greeks Analysis", "📊 Greeks Analysis"),
+            ("Scenario Explorer", "📈 Scenario Explorer"),
+            ("Strategy Research", "🧠 Strategy Research"),
+        ]),
+        ("Learn", "📚 Learn", []),
     ]
+
+    route_groups = {}
+
+    for group, landing, tools in sections:
+        route_groups[landing] = group
+
+        for label, route in tools:
+            route_groups[route] = group
 
     if "selected_page" not in st.session_state:
         st.session_state["selected_page"] = "🏠 Overview"
@@ -552,39 +567,56 @@ with st.sidebar:
         "_navigation_request", None
     )
 
-    valid_pages = [route for route, _ in navigation_pages]
-
-    if requested_page in valid_pages:
+    if requested_page in route_groups:
         st.session_state["selected_page"] = requested_page
 
-    for index, (route, label) in enumerate(navigation_pages):
-        active = st.session_state["selected_page"] == route
+    if st.session_state["selected_page"] not in route_groups:
+        st.session_state["selected_page"] = "🏠 Overview"
 
-        if st.button(
-            label,
-            key=f"qi_navigation_{index}",
-            type="primary" if active else "secondary",
-            use_container_width=True,
-        ):
-            st.session_state["selected_page"] = route
-            st.rerun()
+    current_page = st.session_state["selected_page"]
+    active_group = route_groups[current_page]
+
+    with st.container(key="qi_navigation"):
+        for index, (group, landing, tools) in enumerate(sections):
+            is_active = group == active_group
+
+            if tools:
+                arrow = "▾" if is_active else "▸"
+                button_label = f"{arrow}  {group}"
+            else:
+                button_label = group
+
+            if st.button(
+                button_label,
+                key=f"qi_group_{index}",
+                type="primary" if is_active else "secondary",
+                use_container_width=True,
+            ):
+                st.session_state["selected_page"] = landing
+                st.rerun()
+
+            if is_active and tools:
+                with st.container(key="qi_subnav"):
+                    for tool_index, (label, route) in enumerate(tools):
+                        selected = current_page == route
+                        marker = "●" if selected else "›"
+
+                        if st.button(
+                            f"{marker}  {label}",
+                            key=f"qi_subpage_{index}_{tool_index}",
+                            type="primary" if selected else "secondary",
+                            use_container_width=True,
+                        ):
+                            st.session_state["selected_page"] = route
+                            st.rerun()
 
     page = st.session_state["selected_page"]
 
     st.divider()
-    st.caption("SYSTEM STATUS")
-
-    st.html(
-        '<div class="qi-system-status">'
-        '<span class="qi-status-dot"></span>'
-        'PRICING ENGINE ONLINE'
-        '</div>'
-    )
-
+    st.caption("PLATFORM")
     st.caption("Quant Intelligence · Research Build")
-    st.divider()
     st.caption(
-        "Independent quantitative research platform. "
+        "Independent financial research and education. "
         "Not investment advice."
     )
 
@@ -666,6 +698,49 @@ if page in [
 
 if page == "🏠 Overview":
     render_premium_home()
+
+
+elif page == "📚 Learn":
+
+    st.title("Learn the Market")
+    st.caption(
+        "Build financial understanding before making decisions."
+    )
+
+    st.markdown("### Your Learning Journey")
+
+    with st.expander("01 · Stocks and ETFs", expanded=True):
+        st.write(
+            "A stock represents ownership in a company. "
+            "An ETF holds a collection of investments. "
+            "Both involve risk, and diversification "
+            "does not eliminate potential losses."
+        )
+
+    with st.expander("02 · Risk and Volatility"):
+        st.write(
+            "Volatility describes how much returns fluctuate. "
+            "Drawdown measures declines from previous peaks. "
+            "Understanding both can help you evaluate risk."
+        )
+
+    with st.expander("03 · Options and Greeks"):
+        st.write(
+            "Options are contracts with values affected by "
+            "stock prices, time, volatility, and interest rates. "
+            "Greeks measure sensitivity to those factors."
+        )
+
+    st.info(
+        "Interactive lessons, quizzes, and guided simulations "
+        "will be developed in future milestones."
+    )
+
+    if st.button("Explore Stock Research", type="primary"):
+        st.session_state[
+            "_navigation_request"
+        ] = "🔎 Stock Explorer"
+        st.rerun()
 
 
 elif page == "🔎 Stock Explorer":
@@ -876,7 +951,7 @@ elif page == "🔎 Stock Explorer":
     )
 
     # --------------------------------------------------------
-    # STOCK INTELLIGENCE — BEGINNER SUMMARY
+    # STOCK INTELLIGENCE | BEGINNER SUMMARY
     # --------------------------------------------------------
 
     # --------------------------------------------------------
@@ -1409,7 +1484,7 @@ elif page == "💰 Options Lab":
         "might be worth."
     )
 
-    st.subheader("Step 1 — Find an Asset")
+    st.subheader("Step 1: Find an Asset")
 
     st.caption(
         "Search by ticker symbol. Supports stocks, ETFs, and "
@@ -1480,7 +1555,7 @@ elif page == "💰 Options Lab":
                             latest_date = "date unavailable"
 
                         st.success(
-                            f"{ticker} — Latest available closing price: "
+                            f"{ticker} | Latest available closing price: "
                             f"${latest_close:,.2f} ({latest_date})"
                         )
 
@@ -1495,7 +1570,7 @@ elif page == "💰 Options Lab":
             "stock price below."
         )
 
-    st.subheader("Step 2 — What Do You Want to Explore?")
+    st.subheader("Step 2: What Do You Want to Explore?")
 
     direction = st.radio(
         "Which direction do you want to explore?",
@@ -1510,7 +1585,7 @@ elif page == "💰 Options Lab":
 
     is_call = "Call" in direction
 
-    st.subheader("Step 3 — Set Up Your Option")
+    st.subheader("Step 3: Set Up Your Option")
 
     st.caption(
         "We've provided starting values. You can change any of them."
@@ -1574,7 +1649,7 @@ elif page == "💰 Options Lab":
             "volatility estimate for your selected asset."
         )
 
-        with st.expander("⚙️ Advanced Settings — Optional"):
+        with st.expander("⚙️ Advanced Settings (Optional)"):
             calc_rate = st.number_input(
                 "Annual risk-free interest rate (%)",
                 min_value=-20.0,
@@ -1623,7 +1698,7 @@ elif page == "💰 Options Lab":
         )
 
         st.divider()
-        st.subheader("Step 4 — Your Estimated Result")
+        st.subheader("Step 4: Your Estimated Result")
 
         st.metric(
             f"💰 Estimated {option_name} Option Value",
@@ -2083,5 +2158,5 @@ st.divider()
 
 st.caption(
     "Quant Intelligence | Quant Options Engine "
-    "— Research and educational use only."
+    "| Research and educational use only."
 )
