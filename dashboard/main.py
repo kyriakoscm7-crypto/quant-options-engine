@@ -834,661 +834,659 @@ elif page == "🔎 Stock Explorer":
     # DOWNLOAD HISTORICAL DATA
     # --------------------------------------------------------
 
-    with st.spinner(
-        f"Loading historical market data for {ticker}..."
-    ):
+    # Create the presentation areas before rendering detailed analysis.
+    summary_slot = st.container()
+    chart_slot = st.container()
 
-        try:
+    (
+        performance_tab,
+        risk_tab,
+        news_tab,
+        data_tab,
+    ) = st.tabs(
+        [
+            "Performance",
+            "Risk & Scores",
+            "News",
+            "Historical Data",
+        ]
+    )
 
-            history = load_stock_history(
-                ticker,
-                selected_period,
-            )
-
-            statistics = calculate_stock_statistics(
-                history
-            )
-
-            # QUANT_RISK_INTELLIGENCE_V1
-            # Use independent daily history for consistent risk statistics.
-            st.markdown("### Risk Intelligence")
-            st.caption(
-                "Historical risk calculated from approximately one year "
-                "of daily prices, independent of the chart timeframe."
-            )
+    with risk_tab:
+        with st.spinner(
+            f"Loading historical market data for {ticker}..."
+        ):
 
             try:
-                risk_stock_history = fetch_stock_history(
-                    ticker, period="1y"
-                )
-                risk_spy_history = fetch_stock_history(
-                    "SPY", period="1y"
-                )
 
-                risk_metrics = calculate_risk_metrics(
-                    risk_stock_history,
-                    risk_spy_history,
+                history = load_stock_history(
+                    ticker,
+                    selected_period,
                 )
 
-                # QUANT_PERSONALIZED_RISK_V2
-                risk_explanations = interpret_risk_metrics(risk_metrics)
+                statistics = calculate_stock_statistics(
+                    history
+                )
 
-                def format_risk(value, suffix="", decimals=2):
-                    if value is None:
-                        return "N/A"
-                    return f"{value:.{decimals}f}{suffix}"
-
-
-                risk_items = [
-                    (
-                        "1Y Volatility",
-                        format_risk(
-                            risk_metrics["annualized_volatility_pct"], "%"
-                        ),
-                        risk_explanations["annualized_volatility_pct"],
-                    ),
-                    (
-                        "1Y Max Drawdown",
-                        format_risk(
-                            risk_metrics["maximum_drawdown_pct"], "%"
-                        ),
-                        risk_explanations["maximum_drawdown_pct"],
-                    ),
-                    (
-                        "Sharpe Ratio",
-                        format_risk(risk_metrics["sharpe_ratio"]),
-                        risk_explanations["sharpe_ratio"],
-                    ),
-                    (
-                        "Market Sensitivity (Beta)",
-                        format_risk(risk_metrics["beta_vs_spy"]),
-                        risk_explanations["beta_vs_spy"],
-                    ),
-                    (
-                        "Market Correlation",
-                        format_risk(risk_metrics["correlation_vs_spy"]),
-                        risk_explanations["correlation_vs_spy"],
-                    ),
-                ]
-
-                with st.container(key="qi_risk_metrics"):
-                    for start in range(0, len(risk_items), 2):
-                        row_items = risk_items[start:start + 2]
-
-                        if len(row_items) == 2:
-                            columns = st.columns(
-                                2, gap="medium", wrap=True
-                            )
-                        else:
-                            columns = [st.container()]
-
-                        for column, (label, value, explanation) in zip(
-                            columns, row_items
-                        ):
-                            with column:
-                                st.metric(label, value)
-                                st.caption(explanation)
-
+                # QUANT_RISK_INTELLIGENCE_V1
+                # Use independent daily history for consistent risk statistics.
+                st.markdown("### Risk Intelligence")
                 st.caption(
-                    f"Daily price observations: "
-                    f"{risk_metrics['daily_observations']} | "
-                    f"SPY overlapping dates: "
-                    f"{risk_metrics['benchmark_overlap_days']}"
+                    "Historical risk calculated from approximately one year "
+                    "of daily prices, independent of the chart timeframe."
                 )
 
-            except (ValueError, KeyError, TypeError, OSError) as exc:
-                st.info(f"Risk Intelligence unavailable: {exc}")
+                try:
+                    risk_stock_history = fetch_stock_history(
+                        ticker, period="1y"
+                    )
+                    risk_spy_history = fetch_stock_history(
+                        "SPY", period="1y"
+                    )
 
-            # QUANT_INTRADAY_STATISTICS_V1
-            # Intraday returns must not be annualized as daily returns.
-            is_intraday_period = selected_period in ("1d", "5d")
+                    risk_metrics = calculate_risk_metrics(
+                        risk_stock_history,
+                        risk_spy_history,
+                    )
 
-            if is_intraday_period:
-                statistics["annualized_volatility_pct"] = None
+                    # QUANT_PERSONALIZED_RISK_V2
+                    risk_explanations = interpret_risk_metrics(risk_metrics)
 
-        except (ValueError, RuntimeError) as exc:
+                    def format_risk(value, suffix="", decimals=2):
+                        if value is None:
+                            return "N/A"
+                        return f"{value:.{decimals}f}{suffix}"
 
-            st.error(
-                f"Unable to load {ticker}: {exc}"
-            )
 
-            st.stop()
+                    risk_items = [
+                        (
+                            "1Y Volatility",
+                            format_risk(
+                                risk_metrics["annualized_volatility_pct"], "%"
+                            ),
+                            risk_explanations["annualized_volatility_pct"],
+                        ),
+                        (
+                            "1Y Max Drawdown",
+                            format_risk(
+                                risk_metrics["maximum_drawdown_pct"], "%"
+                            ),
+                            risk_explanations["maximum_drawdown_pct"],
+                        ),
+                        (
+                            "Sharpe Ratio",
+                            format_risk(risk_metrics["sharpe_ratio"]),
+                            risk_explanations["sharpe_ratio"],
+                        ),
+                        (
+                            "Market Sensitivity (Beta)",
+                            format_risk(risk_metrics["beta_vs_spy"]),
+                            risk_explanations["beta_vs_spy"],
+                        ),
+                        (
+                            "Market Correlation",
+                            format_risk(risk_metrics["correlation_vs_spy"]),
+                            risk_explanations["correlation_vs_spy"],
+                        ),
+                    ]
 
-    # --------------------------------------------------------
-    # DATA INFORMATION
-    # --------------------------------------------------------
+                    with st.container(key="qi_risk_metrics"):
+                        for start in range(0, len(risk_items), 2):
+                            row_items = risk_items[start:start + 2]
 
-    latest_observation = pd.to_datetime(
-        history["Date"].iloc[-1],
-        utc=True,
-    )
+                            if len(row_items) == 2:
+                                columns = st.columns(
+                                    2, gap="medium", wrap=True
+                                )
+                            else:
+                                columns = [st.container()]
 
-    st.caption(
-        f"Ticker: {ticker} | "
-        f"Latest available daily observation: "
-        f"{latest_observation.strftime('%Y-%m-%d')} | "
-        f"Data may be delayed or incomplete."
-    )
+                            for column, (label, value, explanation) in zip(
+                                columns, row_items
+                            ):
+                                with column:
+                                    st.metric(label, value)
+                                    st.caption(explanation)
 
-    # --------------------------------------------------------
-    # STOCK INTELLIGENCE | BEGINNER SUMMARY
-    # --------------------------------------------------------
+                    st.caption(
+                        f"Daily price observations: "
+                        f"{risk_metrics['daily_observations']} | "
+                        f"SPY overlapping dates: "
+                        f"{risk_metrics['benchmark_overlap_days']}"
+                    )
 
-    # --------------------------------------------------------
-    # INVESTMENT RECOMMENDATION ENGINE
-    # --------------------------------------------------------
+                except (ValueError, KeyError, TypeError, OSError) as exc:
+                    st.info(f"Risk Intelligence unavailable: {exc}")
 
-    from app.intelligence.recommendation_engine import assess_stock
+                # QUANT_INTRADAY_STATISTICS_V1
+                # Intraday returns must not be annualized as daily returns.
+                is_intraday_period = selected_period in ("1d", "5d")
 
-    # Always use a dedicated five-year history for research scoring.
-    # Chart selections must not change the investment assessment.
-    # The scoring engine evaluates its most recent 252 observations.
-    try:
-        assessment_history = fetch_stock_history(
-            ticker,
-            period="5y",
-        )
-    except (ValueError, RuntimeError, KeyError) as exc:
-        st.warning(
-            f"Unable to retrieve investment rating history: {exc}"
-        )
-        assessment_history = history
+                if is_intraday_period:
+                    statistics["annualized_volatility_pct"] = None
 
-    try:
-        assessment = assess_stock(assessment_history)
-    except (ValueError, TypeError, KeyError) as exc:
-        st.warning(f"Investment assessment unavailable: {exc}")
-        assessment = None
+            except (ValueError, RuntimeError) as exc:
 
-    if assessment is not None:
-
-        st.markdown("### ⭐ Investment Rating")
-
-        rating_col1, rating_col2, rating_col3 = st.columns(3)
-
-        with rating_col1:
-            if assessment.score is None:
-                st.metric("Investment Score", "N/A")
-            else:
-                st.metric(
-                    "Investment Score",
-                    f"{assessment.score}/100",
+                st.error(
+                    f"Unable to load {ticker}: {exc}"
                 )
 
-        with rating_col2:
-            recommendation_labels = {
-                "STRONG TECHNICAL SIGNAL": "STRONG",
-                "FAVORABLE TECHNICAL SIGNAL": "FAVORABLE",
-                "NEUTRAL / MIXED": "NEUTRAL",
-                "CAUTION": "CAUTION",
-                "UNFAVORABLE TECHNICAL SIGNAL": "UNFAVORABLE",
-                "INSUFFICIENT EVIDENCE": "N/A",
-            }
+                st.stop()
 
-            short_recommendation = recommendation_labels.get(
-                assessment.recommendation,
-                "UNKNOWN",
-            )
+        # --------------------------------------------------------
+        # DATA INFORMATION
+        # --------------------------------------------------------
 
-            st.metric(
-                "Technical Recommendation",
-                short_recommendation,
-            )
-
-        with rating_col3:
-            st.metric(
-                "Historical Risk",
-                assessment.risk.replace(
-                    "Lower Historical Volatility",
-                    "Low",
-                ),
-            )
-
-        st.write(
-            f"**Market Outlook:** {assessment.outlook}"
+        latest_observation = pd.to_datetime(
+            history["Date"].iloc[-1],
+            utc=True,
         )
 
         st.caption(
-            f"Prediction reliability: {assessment.reliability}"
+            f"Ticker: {ticker} | "
+            f"Latest available daily observation: "
+            f"{latest_observation.strftime('%Y-%m-%d')} | "
+            f"Data may be delayed or incomplete."
         )
 
-        with st.expander("Why did this stock receive this rating?", icon=":material/help:"):
-            for reason in assessment.reasons:
-                st.write(f"• {reason}")
+        # --------------------------------------------------------
+        # STOCK INTELLIGENCE | BEGINNER SUMMARY
+        # --------------------------------------------------------
 
-            st.info(
-                "This score summarizes historical technical "
-                "signals. It is not a probability of profit "
-                "or a validated BUY/SELL recommendation."
+        # --------------------------------------------------------
+        # INVESTMENT RECOMMENDATION ENGINE
+        # --------------------------------------------------------
+
+        from app.intelligence.recommendation_engine import assess_stock
+
+        # Always use a dedicated five-year history for research scoring.
+        # Chart selections must not change the investment assessment.
+        # The scoring engine evaluates its most recent 252 observations.
+        try:
+            assessment_history = fetch_stock_history(
+                ticker,
+                period="5y",
+            )
+        except (ValueError, RuntimeError, KeyError) as exc:
+            st.warning(
+                f"Unable to retrieve investment rating history: {exc}"
+            )
+            assessment_history = history
+
+        try:
+            assessment = assess_stock(assessment_history)
+        except (ValueError, TypeError, KeyError) as exc:
+            st.warning(f"Investment assessment unavailable: {exc}")
+            assessment = None
+
+        if assessment is not None:
+
+            st.markdown("### :primary[:material/analytics:] Experimental Technical Assessment")
+
+            rating_col1, rating_col2, rating_col3 = st.columns(3)
+
+            with rating_col1:
+                if assessment.score is None:
+                    st.metric("Technical Score", "N/A")
+                else:
+                    st.metric(
+                        "Technical Score",
+                        f"{assessment.score}/100",
+                    )
+
+            with rating_col2:
+                recommendation_labels = {
+                    "STRONG TECHNICAL SIGNAL": "STRONG",
+                    "FAVORABLE TECHNICAL SIGNAL": "FAVORABLE",
+                    "NEUTRAL / MIXED": "NEUTRAL",
+                    "CAUTION": "CAUTION",
+                    "UNFAVORABLE TECHNICAL SIGNAL": "UNFAVORABLE",
+                    "INSUFFICIENT EVIDENCE": "N/A",
+                }
+
+                short_recommendation = recommendation_labels.get(
+                    assessment.recommendation,
+                    "UNKNOWN",
+                )
+
+                st.metric(
+                    "Technical Classification",
+                    short_recommendation,
+                )
+
+            with rating_col3:
+                st.metric(
+                    "Historical Risk",
+                    assessment.risk.replace(
+                        "Lower Historical Volatility",
+                        "Low",
+                    ),
+                )
+
+            st.caption(
+                "This experimental classification describes "
+                "historical technical conditions. It is not "
+                "a validated forecast or buy/sell recommendation."
+            )
+
+            st.write(
+                f"**Model Outlook (Unvalidated):** {assessment.outlook}"
+            )
+
+            st.caption(
+                f"Prediction reliability: {assessment.reliability}"
+            )
+
+            with st.expander("How was this technical score calculated?", icon=":material/help:"):
+                for reason in assessment.reasons:
+                    st.write(f"• {reason}")
+
+                st.info(
+                    "This score summarizes historical technical "
+                    "signals. It is not a probability of profit "
+                    "or a validated BUY/SELL recommendation."
+                )
+
+            st.divider()
+
+
+
+    with news_tab:
+        # QUANT_INTELLIGENCE_NEWS_PANEL_V1
+        st.markdown("---")
+        st.markdown("### :primary[:material/article:] News Intelligence")
+        st.caption(
+            "Recent company headlines from Google News. "
+            "News does not currently affect investment scores."
+        )
+
+        @st.cache_data(ttl=900, show_spinner=False)
+        def _cached_company_news(symbol: str):
+            return fetch_company_news(symbol, days=7, limit=12)
+
+        try:
+            with st.spinner("Retrieving recent company news..."):
+                news_articles = _cached_company_news(ticker)
+
+            if not news_articles:
+                st.info("No recent articles found for this ticker.")
+            else:
+                st.caption(f"{len(news_articles)} recent articles")
+
+                for article in news_articles:
+                    title = article.get("title") or "Untitled article"
+                    publisher = article.get("publisher") or "Unknown publisher"
+                    published = str(article.get("published") or "")
+                    article_url = article.get("url")
+
+                    st.markdown(f"**{title}**")
+
+                    catalysts = analyze_headline(title)
+
+                    if catalysts:
+                        for catalyst in catalysts:
+                            st.caption(
+                                f"🔵 {catalyst.label}: "
+                                f"{catalyst.explanation}"
+                            )
+                    else:
+                        st.caption("⚪ No recognized catalyst")
+
+                    publication_date = published[:10] if published else "Date unavailable"
+                    st.caption(f"{publisher} · {publication_date}")
+
+                    if article_url and str(article_url).startswith(
+                        ("https://", "http://")
+                    ):
+                        st.link_button(
+                            "Read article ↗",
+                            article_url,
+                        )
+                    else:
+                        st.caption("Article link unavailable")
+
+                    st.divider()
+
+        except Exception as exc:
+            st.warning(f"News temporarily unavailable: {exc}")
+
+
+    with risk_tab:
+        latest_price = float(statistics["latest_close"])
+        historical_return = float(statistics["total_return_pct"])
+        annual_volatility = statistics["annualized_volatility_pct"]
+
+        # Describe historical direction without claiming to predict prices.
+        if historical_return > 3:
+            trend_label = "📈 Positive historical trend"
+            trend_explanation = (
+                "The asset increased in price over the selected period."
+            )
+        elif historical_return < -3:
+            trend_label = "📉 Negative historical trend"
+            trend_explanation = (
+                "The asset decreased in price over the selected period."
+            )
+        else:
+            trend_label = "➡️ Relatively flat historical trend"
+            trend_explanation = (
+                "The asset's overall price change was relatively small "
+                "over the selected period."
+            )
+
+        # These are descriptive volatility bands, not validated risk scores.
+        if annual_volatility is None:
+            risk_label = "Unknown"
+            risk_explanation = "Not enough data to estimate volatility."
+        elif annual_volatility < 20:
+            risk_label = "Lower historical volatility"
+            risk_explanation = (
+                "Price fluctuations were relatively small "
+                "on an annualized basis."
+            )
+        elif annual_volatility < 40:
+            risk_label = "Moderate historical volatility"
+            risk_explanation = (
+                "The asset experienced meaningful price fluctuations."
+            )
+        else:
+            risk_label = "Higher historical volatility"
+            risk_explanation = (
+                "The asset experienced substantial price fluctuations."
+            )
+
+        st.markdown("### :primary[:material/assignment:] Understanding the Results")
+
+        st.write(f"**Price trend:** {trend_label}")
+        st.write(trend_explanation)
+
+        st.write(f"**Risk:** {risk_label}")
+        st.write(risk_explanation)
+
+        st.caption(
+            "These interpretations are descriptive. "
+            "Predictive accuracy has not been validated."
+        )
+
+        with st.expander("How These Measurements Work", icon=":material/science:"):
+            st.write(
+                "**Historical return:** The percentage change in price "
+                "over the selected historical period."
+            )
+            st.write(
+                "**Annualized volatility:** A statistical measure of "
+                "how much daily returns have fluctuated, expressed "
+                "on an annualized basis."
+            )
+            st.write(
+                "**Historical trend:** A simple description based on "
+                "the total return over the selected period. "
+                "It is not a forecast."
+            )
+            st.write(
+                "**Risk labels:** Descriptive volatility categories, "
+                "not personalized investment risk assessments."
             )
 
         st.divider()
 
+        # --------------------------------------------------------
+        # MAIN STATISTICS
+        # --------------------------------------------------------
 
-    # QUANT_INTELLIGENCE_NEWS_PANEL_V1
-    st.markdown("---")
-    st.markdown("### :primary[:material/article:] News Intelligence")
-    st.caption(
-        "Recent company headlines from Google News. "
-        "News does not currently affect investment scores."
-    )
 
-    @st.cache_data(ttl=900, show_spinner=False)
-    def _cached_company_news(symbol: str):
-        return fetch_company_news(symbol, days=7, limit=12)
 
-    try:
-        with st.spinner("Retrieving recent company news..."):
-            news_articles = _cached_company_news(ticker)
+        # --------------------------------------------------------
+        # HISTORICAL PRICE CHART
+        # --------------------------------------------------------
 
-        if not news_articles:
-            st.info("No recent articles found for this ticker.")
-        else:
-            st.caption(f"{len(news_articles)} recent articles")
 
-            for article in news_articles:
-                title = article.get("title") or "Untitled article"
-                publisher = article.get("publisher") or "Unknown publisher"
-                published = str(article.get("published") or "")
-                article_url = article.get("url")
+    with summary_slot:
+        st.markdown("### :primary[:material/insights:] At a Glance")
 
-                st.markdown(f"**{title}**")
+        glance_a, glance_b, glance_c, glance_d = st.columns(4)
 
-                catalysts = analyze_headline(title)
-
-                if catalysts:
-                    for catalyst in catalysts:
-                        st.caption(
-                            f"🔵 {catalyst.label}: "
-                            f"{catalyst.explanation}"
-                        )
-                else:
-                    st.caption("⚪ No recognized catalyst")
-
-                publication_date = published[:10] if published else "Date unavailable"
-                st.caption(f"{publisher} · {publication_date}")
-
-                if article_url and str(article_url).startswith(
-                    ("https://", "http://")
-                ):
-                    st.link_button(
-                        "Read article ↗",
-                        article_url,
-                    )
-                else:
-                    st.caption("Article link unavailable")
-
-                st.divider()
-
-    except Exception as exc:
-        st.warning(f"News temporarily unavailable: {exc}")
-
-    st.markdown("## :primary[:material/psychology:] Stock Intelligence")
-
-    st.caption(
-        "A simple explanation of the asset's historical "
-        "performance and risk. These measurements describe "
-        "the past and do not guarantee future returns."
-    )
-
-    latest_price = float(statistics["latest_close"])
-    historical_return = float(statistics["total_return_pct"])
-    annual_volatility = statistics["annualized_volatility_pct"]
-
-    # Describe historical direction without claiming to predict prices.
-    if historical_return > 3:
-        trend_label = "📈 Positive historical trend"
-        trend_explanation = (
-            "The asset increased in price over the selected period."
-        )
-    elif historical_return < -3:
-        trend_label = "📉 Negative historical trend"
-        trend_explanation = (
-            "The asset decreased in price over the selected period."
-        )
-    else:
-        trend_label = "➡️ Relatively flat historical trend"
-        trend_explanation = (
-            "The asset's overall price change was relatively small "
-            "over the selected period."
-        )
-
-    # These are descriptive volatility bands, not validated risk scores.
-    if annual_volatility is None:
-        risk_label = "Unknown"
-        risk_explanation = "Not enough data to estimate volatility."
-    elif annual_volatility < 20:
-        risk_label = "Lower historical volatility"
-        risk_explanation = (
-            "Price fluctuations were relatively small "
-            "on an annualized basis."
-        )
-    elif annual_volatility < 40:
-        risk_label = "Moderate historical volatility"
-        risk_explanation = (
-            "The asset experienced meaningful price fluctuations."
-        )
-    else:
-        risk_label = "Higher historical volatility"
-        risk_explanation = (
-            "The asset experienced substantial price fluctuations."
-        )
-
-    summary_col1, summary_col2, summary_col3 = st.columns(3)
-
-    with summary_col1:
-        st.metric("Latest Available Price", f"${latest_price:,.2f}")
-
-    with summary_col2:
-        st.metric("Historical Return", f"{historical_return:+.2f}%")
-
-    with summary_col3:
-        short_risk_label = {
-            "Lower historical volatility": "Low",
-            "Moderate historical volatility": "Moderate",
-            "Higher historical volatility": "High",
-            "Unknown": "Unknown",
-        }.get(risk_label, "Unknown")
-
-        st.metric(
-            "⚠️ Historical Risk",
-            short_risk_label,
-        )
-
-    st.markdown("### :primary[:material/assignment:] What Does This Mean?")
-
-    st.write(f"**Price trend:** {trend_label}")
-    st.write(trend_explanation)
-
-    st.write(f"**Risk:** {risk_label}")
-    st.write(risk_explanation)
-
-    st.info(
-        "🎯 Prediction confidence: Not yet validated. "
-        "We will only display confidence ratings after "
-        "testing forecast reliability on unseen historical data."
-    )
-
-    with st.expander("How These Measurements Work", icon=":material/science:"):
-        st.write(
-            "**Historical return:** The percentage change in price "
-            "over the selected historical period."
-        )
-        st.write(
-            "**Annualized volatility:** A statistical measure of "
-            "how much daily returns have fluctuated, expressed "
-            "on an annualized basis."
-        )
-        st.write(
-            "**Historical trend:** A simple description based on "
-            "the total return over the selected period. "
-            "It is not a forecast."
-        )
-        st.write(
-            "**Risk labels:** Descriptive volatility categories, "
-            "not personalized investment risk assessments."
-        )
-
-    st.divider()
-
-    # --------------------------------------------------------
-    # MAIN STATISTICS
-    # --------------------------------------------------------
-
-    st.markdown("### Market Overview")
-
-    metric1, metric2, metric3, metric4 = st.columns(4)
-
-    with metric1:
-
-        st.metric(
+        glance_a.metric(
             "Latest Adjusted Close",
             f"${statistics['latest_close']:,.2f}",
         )
 
-    with metric2:
+        glance_b.metric(
+            "Historical Return",
+            f"{statistics['total_return_pct']:+.2f}%",
+        )
 
-        daily_change = statistics[
-            "latest_change_pct"
-        ]
+        glance_volatility = statistics["annualized_volatility_pct"]
 
-        st.metric(
+        glance_c.metric(
+            "Annualized Volatility",
+            (
+                f"{glance_volatility:.2f}%"
+                if glance_volatility is not None
+                else "N/A"
+            ),
+        )
+
+        glance_change = statistics["latest_change_pct"]
+
+        glance_d.metric(
             (
                 "Latest Bar Change"
                 if selected_period in ("1d", "5d")
                 else "Latest Daily Change"
             ),
             (
-                f"{daily_change:+.2f}%"
-                if daily_change is not None
+                f"{glance_change:+.2f}%"
+                if glance_change is not None
                 else "N/A"
             ),
         )
 
-    with metric3:
-
-        st.metric(
-            "Historical Return",
-            f"{statistics['total_return_pct']:+.2f}%",
+        st.caption(
+            "Historical measurements, not forecasts or "
+            "investment recommendations."
         )
 
-    with metric4:
+    with chart_slot:
+        st.subheader("Historical Price Chart")
 
-        volatility_value = statistics[
-            "annualized_volatility_pct"
-        ]
+        price_figure = make_stock_price_chart(
+            history=history,
+            ticker=ticker,
+            chart_type=chart_type,
+        )
 
-        st.metric(
+        st.plotly_chart(
+            price_figure,
+            use_container_width=True,
+        )
+
+        # --------------------------------------------------------
+        # ADDITIONAL RISK STATISTICS
+        # --------------------------------------------------------
+
+
+    with risk_tab:
+        st.subheader("Historical Risk Statistics")
+
+        risk1, risk2, risk3 = st.columns(3)
+
+        with risk1:
+
+            st.metric(
+                "Maximum Drawdown",
+                f"{statistics['maximum_drawdown_pct']:.2f}%",
+            )
+
+        with risk2:
+
+            st.metric(
+                (
+                    "Intraday Observations"
+                    if selected_period in ("1d", "5d")
+                    else "Daily Observations"
+                ),
+                str(statistics["trading_days"]),
+            )
+
+        with risk3:
+
+            st.metric(
+                "Selected Period",
+                selected_period,
+            )
+
+        st.divider()
+
+        # --------------------------------------------------------
+        # SPY PERFORMANCE COMPARISON
+        # --------------------------------------------------------
+
+
+    with performance_tab:
+        st.subheader("Performance vs S&P 500 ETF (SPY)")
+
+        st.caption(
+            "Both series are rebased to 100 using their "
+            "first matching trading date."
+        )
+
+        try:
+
+            if ticker == "SPY":
+
+                st.info(
+                    "SPY is already the selected asset. "
+                    "Choose another ticker to compare it "
+                    "against the SPY benchmark."
+                )
+
+            else:
+
+                with st.spinner(
+                    "Loading SPY benchmark data..."
+                ):
+
+                    benchmark_history = load_stock_history(
+                        "SPY",
+                        selected_period,
+                    )
+
+                (
+                    comparison_figure,
+                    stock_return,
+                    benchmark_return,
+                ) = make_comparison_chart(
+                    stock_history=history,
+                    benchmark_history=benchmark_history,
+                    ticker=ticker,
+                )
+
+                st.plotly_chart(
+                    comparison_figure,
+                    use_container_width=True,
+                )
+
+                comparison1, comparison2, comparison3 = (
+                    st.columns(3)
+                )
+
+                with comparison1:
+
+                    st.metric(
+                        f"{ticker} Return",
+                        f"{stock_return:+.2f}%",
+                    )
+
+                with comparison2:
+
+                    st.metric(
+                        "SPY Return",
+                        f"{benchmark_return:+.2f}%",
+                    )
+
+                with comparison3:
+
+                    st.metric(
+                        "Relative Performance",
+                        f"{stock_return - benchmark_return:+.2f} pp",
+                    )
+
+        except (ValueError, RuntimeError) as exc:
+
+            st.warning(
+                f"Benchmark comparison unavailable: {exc}"
+            )
+
+        # --------------------------------------------------------
+        # HISTORICAL DATA TABLE
+        # --------------------------------------------------------
+
+        st.divider()
+
+
+    with data_tab:
+        st.subheader("Historical Market Data")
+
+        is_intraday = selected_period in ("1d", "5d")
+
+        st.caption(
             (
-                "Annualized Volatility"
-                if selected_period not in ("1d", "5d")
-                else "Annualized Volatility (Daily)"
+                "Adjusted historical intraday prices. "
+                "Timestamps are shown in UTC. "
+                "The latest observation may be incomplete."
+            )
+            if is_intraday
+            else (
+                "Adjusted historical daily prices. "
+                "The latest observation may be incomplete."
+            )
+        )
+
+        display_history = history.copy()
+
+        timestamps = pd.to_datetime(
+            display_history["Date"],
+            utc=True,
+        )
+
+        display_history["Date"] = timestamps.dt.strftime(
+            "%Y-%m-%dT%H:%M:%S%z"
+            if is_intraday
+            else "%Y-%m-%d"
+        )
+
+        st.dataframe(
+            display_history.sort_values(
+                "Date",
+                ascending=False,
             ),
-            (
-                f"{volatility_value:.2f}%"
-                if volatility_value is not None
-                else "N/A"
+            hide_index=True,
+            use_container_width=True,
+        )
+
+        # --------------------------------------------------------
+        # DOWNLOAD DATA
+        # --------------------------------------------------------
+
+        st.download_button(
+            label="Download Historical Data (CSV)",
+            data=display_history.to_csv(
+                index=False
+            ).encode("utf-8"),
+            file_name=(
+                f"{ticker}_{selected_period}_history.csv"
             ),
+            mime="text/csv",
         )
-
-    st.divider()
-
-    # --------------------------------------------------------
-    # HISTORICAL PRICE CHART
-    # --------------------------------------------------------
-
-    st.subheader("Historical Price Chart")
-
-    price_figure = make_stock_price_chart(
-        history=history,
-        ticker=ticker,
-        chart_type=chart_type,
-    )
-
-    st.plotly_chart(
-        price_figure,
-        use_container_width=True,
-    )
-
-    # --------------------------------------------------------
-    # ADDITIONAL RISK STATISTICS
-    # --------------------------------------------------------
-
-    st.subheader("Historical Risk Statistics")
-
-    risk1, risk2, risk3 = st.columns(3)
-
-    with risk1:
-
-        st.metric(
-            "Maximum Drawdown",
-            f"{statistics['maximum_drawdown_pct']:.2f}%",
-        )
-
-    with risk2:
-
-        st.metric(
-            (
-                "Intraday Observations"
-                if selected_period in ("1d", "5d")
-                else "Daily Observations"
-            ),
-            str(statistics["trading_days"]),
-        )
-
-    with risk3:
-
-        st.metric(
-            "Selected Period",
-            selected_period,
-        )
-
-    st.divider()
-
-    # --------------------------------------------------------
-    # SPY PERFORMANCE COMPARISON
-    # --------------------------------------------------------
-
-    st.subheader("Performance vs S&P 500 ETF (SPY)")
-
-    st.caption(
-        "Both series are rebased to 100 using their "
-        "first matching trading date."
-    )
-
-    try:
-
-        if ticker == "SPY":
-
-            st.info(
-                "SPY is already the selected asset. "
-                "Choose another ticker to compare it "
-                "against the SPY benchmark."
-            )
-
-        else:
-
-            with st.spinner(
-                "Loading SPY benchmark data..."
-            ):
-
-                benchmark_history = load_stock_history(
-                    "SPY",
-                    selected_period,
-                )
-
-            (
-                comparison_figure,
-                stock_return,
-                benchmark_return,
-            ) = make_comparison_chart(
-                stock_history=history,
-                benchmark_history=benchmark_history,
-                ticker=ticker,
-            )
-
-            st.plotly_chart(
-                comparison_figure,
-                use_container_width=True,
-            )
-
-            comparison1, comparison2, comparison3 = (
-                st.columns(3)
-            )
-
-            with comparison1:
-
-                st.metric(
-                    f"{ticker} Return",
-                    f"{stock_return:+.2f}%",
-                )
-
-            with comparison2:
-
-                st.metric(
-                    "SPY Return",
-                    f"{benchmark_return:+.2f}%",
-                )
-
-            with comparison3:
-
-                st.metric(
-                    "Relative Performance",
-                    f"{stock_return - benchmark_return:+.2f} pp",
-                )
-
-    except (ValueError, RuntimeError) as exc:
 
         st.warning(
-            f"Benchmark comparison unavailable: {exc}"
+            "Historical performance does not predict future "
+            "returns. Yahoo Finance data may be delayed, "
+            "revised, or incomplete. Adjusted prices are "
+            "not guaranteed executable trading prices."
         )
 
-    # --------------------------------------------------------
-    # HISTORICAL DATA TABLE
-    # --------------------------------------------------------
-
-    st.divider()
-
-    st.subheader("Historical Market Data")
-
-    is_intraday = selected_period in ("1d", "5d")
-
-    st.caption(
-        (
-            "Adjusted historical intraday prices. "
-            "Timestamps are shown in UTC. "
-            "The latest observation may be incomplete."
-        )
-        if is_intraday
-        else (
-            "Adjusted historical daily prices. "
-            "The latest observation may be incomplete."
-        )
-    )
-
-    display_history = history.copy()
-
-    timestamps = pd.to_datetime(
-        display_history["Date"],
-        utc=True,
-    )
-
-    display_history["Date"] = timestamps.dt.strftime(
-        "%Y-%m-%dT%H:%M:%S%z"
-        if is_intraday
-        else "%Y-%m-%d"
-    )
-
-    st.dataframe(
-        display_history.sort_values(
-            "Date",
-            ascending=False,
-        ),
-        hide_index=True,
-        use_container_width=True,
-    )
-
-    # --------------------------------------------------------
-    # DOWNLOAD DATA
-    # --------------------------------------------------------
-
-    st.download_button(
-        label="Download Historical Data (CSV)",
-        data=display_history.to_csv(
-            index=False
-        ).encode("utf-8"),
-        file_name=(
-            f"{ticker}_{selected_period}_history.csv"
-        ),
-        mime="text/csv",
-    )
-
-    st.warning(
-        "Historical performance does not predict future "
-        "returns. Yahoo Finance data may be delayed, "
-        "revised, or incomplete. Adjusted prices are "
-        "not guaranteed executable trading prices."
-    )
 
 
 # ============================================================
