@@ -3,6 +3,11 @@
 import pandas as pd
 import streamlit as st
 
+from app.market_data.activity_flags import (
+    GAP_Z_THRESHOLD,
+    RELATIVE_VOLUME_THRESHOLD,
+    classify_activity,
+)
 from app.market_data.stock_ranking import rank_stocks
 from dashboard.market_event_investigator import render_market_event_investigator
 from dashboard.market_scanner_page import cached_market_scan
@@ -137,12 +142,18 @@ def render_market_activity(
         na_position="last",
     )
 
-    # Transparent screening thresholds, not predictive signals.
-    unusual_gap = valid["Gap Z-Score"].abs() >= 2.0
-    elevated_volume = valid["Relative Volume"] >= 2.0
+    # Apply the same tested screening rules to each observation.
+    valid["Activity Reasons"] = [
+        classify_activity(gap_z, volume)
+        for gap_z, volume in zip(
+            valid["Gap Z-Score"],
+            valid["Relative Volume"],
+            strict=True,
+        )
+    ]
 
     flagged = valid.loc[
-        unusual_gap | elevated_volume
+        valid["Activity Reasons"].map(bool)
     ].copy()
 
     st.markdown(
@@ -150,9 +161,11 @@ def render_market_activity(
     )
 
     st.caption(
-        "Exploratory thresholds: absolute gap Z-score "
-        "of at least 2.0, or relative trading volume "
-        "of at least 2.0 times its reference level."
+        f"Exploratory thresholds: absolute gap Z-score "
+        f"of at least {GAP_Z_THRESHOLD:.1f}, or relative "
+        f"trading volume of at least "
+        f"{RELATIVE_VOLUME_THRESHOLD:.1f} times its "
+        "reference level."
     )
 
     if flagged.empty:
@@ -168,17 +181,9 @@ def render_market_activity(
         )
 
         for _, observation in flagged.iterrows():
-            reasons = []
-
-            if abs(observation["Gap Z-Score"]) >= 2.0:
-                reasons.append("unusual standardized gap")
-
-            if observation["Relative Volume"] >= 2.0:
-                reasons.append("elevated trading volume")
-
             st.markdown(
                 f"**{observation['Ticker']}**: "
-                + ", ".join(reasons)
+                + ", ".join(observation["Activity Reasons"])
                 + f" | {observation['Gap Signal Date']}"
             )
 
