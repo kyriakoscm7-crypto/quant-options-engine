@@ -28,11 +28,162 @@ def cached_rankings(tickers, horizon):
 
 initialize_database()
 
-st.title("💎 Quant Discovery")
+st.html("""
+<style>
+.qi-discover-hero {
+    background: #101B30;
+    border: 1px solid #2A3954;
+    border-radius: 16px;
+    padding: 1.45rem 1.7rem;
+    margin-bottom: 1.1rem;
+    font-family: inherit;
+}
 
-st.caption(
-    "Find technically strong stocks across different investment horizons."
-)
+.qi-discover-label {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    color: #FF78B7;
+    font-size: 0.76rem;
+    font-weight: 750;
+    letter-spacing: 0.13em;
+}
+
+.qi-discover-label svg {
+    width: 27px;
+    height: 27px;
+    flex-shrink: 0;
+}
+
+.qi-discover-hero h1 {
+    color: #FFFFFF;
+    font-size: clamp(1.8rem, 3.2vw, 2.7rem);
+    line-height: 1.16;
+    letter-spacing: -0.035em;
+    margin: 1rem 0 0.65rem;
+    font-weight: 750;
+}
+
+.qi-discover-hero p {
+    color: #B5C3DB;
+    font-size: 0.96rem;
+    line-height: 1.65;
+    margin: 0;
+    max-width: 680px;
+}
+
+.qi-discover-workflow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem 1.5rem;
+    border-top: 1px solid #2A3954;
+    padding-top: 1rem;
+    margin-top: 1.3rem;
+}
+
+.qi-discover-step {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    color: #DFE7F5;
+    font-size: 0.81rem;
+    line-height: 1.4;
+}
+
+.qi-discover-step svg {
+    width: 19px;
+    height: 19px;
+    color: #FF78B7;
+    flex-shrink: 0;
+}
+
+.qi-discover-upcoming {
+    color: #8D9CB8;
+    font-size: 0.72rem;
+}
+
+@media (max-width: 600px) {
+    .qi-discover-hero {
+        padding: 1.1rem;
+    }
+
+    .qi-discover-workflow {
+        flex-direction: column;
+        gap: 0.8rem;
+    }
+}
+</style>
+
+<section class="qi-discover-hero"
+         aria-label="Quant Intelligence Discover">
+
+    <div class="qi-discover-label">
+        <svg viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="1.8"
+             stroke-linecap="round" stroke-linejoin="round"
+             aria-hidden="true">
+            <circle cx="12" cy="12" r="2"/>
+            <path d="M16.24 7.76a6 6 0 0 0-8.48 8.48"/>
+            <path d="M19.07 4.93a10 10 0 0 0-14.14 14.14"/>
+            <path d="M12 12l7.07-7.07"/>
+        </svg>
+        QUANT INTELLIGENCE / DISCOVER
+    </div>
+
+    <h1>Discover market opportunities.</h1>
+
+    <p>
+        Explore quantitative stock rankings and investigate
+        what makes a company stand out.
+    </p>
+
+    <div class="qi-discover-workflow">
+
+        <div class="qi-discover-step">
+            <svg viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="1.8"
+                 stroke-linecap="round" stroke-linejoin="round"
+                 aria-hidden="true">
+                <path d="M4 7V4h3"/>
+                <path d="M17 4h3v3"/>
+                <path d="M20 17v3h-3"/>
+                <path d="M7 20H4v-3"/>
+                <circle cx="11" cy="11" r="3"/>
+                <path d="m13.5 13.5 2.5 2.5"/>
+            </svg>
+            Find market activity
+        </div>
+
+        <div class="qi-discover-step">
+            <svg viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="1.8"
+                 stroke-linecap="round" stroke-linejoin="round"
+                 aria-hidden="true">
+                <path d="M3 3v18h18"/>
+                <path d="m7 16 4-5 4 3 5-8"/>
+            </svg>
+            Review quantitative rankings
+        </div>
+
+        <div class="qi-discover-step">
+            <svg viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="1.8"
+                 stroke-linecap="round" stroke-linejoin="round"
+                 aria-hidden="true">
+                <path d="M10 2v7.3"/>
+                <path d="M14 9.3V2"/>
+                <path d="M8.5 2h7"/>
+                <path d="M10 9.3 3.2 20a1.5 1.5 0 0 0
+                         1.3 2h15a1.5 1.5 0 0 0 1.3-2L14 9.3"/>
+                <path d="M8 15h8"/>
+            </svg>
+            Validate signals
+            <span class="qi-discover-upcoming">(Coming later)</span>
+        </div>
+
+    </div>
+</section>
+""")
 
 summary = database_summary()
 

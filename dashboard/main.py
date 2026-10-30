@@ -576,6 +576,15 @@ with st.sidebar:
     current_page = st.session_state["selected_page"]
     active_group = route_groups[current_page]
 
+    section_icons = {
+        "Dashboard": ":material/dashboard:",
+        "Research": ":material/search:",
+        "Discover": ":material/radar:",
+        "Portfolio": ":material/account_balance_wallet:",
+        "Quant Lab": ":material/science:",
+        "Learn": ":material/school:",
+    }
+
     with st.container(key="qi_navigation"):
         for index, (group, landing, tools) in enumerate(sections):
             is_active = group == active_group
@@ -589,6 +598,7 @@ with st.sidebar:
             if st.button(
                 button_label,
                 key=f"qi_group_{index}",
+                icon=section_icons[group],
                 type="primary" if is_active else "secondary",
                 use_container_width=True,
             ):
@@ -702,7 +712,7 @@ if page == "🏠 Overview":
 
 elif page == "📚 Learn":
 
-    st.title("Learn the Market")
+    st.title(":primary[:material/school:] Learn the Market")
     st.caption(
         "Build financial understanding before making decisions."
     )
@@ -745,7 +755,7 @@ elif page == "📚 Learn":
 
 elif page == "🔎 Stock Explorer":
 
-    st.title("🔎 Stock Explorer")
+    st.title(":primary[:material/search:] Stock Explorer")
 
     st.caption(
         "Research historical stock and ETF performance "
@@ -1032,7 +1042,7 @@ elif page == "🔎 Stock Explorer":
             f"Prediction reliability: {assessment.reliability}"
         )
 
-        with st.expander("🔍 Why did this stock receive this rating?"):
+        with st.expander("Why did this stock receive this rating?", icon=":material/help:"):
             for reason in assessment.reasons:
                 st.write(f"• {reason}")
 
@@ -1047,7 +1057,7 @@ elif page == "🔎 Stock Explorer":
 
     # QUANT_INTELLIGENCE_NEWS_PANEL_V1
     st.markdown("---")
-    st.markdown("### 📰 News Intelligence")
+    st.markdown("### :primary[:material/article:] News Intelligence")
     st.caption(
         "Recent company headlines from Google News. "
         "News does not currently affect investment scores."
@@ -1103,7 +1113,7 @@ elif page == "🔎 Stock Explorer":
     except Exception as exc:
         st.warning(f"News temporarily unavailable: {exc}")
 
-    st.markdown("## 🧠 Stock Intelligence")
+    st.markdown("## :primary[:material/psychology:] Stock Intelligence")
 
     st.caption(
         "A simple explanation of the asset's historical "
@@ -1157,10 +1167,10 @@ elif page == "🔎 Stock Explorer":
     summary_col1, summary_col2, summary_col3 = st.columns(3)
 
     with summary_col1:
-        st.metric("💵 Latest Available Price", f"${latest_price:,.2f}")
+        st.metric("Latest Available Price", f"${latest_price:,.2f}")
 
     with summary_col2:
-        st.metric("📈 Historical Return", f"{historical_return:+.2f}%")
+        st.metric("Historical Return", f"{historical_return:+.2f}%")
 
     with summary_col3:
         short_risk_label = {
@@ -1175,7 +1185,7 @@ elif page == "🔎 Stock Explorer":
             short_risk_label,
         )
 
-    st.markdown("### 📋 What Does This Mean?")
+    st.markdown("### :primary[:material/assignment:] What Does This Mean?")
 
     st.write(f"**Price trend:** {trend_label}")
     st.write(trend_explanation)
@@ -1189,7 +1199,7 @@ elif page == "🔎 Stock Explorer":
         "testing forecast reliability on unseen historical data."
     )
 
-    with st.expander("🔬 How These Measurements Work"):
+    with st.expander("How These Measurements Work", icon=":material/science:"):
         st.write(
             "**Historical return:** The percentage change in price "
             "over the selected historical period."
@@ -1477,7 +1487,7 @@ elif page == "🔎 Stock Explorer":
 
 elif page == "💰 Options Lab":
 
-    st.title("💰 Options Calculator")
+    st.title(":primary[:material/calculate:] Options Lab")
 
     st.write(
         "Enter your own values to estimate what a stock option "
@@ -1649,7 +1659,7 @@ elif page == "💰 Options Lab":
             "volatility estimate for your selected asset."
         )
 
-        with st.expander("⚙️ Advanced Settings (Optional)"):
+        with st.expander("Advanced Settings (Optional)", icon=":material/settings:"):
             calc_rate = st.number_input(
                 "Annual risk-free interest rate (%)",
                 min_value=-20.0,
@@ -1740,7 +1750,7 @@ elif page == "💰 Options Lab":
             "These estimates do not include trading fees."
         )
 
-        with st.expander("🔬 Advanced Analytics"):
+        with st.expander("Advanced Analytics", icon=":material/analytics:"):
 
             st.subheader("Option Greeks")
 
@@ -1813,7 +1823,7 @@ elif page == "💰 Options Lab":
 
 elif page == "📊 Greeks Analysis":
 
-    st.title("📊 Greeks Analysis")
+    st.title(":primary[:material/monitoring:] Greeks Analysis")
 
     st.caption(
         "Explore how option risk changes "
@@ -1964,7 +1974,7 @@ elif page == "📊 Greeks Analysis":
 
 elif page == "📈 Scenario Explorer":
 
-    st.title("📈 Scenario Explorer")
+    st.title(":primary[:material/query_stats:] Scenario Explorer")
 
     st.caption(
         "Explore theoretical option prices "
@@ -2136,7 +2146,7 @@ elif page == "🧠 Forecast Intelligence":
 
 elif page == "🧠 Strategy Research":
 
-    st.title("🧠 Strategy Research")
+    st.title(":primary[:material/science:] Strategy Research")
 
     st.info(
         "Coming soon: Historical backtesting, "

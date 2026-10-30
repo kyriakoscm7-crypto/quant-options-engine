@@ -381,3 +381,50 @@ section[data-testid="stSidebar"]
     letter-spacing: 0.02em;
     line-height: 1.4;
 }
+
+
+/* QI SECTION ICONS */
+section[data-testid="stSidebar"]
+.st-key-qi_navigation button span[class*="material-symbols"] {
+    color: #FF78B7 !important;
+    font-size: 1.18rem !important;
+    font-variation-settings:
+        "FILL" 0,
+        "wght" 350,
+        "GRAD" 0,
+        "opsz" 24;
+}
+
+
+/* QI PREMIUM ALERT PANELS V1 */
+
+/* Consistent notification surfaces across all research pages. */
+section[data-testid="stMain"] [data-testid="stAlert"] {
+    background: #142139 !important;
+    border: 1px solid #30415D !important;
+    border-radius: 10px !important;
+    box-shadow: none !important;
+    color: #DCE5F5 !important;
+}
+
+/* Streamlit may put the background on an inner element. */
+section[data-testid="stMain"] [data-testid="stAlert"] > div,
+section[data-testid="stMain"] [data-testid="stAlert"] [role="alert"],
+section[data-testid="stMain"] [data-testid="stAlert"] [data-baseweb="notification"] {
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+/* Remove overly bright default notification text. */
+section[data-testid="stMain"] [data-testid="stAlert"]
+[data-testid="stMarkdownContainer"],
+section[data-testid="stMain"] [data-testid="stAlert"]
+[data-testid="stMarkdownContainer"] p {
+    color: #DCE5F5 !important;
+    line-height: 1.65 !important;
+}
+
+section[data-testid="stMain"] [data-testid="stAlert"]
+[data-testid="stMarkdownContainer"] strong {
+    color: #FFFFFF !important;
+}

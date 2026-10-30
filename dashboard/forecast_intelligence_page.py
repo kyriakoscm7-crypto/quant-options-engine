@@ -45,7 +45,7 @@ HORIZON_NAMES = {
 def render_forecast_intelligence():
     """Display understandable conclusions before technical research."""
 
-    st.title("🧠 Forecast Intelligence")
+    st.title(":primary[:material/psychology:] Forecast Intelligence")
 
     st.markdown(
         "### Can artificial intelligence predict stock movements?"
@@ -95,7 +95,7 @@ def render_forecast_intelligence():
 
     st.divider()
 
-    st.subheader("🔎 Explore a Stock")
+    st.subheader(":primary[:material/search:] Explore a Stock")
 
     col1, col2 = st.columns(2)
 
@@ -142,7 +142,7 @@ def render_forecast_intelligence():
 
     st.divider()
 
-    st.subheader(f"📊 What Did We Discover About {company}?")
+    st.subheader(f":primary[:material/analytics:] What Did We Discover About {company}?")
 
     if ml_score < historical_score:
         st.success(
@@ -173,7 +173,7 @@ def render_forecast_intelligence():
         "independent proof of future forecasting performance."
     )
 
-    st.markdown("### 🏆 Which Approach Worked Better?")
+    st.markdown("### :primary[:material/emoji_events:] Which Approach Worked Better?")
 
     if historical_score < ml_score:
         st.success("**Winner: Simple Historical Estimates**")
@@ -203,7 +203,7 @@ def render_forecast_intelligence():
 
     st.divider()
 
-    st.subheader("💡 The Bigger Picture")
+    st.subheader(":primary[:material/lightbulb:] The Bigger Picture")
 
     st.markdown(
         "Our experiments suggest that **adding machine learning "
@@ -213,7 +213,7 @@ def render_forecast_intelligence():
         "unseen data."
     )
 
-    with st.expander("🔬 Advanced Research Details"):
+    with st.expander("Advanced Research Details", icon=":material/science:"):
         st.markdown("### Model Comparison")
 
         chart_data = filtered[

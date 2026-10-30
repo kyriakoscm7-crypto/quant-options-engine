@@ -136,7 +136,7 @@ def render_market_scanner() -> None:
     Render the complete interactive Market Scanner page.
     """
 
-    st.title("🔍 Market Scanner")
+    st.title(":primary[:material/radar:] Market Scanner")
 
     st.markdown(
         "Analyze multiple stocks using historical momentum, "
@@ -315,7 +315,7 @@ def render_market_scanner() -> None:
     # BEGINNER-FRIENDLY STOCK DISCOVERY
     # --------------------------------------------------------
 
-    st.subheader("🧭 Beginner-Friendly Stock Discovery")
+    st.subheader(":primary[:material/explore:] Beginner-Friendly Stock Discovery")
 
     st.caption(
         "Quickly understand historical price momentum. "
@@ -424,7 +424,7 @@ def render_market_scanner() -> None:
 
     st.divider()
 
-    st.subheader("🔎 Gap & Volume Opportunity Discovery")
+    st.subheader(":primary[:material/monitoring:] Gap & Volume Opportunity Discovery")
 
     st.caption(
         "Find unusual opening gaps and trading-volume activity "
