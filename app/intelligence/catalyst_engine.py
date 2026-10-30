@@ -14,6 +14,11 @@ class Catalyst:
     matched_terms: tuple[str, ...]
     explanation: str
 
+    @property
+    def label(self) -> str:
+        """Human-readable classification for research interfaces."""
+        return f"{self.category} ({self.direction})"
+
 
 RULES = (
     (

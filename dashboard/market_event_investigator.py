@@ -6,6 +6,7 @@ import streamlit as st
 from plotly.subplots import make_subplots
 
 from app.market_data.stock_history import fetch_stock_history
+from dashboard.company_catalyst_panel import render_event_news
 
 
 @st.cache_data(ttl=900, show_spinner=False)
@@ -279,6 +280,8 @@ def render_market_event_investigator(
         "flag does not establish the cause of the activity "
         "or predict future returns."
     )
+
+    render_event_news(selected_ticker, event_date)
 
     if st.button(
         "Open Full Stock Research",
