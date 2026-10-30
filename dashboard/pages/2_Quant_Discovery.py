@@ -19,6 +19,7 @@ from app.discovery.database import (  # noqa: E402
 from app.discovery.ranking_engine import (  # noqa: E402
     rank_companies,
 )
+from dashboard.market_activity_panel import render_market_activity  # noqa: E402
 
 
 @st.cache_data(ttl=1800, show_spinner=False)
@@ -598,6 +599,14 @@ else:
                 "that predict future returns."
             )
 
+
+        render_market_activity(
+            ranked_tickers=tuple(
+                item["ticker"]
+                for item in rankings[:5]
+            ),
+            selected_ticker=selected_ticker,
+        )
 
 st.divider()
 
