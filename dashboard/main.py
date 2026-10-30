@@ -755,6 +755,16 @@ elif page == "📚 Learn":
 
 elif page == "🔎 Stock Explorer":
 
+    incoming_ticker = st.session_state.pop(
+        "_research_ticker_request", None
+    )
+
+    if incoming_ticker:
+        st.session_state["qi_stock_explorer_ticker"] = incoming_ticker
+
+    if "qi_stock_explorer_ticker" not in st.session_state:
+        st.session_state["qi_stock_explorer_ticker"] = "AAPL"
+
     st.title(":primary[:material/search:] Stock Explorer")
 
     st.caption(
@@ -774,7 +784,7 @@ elif page == "🔎 Stock Explorer":
 
         ticker_input = st.text_input(
             "Ticker Symbol",
-            value="AAPL",
+            key="qi_stock_explorer_ticker",
             placeholder="Enter AAPL, MSFT, NVDA, SPY...",
         )
 
