@@ -13,71 +13,34 @@ from dashboard.market_event_investigator import render_market_event_investigator
 from dashboard.market_scanner_page import cached_market_scan
 
 
+@st.cache_data(ttl=900, show_spinner=False)
+def cached_ranked_discover_activity(
+    symbols: tuple[str, ...],
+) -> pd.DataFrame:
+    """Cache ranked historical activity for up to 15 minutes."""
+    scan_results = cached_market_scan(symbols, "1y")
+    return rank_stocks(scan_results)
+
+
 def render_market_activity(
     ranked_tickers: tuple[str, ...],
     selected_ticker: str,
 ) -> None:
     """Show a small, on-demand historical market activity scan."""
 
-    st.divider()
-
-    st.subheader(
-        ":primary[:material/monitoring:] "
-        "Market Activity Intelligence"
-    )
-
-    st.caption(
-        "Investigate historical opening gaps and unusual "
-        "trading volume in the selected company and other "
-        "highly ranked research candidates."
-    )
-
     symbols = tuple(
         dict.fromkeys(
-            (selected_ticker, *ranked_tickers)
+            (*ranked_tickers, selected_ticker)
         )
     )
 
-    st.caption(
-        f"Research universe: {len(symbols)} companies. "
-        "The scan uses one year of available daily history."
-    )
-
-    if st.button(
-        "Analyze Market Activity",
-        icon=":material/analytics:",
-        type="primary",
-        key="qi_activity_scan_button",
-    ):
-        with st.spinner("Analyzing historical market activity..."):
-            try:
-                scan_results = cached_market_scan(
-                    symbols,
-                    "1y",
-                )
-                ranked_scan = rank_stocks(scan_results)
-
-            except (ValueError, RuntimeError) as exc:
-                st.error(f"Market activity scan failed: {exc}")
-                return
-
-        st.session_state["qi_discover_activity_result"] = {
-            "symbols": symbols,
-            "data": ranked_scan,
-        }
-
-    saved = st.session_state.get(
-        "qi_discover_activity_result"
-    )
-
-    if saved is None or saved["symbols"] != symbols:
-        st.info(
-            "Run the activity scan to inspect historical "
-            "price gaps, volume anomalies, and signal dates."
-        )
-        return
-
-    results = saved["data"]
+    # Timed cache prevents session results remaining stale indefinitely.
+    with st.spinner("Loading historical market activity..."):
+        try:
+            results = cached_ranked_discover_activity(symbols)
+        except (ValueError, RuntimeError) as exc:
+            st.error(f"Market activity scan failed: {exc}")
+            return
 
     columns = [
         "Ticker",
@@ -106,18 +69,6 @@ def render_market_activity(
     valid = activity[
         activity["Gap Status"] == "OK"
     ].copy()
-
-    left, right = st.columns(2)
-
-    left.metric(
-        "Companies Screened",
-        len(activity),
-    )
-
-    right.metric(
-        "Valid Activity Observations",
-        len(valid),
-    )
 
     if valid.empty:
         st.warning(
@@ -156,87 +107,107 @@ def render_market_activity(
         valid["Activity Reasons"].map(bool)
     ].copy()
 
-    st.markdown(
-        "#### :primary[:material/radar:] Activity Flags"
-    )
-
-    st.caption(
-        f"Exploratory thresholds: absolute gap Z-score "
-        f"of at least {GAP_Z_THRESHOLD:.1f}, or relative "
-        f"trading volume of at least "
-        f"{RELATIVE_VOLUME_THRESHOLD:.1f} times its "
-        "reference level."
-    )
-
-    if flagged.empty:
-        st.info(
-            "No companies meet the current activity "
-            "thresholds. Valid historical observations "
-            "are shown below."
+    def _render_screening_details() -> None:
+        st.caption(
+            f"Research universe: {len(symbols)} companies. "
+            "The scan uses one year of available daily history."
         )
-    else:
+
+        left, right = st.columns(2)
+
+        left.metric(
+            "Companies Screened",
+            len(activity),
+        )
+
+        right.metric(
+            "Valid Activity Observations",
+            len(valid),
+        )
+
         st.markdown(
-            f"**{len(flagged)} of {len(valid)} companies** "
-            "meet at least one screening threshold."
+            "#### :primary[:material/radar:] Activity Flags"
         )
 
-        for _, observation in flagged.iterrows():
+        st.caption(
+            f"Exploratory thresholds: absolute gap Z-score "
+            f"of at least {GAP_Z_THRESHOLD:.1f}, or relative "
+            f"trading volume of at least "
+            f"{RELATIVE_VOLUME_THRESHOLD:.1f} times its "
+            "reference level."
+        )
+
+        if flagged.empty:
+            st.info(
+                "No companies meet the current activity "
+                "thresholds. Valid historical observations "
+                "are shown below."
+            )
+        else:
             st.markdown(
-                f"**{observation['Ticker']}**: "
-                + ", ".join(observation["Activity Reasons"])
-                + f" | {observation['Gap Signal Date']}"
+                f"**{len(flagged)} of {len(valid)} companies** "
+                "meet at least one screening threshold."
             )
 
-    st.markdown("#### Latest Historical Observations")
+            for _, observation in flagged.iterrows():
+                st.markdown(
+                    f"**{observation['Ticker']}**: "
+                    + ", ".join(observation["Activity Reasons"])
+                    + f" | {observation['Gap Signal Date']}"
+                )
 
-    st.dataframe(
-        valid[
-            [
-                "Ticker",
-                "Opening Gap (%)",
-                "Relative Volume",
-                "Gap Z-Score",
-                "Gap Signal Date",
-            ]
-        ],
-        hide_index=True,
-        width="stretch",
-        column_config={
-            "Ticker": st.column_config.TextColumn(
-                "Ticker",
-                width="small",
-            ),
-            "Opening Gap (%)": st.column_config.NumberColumn(
-                "Opening Gap",
-                format="%+.2f%%",
-            ),
-            "Relative Volume": st.column_config.NumberColumn(
-                "Relative Volume",
-                format="%.2fx",
-            ),
-            "Gap Z-Score": st.column_config.NumberColumn(
-                "Gap Z-Score",
-                format="%.2f",
-            ),
-        },
-    )
+        st.markdown("#### Latest Historical Observations")
 
-    unavailable = len(activity) - len(valid)
-
-    if unavailable:
-        st.caption(
-            f"Activity measurements were unavailable "
-            f"for {unavailable} screened companies."
+        st.dataframe(
+            valid[
+                [
+                    "Ticker",
+                    "Opening Gap (%)",
+                    "Relative Volume",
+                    "Gap Z-Score",
+                    "Gap Signal Date",
+                ]
+            ],
+            hide_index=True,
+            width="stretch",
+            column_config={
+                "Ticker": st.column_config.TextColumn(
+                    "Ticker",
+                    width="small",
+                ),
+                "Opening Gap (%)": st.column_config.NumberColumn(
+                    "Opening Gap",
+                    format="%+.2f%%",
+                ),
+                "Relative Volume": st.column_config.NumberColumn(
+                    "Relative Volume",
+                    format="%.2fx",
+                ),
+                "Gap Z-Score": st.column_config.NumberColumn(
+                    "Gap Z-Score",
+                    format="%.2f",
+                ),
+            },
         )
 
-    st.caption(
-        "Measurements describe historical market activity "
-        "at each ticker's reported signal date. They are "
-        "not real-time alerts, causal explanations, "
-        "or validated return predictions."
-    )
+        unavailable = len(activity) - len(valid)
+
+        if unavailable:
+            st.caption(
+                f"Activity measurements were unavailable "
+                f"for {unavailable} screened companies."
+            )
+
+        st.caption(
+            "Measurements describe historical market activity "
+            "at each ticker's reported signal date. They are "
+            "not real-time alerts, causal explanations, "
+            "or validated return predictions."
+        )
 
     render_market_event_investigator(
         valid=valid,
         flagged=flagged,
+        preferred_ticker=selected_ticker,
+        screening_renderer=_render_screening_details,
     )

@@ -393,7 +393,7 @@ else:
         st.divider()
 
         st.markdown(
-            "### :primary[:material/analytics:] Research Breakdown"
+            "### :primary[:material/analytics:] Selected Company"
         )
 
         st.caption(
@@ -411,208 +411,228 @@ else:
             st.session_state["_navigation_request"] = "\U0001F50E Stock Explorer"
             st.rerun()
 
-        with st.container(border=True):
-            a, b, c = st.columns(3)
+        summary_a, summary_b, summary_c = st.columns(3)
+        summary_a.metric("Research Score", f"{selected['score']:.1f}/100")
+        summary_b.metric("Historical Return", f"{selected['momentum_return']:+.2f}%")
+        summary_c.metric("Annualized Volatility", f"{selected['volatility']:.2f}%")
 
-            a.metric(
-                "Momentum Score",
-                selected["momentum_score"],
+        st.caption(
+            "Historical technical measurements, not investment recommendations or forecasts."
+        )
+
+        st.markdown(
+            "### :primary[:material/insights:] Investigation Workspace"
+        )
+
+        activity_tab, advanced_tab = st.tabs(
+            ["Activity & Evidence", "Advanced Research"]
+        )
+
+        with activity_tab:
+            render_market_activity(
+                ranked_tickers=tuple(
+                    item["ticker"]
+                    for item in rankings[:5]
+                ),
+                selected_ticker=selected_ticker,
             )
 
-            b.metric(
-                "Trend Score",
-                selected["trend_score"],
-            )
-
-            c.metric(
-                "Risk Score",
-                selected["risk_score"],
-            )
-
-            st.markdown("**Underlying Market Measurements**")
-
-            left, right = st.columns(2)
-
-            with left:
-                st.metric(
-                    "Recent Historical Return",
-                    f"{selected['momentum_return']:+.2f}%",
-                )
-
-                st.metric(
-                    "Moving Average Distance",
-                    f"{selected['trend_distance']:+.2f}%",
-                )
-
-                st.metric(
-                    "Latest Recorded Price",
-                    f"${selected['price']:,.2f}",
-                )
-
-            with right:
-                st.metric(
-                    "Annualized Volatility",
-                    f"{selected['volatility']:.2f}%",
-                )
-
-                st.metric(
-                    "Average Daily Volume",
-                    f"{selected['average_volume']:,.0f}",
-                )
-
-                st.metric(
-                    "Overall Research Score",
-                    f"{selected['score']:.1f}/100",
-                )
-
-            st.caption(
-                f"Latest market data: {selected['data_as_of']}"
-            )
-
+        with advanced_tab:
             st.markdown(
-                "#### :primary[:material/query_stats:] "
-                "Why This Stock Ranks Here"
+                "#### :primary[:material/analytics:] Technical Research Details"
             )
+            with st.container(border=True):
+                a, b, c = st.columns(3)
 
-            weights = {
-                "5 Days": (0.55, 0.30, 0.15),
-                "1 Month": (0.45, 0.40, 0.15),
-                "1 Year": (0.35, 0.45, 0.20),
-            }[horizon]
+                a.metric(
+                    "Momentum Score",
+                    selected["momentum_score"],
+                )
 
-            factors = [
-                ("Momentum", selected["momentum_score"]),
-                ("Trend", selected["trend_score"]),
-                ("Lower-volatility component", selected["risk_score"]),
-            ]
+                b.metric(
+                    "Trend Score",
+                    selected["trend_score"],
+                )
 
-            breakdown = pd.DataFrame(
-                [
-                    {
-                        "Factor": name,
-                        "Factor Score": score,
-                        "Weight": f"{weight:.0%}",
-                        "Contribution": round(score * weight, 2),
-                    }
-                    for (name, score), weight in zip(
+                c.metric(
+                    "Risk Score",
+                    selected["risk_score"],
+                )
+
+                st.markdown("**Underlying Market Measurements**")
+
+                left, right = st.columns(2)
+
+                with left:
+                    st.metric(
+                        "Recent Historical Return",
+                        f"{selected['momentum_return']:+.2f}%",
+                    )
+
+                    st.metric(
+                        "Moving Average Distance",
+                        f"{selected['trend_distance']:+.2f}%",
+                    )
+
+                    st.metric(
+                        "Latest Recorded Price",
+                        f"${selected['price']:,.2f}",
+                    )
+
+                with right:
+                    st.metric(
+                        "Annualized Volatility",
+                        f"{selected['volatility']:.2f}%",
+                    )
+
+                    st.metric(
+                        "Average Daily Volume",
+                        f"{selected['average_volume']:,.0f}",
+                    )
+
+                    st.metric(
+                        "Overall Research Score",
+                        f"{selected['score']:.1f}/100",
+                    )
+
+                st.caption(
+                    f"Latest market data: {selected['data_as_of']}"
+                )
+
+                st.markdown(
+                    "#### :primary[:material/query_stats:] "
+                    "Why This Stock Ranks Here"
+                )
+
+                weights = {
+                    "5 Days": (0.55, 0.30, 0.15),
+                    "1 Month": (0.45, 0.40, 0.15),
+                    "1 Year": (0.35, 0.45, 0.20),
+                }[horizon]
+
+                factors = [
+                    ("Momentum", selected["momentum_score"]),
+                    ("Trend", selected["trend_score"]),
+                    ("Lower-volatility component", selected["risk_score"]),
+                ]
+
+                breakdown = pd.DataFrame(
+                    [
+                        {
+                            "Factor": name,
+                            "Factor Score": score,
+                            "Weight": f"{weight:.0%}",
+                            "Contribution": round(score * weight, 2),
+                        }
+                        for (name, score), weight in zip(
+                            factors,
+                            weights,
+                            strict=True,
+                        )
+                    ]
+                )
+
+                st.dataframe(
+                    breakdown,
+                    hide_index=True,
+                    width="stretch",
+                    column_config={
+                        "Factor Score": st.column_config.NumberColumn(
+                            "Factor Score",
+                            format="%.1f",
+                        ),
+                        "Contribution": st.column_config.NumberColumn(
+                            "Points Added",
+                            format="%.2f",
+                        ),
+                    },
+                )
+
+                calculated = sum(
+                    score * weight
+                    for (_, score), weight in zip(
                         factors,
                         weights,
                         strict=True,
                     )
-                ]
-            )
-
-            st.dataframe(
-                breakdown,
-                hide_index=True,
-                width="stretch",
-                column_config={
-                    "Factor Score": st.column_config.NumberColumn(
-                        "Factor Score",
-                        format="%.1f",
-                    ),
-                    "Contribution": st.column_config.NumberColumn(
-                        "Points Added",
-                        format="%.2f",
-                    ),
-                },
-            )
-
-            calculated = sum(
-                score * weight
-                for (_, score), weight in zip(
-                    factors,
-                    weights,
-                    strict=True,
-                )
-            )
-
-            st.caption(
-                f"Weighted contribution: {calculated:.2f}/100. "
-                f"Published research score: "
-                f"{selected['score']:.1f}/100. "
-                "Small differences may reflect rounding."
-            )
-
-            st.markdown(
-                "#### :primary[:material/shield:] "
-                "Research Cautions"
-            )
-
-            cautions = []
-
-            if selected["volatility"] >= 100:
-                cautions.append(
-                    "Annualized historical volatility is at "
-                    "least 100%, indicating substantial "
-                    "observed price variability."
                 )
 
-            if selected["price"] < 5:
-                cautions.append(
-                    "The latest recorded share price is below "
-                    "$5. Investigate price and trading risks."
+                st.caption(
+                    f"Weighted contribution: {calculated:.2f}/100. "
+                    f"Published research score: "
+                    f"{selected['score']:.1f}/100. "
+                    "Small differences may reflect rounding."
                 )
 
-            approximate_dollar_volume = (
-                selected["price"]
-                * selected["average_volume"]
-            )
-
-            if approximate_dollar_volume < 1_000_000:
-                cautions.append(
-                    "Approximate daily dollar trading volume "
-                    f"is ${approximate_dollar_volume:,.0f}. "
-                    "This is a rough liquidity screening proxy, "
-                    "not an observed daily dollar-volume series."
+                st.markdown(
+                    "#### :primary[:material/shield:] "
+                    "Research Cautions"
                 )
 
-            if cautions:
-                st.warning(
-                    "Screening considerations based on "
-                    "illustrative thresholds:\n\n"
-                    + "\n\n".join(
-                        f"{index}. {note}"
-                        for index, note in enumerate(
-                            cautions,
-                            start=1,
+                cautions = []
+
+                if selected["volatility"] >= 100:
+                    cautions.append(
+                        "Annualized historical volatility is at "
+                        "least 100%, indicating substantial "
+                        "observed price variability."
+                    )
+
+                if selected["price"] < 5:
+                    cautions.append(
+                        "The latest recorded share price is below "
+                        "$5. Investigate price and trading risks."
+                    )
+
+                approximate_dollar_volume = (
+                    selected["price"]
+                    * selected["average_volume"]
+                )
+
+                if approximate_dollar_volume < 1_000_000:
+                    cautions.append(
+                        "Approximate daily dollar trading volume "
+                        f"is ${approximate_dollar_volume:,.0f}. "
+                        "This is a rough liquidity screening proxy, "
+                        "not an observed daily dollar-volume series."
+                    )
+
+                if cautions:
+                    st.warning(
+                        "Screening considerations based on "
+                        "illustrative thresholds:\n\n"
+                        + "\n\n".join(
+                            f"{index}. {note}"
+                            for index, note in enumerate(
+                                cautions,
+                                start=1,
+                            )
                         )
                     )
-                )
-            else:
+                else:
+                    st.caption(
+                        "No caution thresholds triggered by "
+                        "this limited screen. Other material "
+                        "investment risks may still exist."
+                    )
+
                 st.caption(
-                    "No caution thresholds triggered by "
-                    "this limited screen. Other material "
-                    "investment risks may still exist."
+                    "A high technical score is not a buy signal "
+                    "or a validated forecast. The risk component "
+                    "measures volatility only."
                 )
 
-            st.caption(
-                "A high technical score is not a buy signal "
-                "or a validated forecast. The risk component "
-                "measures volatility only."
-            )
-
-            st.info(
-                "These scores summarize historical momentum, "
-                "trend, and volatility characteristics. "
-                "They have not yet been validated as signals "
-                "that predict future returns."
-            )
-
-
-        render_market_activity(
-            ranked_tickers=tuple(
-                item["ticker"]
-                for item in rankings[:5]
-            ),
-            selected_ticker=selected_ticker,
-        )
+                st.info(
+                    "These scores summarize historical momentum, "
+                    "trend, and volatility characteristics. "
+                    "They have not yet been validated as signals "
+                    "that predict future returns."
+                )
 
 st.divider()
 
 st.caption(
-    "Technical research rankings are experimental. "
-    "A higher score does not guarantee a higher future return. "
-    "Financial fundamentals, news catalysts, liquidity checks, "
-    "and historical validation will be added in later phases."
+    "Technical rankings describe historical price characteristics, not future returns. "
+    "Market activity, news, and SEC filings provide research context, "
+    "not proof of causation or investment recommendations."
 )
