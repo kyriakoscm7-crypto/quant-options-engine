@@ -1,13 +1,45 @@
-# Quant Intelligence — Quant Options Engine
+# Quant Intelligence
 
-[![Quant Options Engine CI](https://github.com/kyriakoscm7-crypto/quant-options-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/kyriakoscm7-crypto/quant-options-engine/actions/workflows/ci.yml)
+**An interactive quantitative finance and market research platform built with Python.**
 
-**A Python-based quantitative options analytics platform featuring Black-Scholes-Merton pricing, analytical Greeks, implied volatility estimation, real market-data integration, high-performance NumPy vectorization, portfolio risk analytics, and market scenario analysis.**
+Quant Intelligence combines stock research, options analytics, risk intelligence, and interactive financial education in one platform. It connects quantitative models with practical explanations, helping users investigate financial markets and understand the assumptions behind their results.
 
-Built with a modular architecture, a FastAPI REST API, interactive Plotly volatility visualizations, automated testing, Docker, and GitHub Actions continuous integration.
+**[Live Application](https://quant-intelligence-km.streamlit.app/)** | **[GitHub Repository](https://github.com/kyriakoscm7-crypto/quant-options-engine)**
 
-The project emphasizes numerical correctness, reproducible performance measurements, and automated software quality assurance.
+[![CI](https://github.com/kyriakoscm7-crypto/quant-options-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/kyriakoscm7-crypto/quant-options-engine/actions/workflows/ci.yml)
 
+## Platform Features
+
+| Feature | Description |
+|---|---|
+| **Stock Explorer** | Historical stock charts, market comparisons, technical indicators, and company research |
+| **Risk Intelligence** | Historical volatility, drawdown, Sharpe ratio, beta, and benchmark comparisons |
+| **Options Analytics** | Black-Scholes-Merton pricing, Greeks, implied volatility, and scenario analysis |
+| **Quant Learn** | Interactive financial education, valuation scenarios, diversification stress tests, and guided calculations |
+| **Quant Discovery** | Company data pipelines, screening infrastructure, and experimental research workflows |
+| **Portfolio Research** | Portfolio valuation, risk analysis, and strategy evaluation tools |
+
+## Engineering Highlights
+
+- **Quantitative finance:** Vectorized NumPy pricing models, analytical Greeks, volatility analysis, and portfolio scenarios.
+- **Full-stack development:** Streamlit application and modular FastAPI backend.
+- **Data engineering:** Market-data integration, validation, caching, and research pipelines.
+- **User experience:** Custom dark-mode interface, interactive visualizations, and guided interpretation.
+- **Quality assurance:** Automated pytest suite, GitHub Actions, Docker, and performance benchmarking.
+
+**Latest local validation: 1,709 automated tests passed (October 31, 2026).**
+
+## Getting Started
+
+Clone the repository, create a Python virtual environment, install dependencies from `requirements.txt`, and run `streamlit run dashboard/main.py`.
+
+Run the test suite with `.venv/bin/python -m pytest -q` after configuring the environment.
+
+## Technical Documentation and Benchmarks
+
+The original quantitative options engine documentation follows, including benchmark methodology, API examples, architecture, installation details, and model limitations. Benchmark measurements are historical local results and may differ across environments.
+
+---
 ## Project Highlights
 
 | Metric | Verified Local Result |
@@ -23,7 +55,7 @@ The project emphasizes numerical correctness, reproducible performance measureme
 | Portfolio Valuation Throughput | **297,201 positions/second** |
 | Scenario Analysis Throughput | **1,408,945 scenario-position combinations/second** |
 | Largest Scenario Benchmark | **1,000,000 combinations in 0.710 seconds** |
-| Automated Tests | **638 passing** |
+| Automated Tests | **1,709 passing (latest local full suite)** |
 | Overall Code Coverage | **93%** |
 | FastAPI Coverage | **99%** |
 | Vectorized Pricing and Greeks Module Coverage | **100%** |
@@ -101,7 +133,7 @@ an interactive stock, options, and quantitative research platform.
 | Batch ranking pipeline | Implemented |
 | Cached rankings connected to dashboard | Planned |
 | Automated ranking refresh | Planned |
-| Public deployment | Planned |
+| Public deployment | Available on Streamlit Community Cloud |
 
 The local development database contained 359 company records,
 with 237 companies ranked by the batch pipeline.

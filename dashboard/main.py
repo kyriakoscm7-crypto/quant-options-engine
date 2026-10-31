@@ -47,7 +47,9 @@ from app.market_data.stock_history import (  # noqa: E402
 )
 from app.pricing.black_scholes import BlackScholes  # noqa: E402
 from dashboard.forecast_intelligence_page import render_forecast_intelligence  # noqa: E402
+from dashboard.learn_page import render_learn_page  # noqa: E402
 from dashboard.market_scanner_page import render_market_scanner  # noqa: E402
+from dashboard.navigation_ux import render_navigation_ux  # noqa: E402
 from dashboard.portfolio_page import render_portfolio_manager  # noqa: E402
 from dashboard.premium_home import render_premium_home  # noqa: E402
 
@@ -59,7 +61,7 @@ st.set_page_config(
     page_title="Quant Intelligence | Quant Options Engine",
     page_icon=str(Path(__file__).parent / "assets" / "qi_favicon.png"),
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="auto",
 )
 
 
@@ -563,6 +565,19 @@ with st.sidebar:
     if "selected_page" not in st.session_state:
         st.session_state["selected_page"] = "🏠 Overview"
 
+    # Handle clickable Intelligence Network links without changing route IDs.
+    # The URL key is consumed once, so it cannot override later sidebar clicks.
+    _qi_orbit_routes = {
+        "discover": "💎 Quant Discovery",
+        "research": "🔎 Stock Explorer",
+        "learn": "📚 Learn",
+        "analyze": "💰 Options Lab",
+    }
+    _qi_orbit_destination = _qi_orbit_routes.get(st.query_params.get("qi_go", ""))
+    if _qi_orbit_destination:
+        st.session_state["_navigation_request"] = _qi_orbit_destination
+        del st.query_params["qi_go"]
+
     requested_page = st.session_state.pop(
         "_navigation_request", None
     )
@@ -602,7 +617,13 @@ with st.sidebar:
                 type="primary" if is_active else "secondary",
                 use_container_width=True,
             ):
+                # QI SIDEBAR RESET V1
                 st.session_state["selected_page"] = landing
+                st.session_state["qi_learn_pathway"] = None
+                st.session_state["qi_learn_lesson"] = None
+                st.session_state["_qi_sidebar_reset_count"] = (
+                    st.session_state.get("_qi_sidebar_reset_count", 0) + 1
+                )
                 st.rerun()
 
             if is_active and tools:
@@ -618,9 +639,15 @@ with st.sidebar:
                             use_container_width=True,
                         ):
                             st.session_state["selected_page"] = route
+                            st.session_state["qi_learn_pathway"] = None
+                            st.session_state["qi_learn_lesson"] = None
+                            st.session_state["_qi_sidebar_reset_count"] = (
+                                st.session_state.get("_qi_sidebar_reset_count", 0) + 1
+                            )
                             st.rerun()
 
     page = st.session_state["selected_page"]
+    render_navigation_ux()
 
     st.divider()
     st.caption("PLATFORM")
@@ -711,47 +738,8 @@ if page == "🏠 Overview":
 
 
 elif page == "📚 Learn":
-
-    st.title(":primary[:material/school:] Learn the Market")
-    st.caption(
-        "Build financial understanding before making decisions."
-    )
-
-    st.markdown("### Your Learning Journey")
-
-    with st.expander("01 · Stocks and ETFs", expanded=True):
-        st.write(
-            "A stock represents ownership in a company. "
-            "An ETF holds a collection of investments. "
-            "Both involve risk, and diversification "
-            "does not eliminate potential losses."
-        )
-
-    with st.expander("02 · Risk and Volatility"):
-        st.write(
-            "Volatility describes how much returns fluctuate. "
-            "Drawdown measures declines from previous peaks. "
-            "Understanding both can help you evaluate risk."
-        )
-
-    with st.expander("03 · Options and Greeks"):
-        st.write(
-            "Options are contracts with values affected by "
-            "stock prices, time, volatility, and interest rates. "
-            "Greeks measure sensitivity to those factors."
-        )
-
-    st.info(
-        "Interactive lessons, quizzes, and guided simulations "
-        "will be developed in future milestones."
-    )
-
-    if st.button("Explore Stock Research", type="primary"):
-        st.session_state[
-            "_navigation_request"
-        ] = "🔎 Stock Explorer"
-        st.rerun()
-
+    with st.container(key="qi_learn_page"):
+        render_learn_page()
 
 elif page == "🔎 Stock Explorer":
 
