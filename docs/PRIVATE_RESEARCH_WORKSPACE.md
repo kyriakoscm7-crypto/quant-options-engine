@@ -34,6 +34,12 @@ It is **not** a self-hosted login system or a grant of data rights.
   (beta, volatility, Sharpe, drawdown, technical scoring, screening).
 - Options, Greeks, hypothetical scenarios and Quant Learn remain fully
   interactive and usable with manually supplied illustrative inputs.
+- Portfolio Manager now includes an experimental Monte Carlo risk panel:
+  correlated synthetic return paths, adjustable time horizon, illustrative
+  Value-at-Risk and Expected Shortfall, and a probability-of-loss chart.
+  The model assumes rebalanced weights and multivariate normal log returns,
+  using only fictional market histories. It is not a prediction of actual
+  securities and is not designed for brokerage-account values.
 - Existing real-data development pipelines remain in the repository for
   appropriately authorized experimentation. Private hosting does not
   authorize redistribution, derived-output display or all uses of yfinance.
