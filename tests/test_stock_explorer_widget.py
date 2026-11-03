@@ -139,15 +139,19 @@ def test_top_right_preferences_are_session_local_and_resettable():
     assert app.session_state["qi_external_charts"] is False
     assert app.session_state["qi_display_density"] == "Comfortable"
     assert app.session_state["qi_show_research_notes"] is True
+    assert app.session_state["qi_reduce_motion"] is False
 
     app.selectbox(key="qi_display_density").set_value("Compact").run()
     app.toggle(key="qi_show_research_notes").set_value(False).run()
+    app.toggle(key="qi_reduce_motion").set_value(True).run()
     assert not app.exception
     assert app.session_state["qi_display_density"] == "Compact"
     assert app.session_state["qi_show_research_notes"] is False
+    assert app.session_state["qi_reduce_motion"] is True
 
     app.button(key="qi_reset_workspace_preferences").click().run()
     assert not app.exception
     assert app.session_state["qi_display_density"] == "Comfortable"
     assert app.session_state["qi_show_research_notes"] is True
+    assert app.session_state["qi_reduce_motion"] is False
     assert app.session_state["qi_external_charts"] is False
