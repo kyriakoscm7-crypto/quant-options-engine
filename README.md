@@ -2,7 +2,7 @@
 
 **An interactive quantitative finance and market research platform built with Python.**
 
-> **Public recruiter showcase (November 2026):** The Streamlit research tools run in **synthetic offline demo mode by default**. Stock Explorer, Quant Discovery, Market Scanner, Portfolio Manager and Forecast Intelligence remain interactive, with fictional companies, simulated OHLCV series, research scores, screening filters, portfolio analysis and forecasting examples. These are **not real exchange prices, historical performance, market signals or recommendations**. Quant Learn and the self-contained options/Greeks/scenario calculators remain available. To prevent unverified third-party data redistribution, the original public-market feeds remain disabled unless the operator has actually cleared the rights and explicitly sets `QI_MARKET_DATA_RIGHTS_CONFIRMED=true`. This flag never grants a licence. See `docs/PUBLIC_RELEASE_SAFETY_CHECKLIST.md` and the in-app draft Legal & Privacy pages; neither constitutes legal clearance.
+> **Public research showcase (November 2026):** Stock Explorer displays real-stock charts through the official, display-only TradingView widget with intact attribution. Data can be delayed or unavailable by exchange; no chart data enters the backend, downloads or custom models. Discovery, Scanner, Portfolio and Forecast remain interactive **fictional simulations**, independent of chart selection. Options/Greeks/scenario calculators use hypothetical inputs. The legacy `QI_MARKET_DATA_RIGHTS_CONFIRMED` flag no longer unlocks public analytics: a separately reviewed provider integration with explicit public-display and derived-data rights is required. Legal / Settings / About contains draft policies and an external-chart loading control; essential notices stay visible. See [provider review](docs/TRADINGVIEW_AND_PROVIDER_RIGHTS.md) and [release checklist](docs/PUBLIC_RELEASE_SAFETY_CHECKLIST.md). This branch is not legal clearance or a deployed release.
 
 
 
@@ -16,12 +16,12 @@ Quant Intelligence combines stock research, options analytics, risk intelligence
 
 | Feature | Description |
 |---|---|
-| **Stock Explorer** | Historical stock charts, market comparisons, technical indicators, and company research |
-| **Risk Intelligence** | Historical volatility, drawdown, Sharpe ratio, beta, and benchmark comparisons |
+| **Stock Explorer** | Official TradingView real-stock charts; delayed/restricted where required |
+| **Risk Intelligence** | Experimental volatility, drawdown and benchmark calculations on fictional inputs |
 | **Options Analytics** | Black-Scholes-Merton pricing, Greeks, implied volatility, and scenario analysis |
 | **Quant Learn** | Interactive financial education, valuation scenarios, diversification stress tests, and guided calculations |
-| **Quant Discovery** | Company data pipelines, screening infrastructure, and experimental research workflows |
-| **Portfolio Research** | Portfolio valuation, risk analysis, and strategy evaluation tools |
+| **Quant Discovery** | Fictional-universe screening and experimental scoring simulations |
+| **Portfolio Research** | Simulated fictional holdings, risk and strategy evaluation tools |
 
 ## Engineering Highlights
 

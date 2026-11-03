@@ -6,7 +6,6 @@ professional legal review or required data licensing.
 
 import streamlit as st
 
-
 DISCLOSURE = """
 ### Financial research disclosure
 
@@ -63,6 +62,11 @@ as your sole basis for financial decisions.
 attempt unauthorized access, submit malicious content, or use third-party
 data in violation of applicable rights or restrictions.
 
+**TradingView charts.** External charts are display-only widgets governed by
+[TradingView terms](https://www.tradingview.com/policies/). Attribution must remain
+visible. Do not scrape, extract, export or repurpose widget data for models,
+trading systems or redistribution. Availability and delays vary by exchange.
+
 **Third-party material.** Financial data, articles and external
 websites may be subject to separate licences and terms. Third-party
 trademarks belong to their owners. References do not imply endorsement.
@@ -102,6 +106,15 @@ providers may process connection metadata, IP addresses, cookies,
 security logs or usage diagnostics under their own terms and notices.
 The operator must verify actual retention periods and subprocessors.
 
+**External charts.** When external charts are enabled (the default), your browser
+connects directly to TradingView. Its widget FAQ states that widgets process the
+embedding page URL, widget type, displayed symbol and IP address, and do not set
+cookies. See [TradingView's widget FAQ](https://www.tradingview.com/widget-docs/faq/general/)
+and [privacy policy](https://www.tradingview.com/privacy-policy/).
+Disable loading in Legal / Settings / About before visiting Stock Explorer if
+preferred. This switch prevents future chart loads; it cannot undo prior requests.
+The app does not receive chart prices or use them in its custom analytics.
+
 **Purposes.** Inputs are processed to display calculations and
 research outputs; technical information may be processed for service
 delivery, security and diagnostics. No sale of personal data is intended.
@@ -126,7 +139,7 @@ features are introduced.
 
 
 def render_legal_pages() -> None:
-    st.title("Disclosures, Terms & Privacy")
+    st.title("Legal & About")
     st.caption("Quant Intelligence / research and educational platform")
     disclosure, terms, privacy = st.tabs(
         ["Financial disclosure", "Terms of use", "Privacy"]

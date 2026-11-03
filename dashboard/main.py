@@ -554,10 +554,9 @@ with st.sidebar:
             ("Strategy Research", "🧠 Strategy Research"),
         ]),
         ("Learn", "📚 Learn", []),
-        ("Legal", "📄 Legal & Privacy", []),
     ]
 
-    route_groups = {}
+    route_groups = {"📄 Legal & Privacy": "Legal"}
 
     for group, landing, tools in sections:
         route_groups[landing] = group
@@ -654,6 +653,12 @@ with st.sidebar:
     render_navigation_ux()
 
     st.divider()
+    with st.popover("Legal / Settings / About", use_container_width=True):
+        st.caption("Quant Intelligence · Experimental research and education")
+        st.toggle("Load external TradingView charts", value=True, key="qi_external_charts")
+        if st.button("Disclosures, Terms, Privacy & About"):
+            st.session_state["_navigation_request"] = "📄 Legal & Privacy"
+            st.rerun()
     st.caption("PLATFORM")
     st.caption("Quant Intelligence · Research Build")
     st.caption(
@@ -672,6 +677,12 @@ st.caption(
     "Research and education only · No individualized investment advice · "
     "Models and data may be incomplete or inaccurate."
 )
+
+if page == "🔎 Stock Explorer":
+    from dashboard.stock_explorer_widget import render_stock_explorer
+
+    render_stock_explorer()
+    st.stop()
 
 if public_market_data_route_blocked(page):
     # Public visitors see working model demonstrations with strictly
@@ -751,12 +762,10 @@ if page in [
 
 
 if page == "🏠 Overview":
-    if public_market_data_route_blocked("🔎 Stock Explorer"):
-        st.info(
-            "Public research showcase: interactive market research uses "
-            "fictional, locally generated data. No real prices, stock "
-            "forecasts, or market recommendations are displayed in demo mode."
-        )
+    st.caption(
+        "Real-stock charts in Stock Explorer are provided by TradingView. "
+        "Discovery, scanner, portfolio and forecast models use labeled fictional simulations."
+    )
     render_premium_home()
 
 

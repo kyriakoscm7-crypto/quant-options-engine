@@ -1,8 +1,7 @@
-"""Public data-rights guard and fictional showcase routing.
+"""Guard legacy public feeds until a separately licensed provider is integrated.
 
-Public research defaults to an interactive *offline synthetic demo*, not
-a blank page. Activating live feeds requires the operator to verify
-all licensing and other applicable permissions. A flag is not a licence.
+Stock Explorer is intercepted by the main router for a display-only widget.
+Other research routes use offline simulations, independent of legacy flags.
 """
 
 import os
@@ -17,9 +16,13 @@ MARKET_DATA_ROUTES = frozenset({
 
 
 def market_data_rights_confirmed() -> bool:
-    """True only when an operator explicitly opts in after rights review."""
+    """Legacy attestation only; it cannot enable public custom analytics.
+
+    Kept for compatibility with operator tooling. Provider approval requires
+    a separately reviewed integration, not an environment switch.
+    """
     return os.environ.get("QI_MARKET_DATA_RIGHTS_CONFIRMED", "").strip().lower() == "true"
 
 
 def public_market_data_route_blocked(route: str) -> bool:
-    return route in MARKET_DATA_ROUTES and not market_data_rights_confirmed()
+    return route in MARKET_DATA_ROUTES

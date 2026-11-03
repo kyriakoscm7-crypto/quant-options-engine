@@ -25,4 +25,4 @@ def test_explicit_enable_flag_only(monkeypatch):
     assert market_data_rights_confirmed() is False
     monkeypatch.setenv("QI_MARKET_DATA_RIGHTS_CONFIRMED", "true")
     assert market_data_rights_confirmed() is True
-    assert public_market_data_route_blocked("🔎 Stock Explorer") is False
+    assert public_market_data_route_blocked("🔎 Stock Explorer") is True
