@@ -2,7 +2,7 @@
 
 **An interactive quantitative finance and market research platform built with Python.**
 
-> **Public demo and market-data licensing (November 2026):** The public Streamlit interface ships with third-party market-data research pages paused by default until the operator verifies display and redistribution rights. Self-contained education, options calculations, Greeks and hypothetical scenarios remain accessible. This safeguard is controlled by `QI_MARKET_DATA_RIGHTS_CONFIRMED` (default off). The value `true` is an operator attestation **after** a licensing review, not a substitute for permission. No legal compliance or investment-adviser registration is implied. See `docs/PUBLIC_RELEASE_SAFETY_CHECKLIST.md` and the in-app Legal & Privacy section.
+> **Public recruiter showcase (November 2026):** The Streamlit research tools run in **synthetic offline demo mode by default**. Stock Explorer, Quant Discovery, Market Scanner, Portfolio Manager and Forecast Intelligence remain interactive, with fictional companies, simulated OHLCV series, research scores, screening filters, portfolio analysis and forecasting examples. These are **not real exchange prices, historical performance, market signals or recommendations**. Quant Learn and the self-contained options/Greeks/scenario calculators remain available. To prevent unverified third-party data redistribution, the original public-market feeds remain disabled unless the operator has actually cleared the rights and explicitly sets `QI_MARKET_DATA_RIGHTS_CONFIRMED=true`. This flag never grants a licence. See `docs/PUBLIC_RELEASE_SAFETY_CHECKLIST.md` and the in-app draft Legal & Privacy pages; neither constitutes legal clearance.
 
 
 
