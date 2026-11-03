@@ -1,8 +1,8 @@
-"""Public deployment guard for externally sourced market data.
+"""Public data-rights guard and fictional showcase routing.
 
-The feature flag is deliberately OFF by default. Turning it on does not
-grant any data rights: the operator must independently verify licensing
-for every data source and applicable redistribution/use conditions.
+Public research defaults to an interactive *offline synthetic demo*, not
+a blank page. Activating live feeds requires the operator to verify
+all licensing and other applicable permissions. A flag is not a licence.
 """
 
 import os
