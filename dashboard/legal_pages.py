@@ -1,4 +1,4 @@
-"""Public-facing research disclosures and draft website policies.
+"""Private research workspace disclosures and draft website policies.
 
 These are operational transparency documents, not a substitute for
 professional legal review or required data licensing.
@@ -40,7 +40,7 @@ advice tailored to your circumstances.
 TERMS = """
 ### Terms of use
 
-**Status:** Public beta. Last revised November 3, 2026.
+**Status:** Private research workspace. Last revised November 3, 2026.
 
 By using this site, you agree to use it for lawful, personal research
 and educational purposes only. If you disagree with these terms,
@@ -91,10 +91,11 @@ continue to apply regardless of any disclaimer.
 PRIVACY = """
 ### Privacy notice
 
-**Status:** Public beta. Last revised November 3, 2026.
+**Status:** Private research workspace. Last revised November 3, 2026.
 
-This notice describes the educational app in this branch. It does not certify
-the practices of an earlier deployed version. Hosting configuration and actual
+This notice describes this private educational research build. Access restriction
+is configured in Streamlit Community Cloud, not enforced by this page.
+It does not certify the practices of an earlier deployed version. Hosting configuration and actual
 retention still require operator verification before release.
 
 **Information entered into the app.** Visitors choose stocks for external
@@ -117,13 +118,13 @@ Do not assume the repository setting disables host telemetry. See also
 Actual host settings, log retention and subprocessors still require verification.
 
 **External charts.** Charts are off initially. If you choose **Load real-stock
-chart** or enable chart loading in Legal / Settings / About, your browser
+chart** or enable chart loading in the top-right Settings menu, your browser
 connects directly to TradingView. Its widget FAQ states that widgets process the
 embedding page URL, widget type, displayed symbol and IP address, and do not set
 cookies. See [TradingView's widget FAQ](https://www.tradingview.com/widget-docs/faq/general/)
 and [privacy policy](https://www.tradingview.com/privacy-policy/).
 This choice lasts for the session. You can disable further chart loads in
-Legal / Settings / About. This switch prevents future chart loads; it cannot undo prior requests.
+Settings. This switch prevents future chart loads; it cannot undo prior requests.
 The app does not receive chart prices or use them in its custom analytics.
 
 **Session controls.** The chart-loading choice resets with a new session. Closing a
@@ -155,8 +156,8 @@ features are introduced.
 
 
 def render_legal_pages() -> None:
-    st.title("Legal & About")
-    st.caption("Quant Intelligence / independent educational software project")
+    st.title("About, Privacy & Legal")
+    st.caption("Quant Intelligence / restricted, independent engineering research workspace")
     st.markdown(
         "Developed by **Kyriakos Margaritis** to teach financial concepts and "
         "demonstrate quantitative software engineering. Real-stock charts are "
@@ -173,8 +174,14 @@ def render_legal_pages() -> None:
         st.markdown(TERMS)
     with privacy:
         st.markdown(PRIVACY)
-    st.warning(
-        "Operator review pending: verify market-data licensing, hosting "
-        "and privacy practices, and have "
-        "the terms reviewed for applicable law."
+    st.info(
+        "Your viewer list and sign-in requirements are administered in "
+        "Streamlit Community Cloud → Sharing. This application does not "
+        "implement its own account management or revoke hosting access. "
+        "Keep the list restricted to your approved collaborators."
+    )
+    st.caption(
+        "Outstanding operator review: verify hosting terms, market-data "
+        "permissions and actual privacy practices. These disclosures "
+        "are not a substitute for applicable legal advice."
     )
