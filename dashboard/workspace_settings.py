@@ -84,7 +84,7 @@ def render_workspace_settings() -> None:
                 st.toggle(
                     "Automatically load TradingView panels",
                     key="qi_external_charts",
-                    help="Opt in for this session. Stock Explorer then opens charts and research automatically.",
+                    help="Opt in for this session. Stock Explorer then opens its chart and all research tab panels automatically.",
                 )
                 st.caption(
                     "TradingView receives connection metadata including IP "

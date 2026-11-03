@@ -117,7 +117,7 @@ Do not assume the repository setting disables host telemetry. See also
 [Streamlit privacy information](https://docs.streamlit.io/develop/concepts/configuration/options#telemetry).
 Actual host settings, log retention and subprocessors still require verification.
 
-**External research panels.** Charts, financials, company profiles, technical ratings and news panels are off initially. If you allow automatic panels in Stock Explorer or the top-right Settings menu, charts and company research load automatically when you enter Stock Explorer during that session. Your browser
+**External research panels.** Charts, financials, company profiles, technical ratings and news panels are off initially. If you allow automatic panels in Stock Explorer or the top-right Settings menu, the chart and company research, including panels in unselected tabs, load automatically when you enter Stock Explorer during that session. Your browser
 connects directly to TradingView. Its widget FAQ states that widgets process the
 embedding page URL, widget type, displayed symbol and IP address, and do not set
 cookies. See [TradingView's widget FAQ](https://www.tradingview.com/widget-docs/faq/general/)

@@ -70,6 +70,14 @@ chart and research loading on entry/return. No Load chart button remains.
 Simple company labels retain exchange-qualified internal symbols. Explicit
 lookback controls set the provider range separately from candle interval.
 Quote overview and chart remain visible above selected research/notes; the
-initial view also opens financials and company background. See STOCK_EXPLORER.md
+research tabs include financials, company background, technicals and news. See STOCK_EXPLORER.md
 for the range mapping, privacy assessment and data-rights limits. Sharing and
 hosting configuration have not changed.
+
+
+The original-layout follow-up restores the earlier Stock Explorer control row and
+Performance / Risk & Scores / News / Historical Data tabs, with an additional
+notes tab. All research-tab panels load after the same session consent. See
+ORIGINAL_EXPERIENCE_PARITY.md for preserved features, data limitations and hosting
+checks that still require operator verification. No repository edit claims that
+production access or all applicable legal requirements have been verified.

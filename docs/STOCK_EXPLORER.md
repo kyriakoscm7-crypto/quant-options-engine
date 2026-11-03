@@ -52,7 +52,7 @@ PR #6 must remain draft; merge/deployment require explicit approval.
 
 Stock Explorer now focuses exclusively on actual symbols: chart, symbol overview,
 financials, company profile, technical analysis and related news in official
-TradingView display-only panels. After opt-in, the quote overview and chart stay open. Chart/Overview also open financials and company background; other views select a research panel beneath the chart. Arbitrary exchange-qualified symbols are supported, subject to provider
+TradingView display-only panels. After opt-in, the quote overview and chart stay open. Original-style Performance, Risk & Scores, News and Historical Data tabs organize the provider panels and explicit data limitations; My analysis holds session notes. Arbitrary exchange-qualified symbols are supported, subject to provider
 availability. Missing data never falls back to synthetic numbers. These panels
 follow TradingView's documented multi-widget stock-page integration:
 https://www.tradingview.com/widget-docs/tutorials/iframe/build-page/widget-integration/
@@ -127,3 +127,16 @@ This is an engineering safeguard, not a determination of legal compliance.
 No licensed data feed has been added: custom real-stock KPI calculations,
 historical exports, forecasts and app-ingested news still require separately
 verified data/content rights. Attribution and official provider panels remain.
+
+
+## Original-layout follow-up
+
+Restored the original company/period/chart-type control row, default one-year
+lookback and Line/Candlestick options, plus the original Performance, Risk &
+Scores, News and Historical Data tab structure. All provider tab panels load
+after the same disclosed session opt-in, including unselected tabs; Settings
+withdrawal removes all six embeds. Research notes are always available in their
+own tab. No price-data CSV export is added. See ORIGINAL_EXPERIENCE_PARITY.md for
+the feature-by-feature source comparison and external release checks. Exact
+current live-site parity was not verified because the browser's approval gate
+blocked the redirect to the hosting origin.

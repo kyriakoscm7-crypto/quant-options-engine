@@ -26,7 +26,7 @@ def test_official_embed_preserves_attribution_and_configuration(symbol):
     assert 'fetch(' not in markup
 
 
-@pytest.mark.parametrize("symbol", ['AAPL', '</script>', 'NASDAQ:AAPL<script>', 'NASDAQ:AAPL"'])
+@pytest.mark.parametrize("symbol", ['AAPL', '</script>', 'NASDAQ:AAPL<script>', 'NASDAQ:AAPL"', 'N' * 25 + ':AAPL', 'NASDAQ:' + 'A' * 65])
 def test_symbol_injection_rejected(symbol):
     with pytest.raises(ValueError):
         chart_embed_html(symbol)
@@ -62,7 +62,7 @@ def test_main_public_routes_cannot_reenable_legacy_feeds(route, monkeypatch):
     app.run(timeout=45)
     assert not app.exception, [error.message for error in app.exception]
     if route == '🔎 Stock Explorer':
-        assert len(app.get('iframe')) == 4
+        assert len(app.get('iframe')) == 6
         assert not any('SYNTHETIC DEMO' in item.value for item in app.info)
     elif route != '📄 Legal & Privacy':
         assert any('SYNTHETIC DEMO' in item.value for item in app.info)
@@ -84,7 +84,7 @@ def test_compact_menu_opens_policies_and_can_disable_charts():
     assert len(app.get('iframe')) == 0
     app.toggle(key='qi_explorer_consent').set_value(True).run()
     assert not app.exception
-    assert len(app.get('iframe')) == 4
+    assert len(app.get('iframe')) == 6
     app.toggle(key='qi_external_charts').set_value(False).run()
     assert not app.exception
     assert len(app.get('iframe')) == 0
@@ -171,33 +171,38 @@ def test_real_stock_detail_widget_config(view):
         detail_embed_html('</script>', view)
 
 
-@pytest.mark.parametrize('view', ['Chart', 'Overview', 'Financials', 'Company', 'Technicals', 'News', 'My analysis'])
-def test_real_stock_views_never_request_backend_data(view, monkeypatch):
+@pytest.mark.parametrize("enabled", [False, True])
+def test_restored_research_tabs_never_request_backend_data(enabled, monkeypatch):
     import requests
+    from curl_cffi import requests as curl_requests
 
     def fail(*args, **kwargs):
-        raise AssertionError('Real-stock page attempted a backend data call')
+        raise AssertionError("Real-stock page attempted a backend data call")
 
-    monkeypatch.setattr(requests.Session, 'request', fail)
+    monkeypatch.setattr(requests.Session, "request", fail)
+    monkeypatch.setattr(curl_requests.Session, "request", fail)
     source = "from dashboard.stock_explorer_widget import render_stock_explorer\nrender_stock_explorer()"
     app = AppTest.from_string(source)
-    app.session_state['qi_external_charts'] = True
-    app.session_state['qi_stock_view'] = view
+    app.session_state["qi_external_charts"] = enabled
     app.run()
     assert not app.exception
-    assert len(app.get('iframe')) == (2 if view == 'My analysis' else 4 if view in ('Chart', 'Overview') else 3)
+    assert [tab.label for tab in app.tabs] == [
+        "Performance", "Risk & Scores", "News", "Historical Data", "My analysis",
+    ]
+    assert len(app.get("iframe")) == (6 if enabled else 0)
     assert len(app.metric) == 0
-    assert not any('FICTIONAL MODEL LAB' in caption.value for caption in app.caption)
+    assert not any("FICTIONAL MODEL LAB" in caption.value for caption in app.caption)
+    # Preserve a download of user-authored notes, never historical prices.
+    assert len(app.get("download_button")) == 1
 
 
 def test_notes_survive_view_change_and_remain_per_symbol():
     source = "from dashboard.stock_explorer_widget import render_stock_explorer\nrender_stock_explorer()"
     app = AppTest.from_string(source)
-    app.session_state['qi_stock_view'] = 'My analysis'
     app.run()
     app.text_area[0].set_value('My own thesis').run()
-    app.radio(key='qi_stock_view').set_value('Chart').run()
-    app.radio(key='qi_stock_view').set_value('My analysis').run()
+    app.selectbox(key='qi_stock_lookback').set_value('5Y').run()
+    app.selectbox(key='qi_stock_chart_type').set_value('Candlestick').run()
     assert app.text_area[0].value == 'My own thesis'
     app.selectbox[0].select('Microsoft · MSFT').run()
     assert app.text_area[0].value == ''
@@ -231,9 +236,9 @@ def test_session_opt_in_automatic_return_range_change_and_revoke():
     assert len(app.get("iframe")) == 0
     app.toggle(key="qi_explorer_consent").set_value(True).run()
     assert not app.exception
-    assert len(app.get("iframe")) == 4
+    assert len(app.get("iframe")) == 6
     assert not any(button.label == "Load real-stock chart" for button in app.button)
-    app.radio(key="qi_stock_lookback").set_value("1D").run()
+    app.selectbox(key="qi_stock_lookback").set_value("1D").run()
     app.selectbox[1].select("Microsoft · MSFT").run()
     assert not app.exception
     assert app.session_state["qi_stock_lookback"] == "1D"
@@ -241,7 +246,7 @@ def test_session_opt_in_automatic_return_range_change_and_revoke():
     app.run()
     app.session_state["selected_page"] = "🔎 Stock Explorer"
     app.run()
-    assert len(app.get("iframe")) == 4
+    assert len(app.get("iframe")) == 6
     app.toggle(key="qi_external_charts").set_value(False).run()
     assert len(app.get("iframe")) == 0
     assert app.toggle(key="qi_explorer_consent").value is False
@@ -249,3 +254,45 @@ def test_session_opt_in_automatic_return_range_change_and_revoke():
     app.button(key="qi_reset_workspace_preferences").click().run()
     assert not app.exception
     assert len(app.get("iframe")) == 0
+
+
+@pytest.mark.parametrize("chart_type,style", [("Line", "2"), ("Candlestick", "1")])
+def test_original_chart_types_use_official_display_styles(chart_type, style):
+    markup = chart_embed_html("NASDAQ:AAPL", "1Y", chart_type)
+    config = json.loads(re.search(r'async>\s*(\{.*?\})\s*</script>', markup, re.S)[1])
+    assert config["style"] == style
+    assert config["range"] == "12M"
+
+
+@pytest.mark.parametrize("incoming,expected", [
+    ("MSFT", "Microsoft · MSFT"), ("AMEX:SPY", "S&P 500 ETF · SPY"),
+    ("NYSE:KO", "Other exchange-qualified symbol"),
+])
+def test_existing_navigation_keeps_company_requests_aligned(incoming, expected):
+    app = AppTest.from_string("from dashboard.stock_explorer_widget import render_stock_explorer\nrender_stock_explorer()")
+    app.session_state["_research_ticker_request"] = incoming
+    app.run()
+    assert not app.exception
+    assert app.selectbox(key="qi_stock_company").value == expected
+    if incoming == "NYSE:KO":
+        assert app.text_input(key="qi_custom_stock_symbol").value == incoming
+
+
+def test_unknown_navigation_symbol_never_guesses_an_exchange():
+    app = AppTest.from_string("from dashboard.stock_explorer_widget import render_stock_explorer\nrender_stock_explorer()")
+    app.session_state["_research_ticker_request"] = "UNKNOWN"
+    app.session_state["qi_external_charts"] = True
+    app.run()
+    assert not app.exception
+    assert len(app.get("iframe")) == 0
+    assert app.warning
+
+
+def test_risk_shortcut_keeps_simulations_separate_from_real_company():
+    app = AppTest.from_file(str(Path(__file__).parents[1] / "dashboard/main.py"))
+    app.session_state["selected_page"] = "🔎 Stock Explorer"
+    app.run(timeout=45)
+    app.button(key="qi_stock_risk_lab").click().run()
+    assert not app.exception
+    assert app.session_state["selected_page"] == "🧪 Simulation Lab"
+    assert any("SYNTHETIC DEMO" in item.value for item in app.info)
