@@ -674,16 +674,11 @@ st.caption(
 )
 
 if public_market_data_route_blocked(page):
-    st.title("Market research temporarily unavailable")
-    st.warning(
-        "Live third-party market research is paused on this public app while "
-        "market-data permissions and display rights are being verified."
-    )
-    st.info(
-        "Quant Learn, theoretical options calculators, Greeks, and "
-        "hypothetical scenarios remain available. The pause does not imply "
-        "that this app is a registered investment adviser."
-    )
+    # Public visitors see working model demonstrations with strictly
+    # fictional data, never third-party historical or live market feeds.
+    from dashboard.demo_showcase import render_demo_research_page
+
+    render_demo_research_page(page)
     st.stop()
 
 if page in [
@@ -756,6 +751,12 @@ if page in [
 
 
 if page == "🏠 Overview":
+    if public_market_data_route_blocked("🔎 Stock Explorer"):
+        st.info(
+            "Public research showcase: interactive market research uses "
+            "fictional, locally generated data. No real prices, stock "
+            "forecasts, or market recommendations are displayed in demo mode."
+        )
     render_premium_home()
 
 
