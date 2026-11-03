@@ -604,15 +604,15 @@ def render_premium_home() -> None:
 
     first = st.columns(2, gap="large")
     with first[0]:
-        _workspace_card("radar", "Discover the market", "Spot unusual activity and investigate the events behind major moves.", "💎 Quant Discovery", "discover", "Open Discovery")
+        _workspace_card("radar", "Explore market analytics", "Explore technical scoring, filtering, and research discovery workflows.", "💎 Quant Discovery", "discover", "Open Discovery")
     with first[1]:
         _workspace_card("book-open", "Learn finance, simply", "Explore everyday money, taxes, investing and markets through interactive lessons.", "📚 Learn", "learn", "Explore Quant Learn")
 
     second = st.columns(2, gap="large")
     with second[0]:
-        _workspace_card("chart-line", "Research a company", "Explore historical performance, volatility, risk, news and evidence.", "🔎 Stock Explorer", "stock", "Open Stock Explorer")
+        _workspace_card("chart-line", "Explore research workflows", "Inspect interactive charts, volatility, technical research and risk.", "🔎 Stock Explorer", "stock", "Open Stock Explorer")
     with second[1]:
-        _workspace_card("briefcase", "Understand your portfolio", "Examine how holdings work together and how their risks can interact.", "💼 Portfolio Manager", "portfolio", "Open Portfolio Manager")
+        _workspace_card("briefcase", "Model a portfolio", "Test portfolio allocations and risk interactions using examples.", "💼 Portfolio Manager", "portfolio", "Open Portfolio Manager")
 
     st.html(
         '<div class="qi-home-section-head"><h2>Go deeper with Quant Lab</h2>'
@@ -641,7 +641,7 @@ def render_premium_home() -> None:
         '<div><div class="qi-eyebrow">FROM QUANT LEARN</div>'
         '<h3>Why can a stock fall after good earnings?</h3>'
         '<p>Understand how expectations, future guidance and company results work together. '
-        'Then apply the concept to actual company research.</p></div>'
+        'Then explore the concept in the research tools.</p></div>'
         f'<div class="qi-lesson-icon" aria-hidden="true">{icon_svg("sparkles", 42)}</div></div>'
     )
     if st.button("Explore the earnings lesson", key="qi_home_earnings_lesson"):
