@@ -14,12 +14,14 @@ PREFERENCE_KEYS = (
     "qi_external_charts",
     "qi_show_research_notes",
     "qi_display_density",
+    "qi_reduce_motion",
 )
 
 DEFAULTS = {
     "qi_external_charts": False,
     "qi_show_research_notes": True,
     "qi_display_density": "Comfortable",
+    "qi_reduce_motion": False,
 }
 
 
@@ -75,6 +77,11 @@ def render_workspace_settings() -> None:
                     help="Show concise context beside research and simulation tools.",
                 )
                 st.toggle(
+                    "Reduce animations",
+                    key="qi_reduce_motion",
+                    help="Minimize decorative movement for comfort and accessibility.",
+                )
+                st.toggle(
                     "Enable external TradingView charts",
                     key="qi_external_charts",
                     help="Off by default. Enabling loads TradingView from your browser.",
@@ -117,6 +124,16 @@ def render_workspace_settings() -> None:
             "<style>"
             '[data-testid="stVerticalBlock"] {gap: 0.65rem;}'
             '[data-testid="stMetric"] {padding: 0.2rem 0;}'
+            "</style>",
+            unsafe_allow_html=True,
+        )
+    if st.session_state.get("qi_reduce_motion", False):
+        st.markdown(
+            "<style>"
+            "*, *::before, *::after {animation-duration:0.01ms !important;"
+            "animation-iteration-count:1 !important;"
+            "transition-duration:0.01ms !important;"
+            "scroll-behavior:auto !important;}"
             "</style>",
             unsafe_allow_html=True,
         )
