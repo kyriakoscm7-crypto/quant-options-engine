@@ -84,13 +84,12 @@ def render_workspace_settings() -> None:
                     "address, embedding URL and selected symbol when loaded. "
                     "Disabling prevents future chart loads, not past requests."
                 )
-                if st.button(
+                st.button(
                     "Reset preferences",
                     key="qi_reset_workspace_preferences",
                     use_container_width=True,
-                ):
-                    reset_workspace_preferences()
-                    st.rerun()
+                    on_click=reset_workspace_preferences,
+                )
             with workspace:
                 st.markdown("**Independent quantitative research**")
                 st.caption(
