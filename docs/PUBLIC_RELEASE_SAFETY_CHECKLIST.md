@@ -3,7 +3,7 @@
 Last updated: November 3, 2026. This is an engineering and legal review checklist, not legal clearance.
 
 ## Immediate deployment safeguard
-- [x] Public Streamlit market-data routes are gated OFF by default until source rights are verified.
+- [x] Public research routes use fully **synthetic interactive demos** by default, without Yahoo API calls on those render paths.
 - [x] Preserve self-contained educational and hypothetical options tools.
 - [x] Describe experimental technical indicators as historical classifications rather than investment advice.
 - [x] Provide prominent in-app disclosure and accessible draft terms/privacy notice.
@@ -18,10 +18,12 @@ Last updated: November 3, 2026. This is an engineering and legal review checklis
 - [ ] Verify model input validation, stale data and source timestamps, mathematical correctness, and that simulations exclude real trading fees and execution constraints unless incorporated.
 - [ ] Check copyright/trademark rights for icons, images, news snippets and third-party content.
 - [ ] Review hosting security, dependencies, error messages, secrets, logging, user upload restrictions, incident response and applicable insurance.
-- [ ] Test all public routes and confirm gating behavior on the actual hosted Streamlit app.
+- [ ] Test all public routes and confirm every offline demo module works on the actual hosted Streamlit app; check direct-page URLs and verify no real market-data requests occur.
 - [ ] Keep any real trading, account connectivity and individualized buy/sell advice disabled pending separate compliance review.
 
 ## Developer notes
-The market-data safeguard applies to the public Streamlit interface and direct Quant Discovery page. It intentionally does not rewrite historical analytics engines or prove rights to underlying market data. It is a temporary fail-closed measure. Research features can be restored when compliant data and permissions are in place.
+The public Streamlit interface routes Stock Explorer, Discovery, Market Scanner, Portfolio Manager and Forecast Intelligence to locally generated fictional data by default. The direct Quant Discovery page is also protected. Analytics, models, portfolio examples, charts and filters stay interactive. The original market-data engines and third-party source integrations remain in the private/development code paths but are *not* authorized for public redistribution by this change. Do not treat an offline demo as proof of legal compliance or model predictive validity.
+
+The synthetic companies, ticker-like symbols, seeded OHLCV series, screening scores and forecast comparisons are fictional. Public visitors must see the demo disclosure before viewing any demonstration market chart. Do not collect real brokerage holdings, account credentials or other sensitive financial information in Community Cloud.
 
 You can run local tests using `python -m pytest tests/test_public_safety.py -q`. Do not enable the rights flag just to make a deployment look complete.
