@@ -4,7 +4,7 @@
 
 **An interactive quantitative finance and market research platform built with Python.**
 
-> **Public research showcase (November 2026):** Stock Explorer displays real-stock charts through the official, display-only TradingView widget with intact attribution, after the visitor chooses to load the external chart. Data can be delayed or unavailable by exchange; no chart data enters the backend, downloads or custom models. Simulation Lab, Discovery, Scanner, Portfolio and Forecast remain interactive **fictional simulations**, independent of chart selection. Options/Greeks/scenario calculators use hypothetical inputs. The legacy `QI_MARKET_DATA_RIGHTS_CONFIRMED` flag no longer unlocks public analytics: a separately reviewed provider integration with explicit public-display and derived-data rights is required. Legal / Settings / About contains draft policies and an external-chart loading control; essential notices stay visible. See the [educational showcase review](docs/EDUCATIONAL_SHOWCASE_REVIEW.md), [provider review](docs/TRADINGVIEW_AND_PROVIDER_RIGHTS.md) and [release checklist](docs/PUBLIC_RELEASE_SAFETY_CHECKLIST.md). This branch is not legal clearance or a deployed release.
+> **Private, invitation-only research workspace (November 2026):** Stock Explorer displays real-stock charts through the official, display-only TradingView widget with intact attribution, after the visitor chooses to load the external chart. Data can be delayed or unavailable by exchange; no chart data enters the backend, downloads or custom models. Simulation Lab, Discovery, Scanner, Portfolio and Forecast remain interactive **fictional simulations**, independent of chart selection. Options/Greeks/scenario calculators use hypothetical inputs. The legacy `QI_MARKET_DATA_RIGHTS_CONFIRMED` flag no longer unlocks public analytics: a separately reviewed provider integration with explicit public-display and derived-data rights is required. The top-right Settings gear contains display preferences, chart-loading control and Legal/Privacy/About; essential notices stay visible. See the [educational showcase review](docs/EDUCATIONAL_SHOWCASE_REVIEW.md), [provider review](docs/TRADINGVIEW_AND_PROVIDER_RIGHTS.md) and [release checklist](docs/PUBLIC_RELEASE_SAFETY_CHECKLIST.md). The private access setting is managed in Streamlit Community Cloud (not enforced by the app). See [private-workspace guide](docs/PRIVATE_RESEARCH_WORKSPACE.md). This branch is not legal clearance or a deployed release.
 
 
 
@@ -24,6 +24,7 @@ Quant Intelligence combines stock research, options analytics, risk intelligence
 | **Quant Learn** | Interactive financial education, valuation scenarios, diversification stress tests, and guided calculations |
 | **Quant Discovery** | Fictional-universe screening and experimental scoring simulations |
 | **Portfolio Research** | Simulated fictional holdings, risk and strategy evaluation tools |
+| **Strategy Research** | Reproducible synthetic moving-average backtests with fees, no-lookahead position logic, Sharpe and drawdown |
 
 ## Engineering Highlights
 
@@ -33,7 +34,7 @@ Quant Intelligence combines stock research, options analytics, risk intelligence
 - **User experience:** Custom dark-mode interface, interactive visualizations, and guided interpretation.
 - **Quality assurance:** Automated pytest suite, GitHub Actions, Docker, and performance benchmarking.
 
-**Latest local validation: 1,709 automated tests passed (October 31, 2026).**
+**Validation:** See the latest branch CI for current Python tests, linting, dependency auditing and Docker checks. Historical performance benchmarks below are not current release certifications.
 
 ## Getting Started
 
