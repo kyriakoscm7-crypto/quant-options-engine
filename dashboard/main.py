@@ -677,10 +677,11 @@ render_workspace_settings()
 
 # Fail closed on public-facing routes that currently use or derive results
 # from unlicensed/unverified external market feeds.
-st.caption(
-    "Research and education only · No individualized investment advice · "
-    "Models and data may be incomplete or inaccurate."
-)
+if page != "🔎 Stock Explorer":
+    st.caption(
+        "Research and education only · No individualized investment advice · "
+        "Models and data may be incomplete or inaccurate."
+    )
 
 if page == "🔎 Stock Explorer":
     from dashboard.stock_explorer_widget import render_stock_explorer

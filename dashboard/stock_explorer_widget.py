@@ -52,35 +52,20 @@ def _enable_external_charts() -> None:
 
 def render_stock_explorer() -> None:
     st.title(":primary[:material/search:] Stock Explorer")
-    st.caption("REAL STOCKS / TradingView charts · Independent quantitative research workspace")
+    st.caption("MARKET VIEW + QUANTITATIVE WORKBENCH")
     choice = st.selectbox("Company / exchange", list(SYMBOLS))
     symbol = SYMBOLS[choice]
-    st.caption(
-        "Charts by TradingView · Quotes may be delayed; availability varies by exchange. "
-        "Use the chart's symbol search for more stocks. Not investment advice."
-    )
-    st.caption(
-        "Loading the chart connects your browser to TradingView to display market data, "
-        "sharing your IP address, displayed symbol, widget type and embedding URL. "
-        "You can switch chart loading off in Legal / Settings / About."
-    )
+    st.caption("TradingView display only · Quotes may be delayed · Models below use fictional inputs · Not investment advice")
     if st.session_state.get("qi_external_charts", False):
         components.html(chart_embed_html(symbol), height=640, scrolling=False)
-        st.caption("Chart unavailable? The provider may restrict this symbol, or your browser may block external scripts.")
     else:
-        st.button(
-            "Load real-stock chart", type="primary", on_click=_enable_external_charts,
-            key="qi_load_stock_chart",
-        )
-        st.caption("External charts are off until you choose to load them. This choice lasts for this session.")
+        with st.container(border=True):
+            st.markdown("### Your market window")
+            st.write("Explore real-stock candles, volume and technical indicators with TradingView.")
+            st.caption("Loading shares your IP, symbol and embedding URL with TradingView. Control this in Settings.")
+            st.button("Load real-stock chart", type="primary", on_click=_enable_external_charts,
+                      key="qi_load_stock_chart")
+            st.caption("External charts are off until you choose to load them.")
     st.link_button("Open chart on TradingView ↗", "https://www.tradingview.com/symbols/" + symbol.replace(":", "-") + "/")
-    st.caption("Company selection is for exploration, not a recommendation or endorsement.")
-    with st.expander("Experimental analytics / simulation lab"):
-        st.markdown(
-            "Custom scores, forecasts and risk metrics are **not computed from this chart**. "
-            "A separate provider with explicit public-display and derived-data rights is "
-            "required before real-stock model outputs can be enabled."
-        )
-        if st.button("Open risk & technical simulation lab"):
-            st.session_state["_navigation_request"] = "🧪 Simulation Lab"
-            st.rerun()
+    from dashboard.stock_research_lab import render_research_lab
+    render_research_lab()

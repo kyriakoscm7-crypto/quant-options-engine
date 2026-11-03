@@ -52,7 +52,7 @@ jobs:
       # Ruff automatically reads the ruff.toml configuration file.
       - name: Run Ruff linting
         run: |
-          python -m ruff check app/ tests/ dashboard/public_safety.py dashboard/stock_explorer_widget.py dashboard/legal_pages.py dashboard/demo_showcase.py dashboard/options_workspace.py dashboard/greeks_workspace.py
+          python -m ruff check app/ tests/ dashboard/public_safety.py dashboard/stock_explorer_widget.py dashboard/stock_research_lab.py dashboard/workspace_settings.py dashboard/legal_pages.py dashboard/demo_showcase.py dashboard/options_workspace.py dashboard/greeks_workspace.py
 
       # Run all automated tests and calculate code coverage.
       # --cov=app measures how much of our application code is tested.

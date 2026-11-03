@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import streamlit as st
 
-
 PREFERENCE_KEYS = (
     "qi_external_charts",
     "qi_show_research_notes",
@@ -42,21 +41,22 @@ def render_workspace_settings() -> None:
     """Compact, usable gear in the top-right of the main content area."""
     initialize_workspace_preferences()
 
-    header, actions = st.columns([6, 1.4], vertical_alignment="center")
-    with header:
-        st.markdown(
-            '<div class="qi-workspace-header">'
-            '<span class="qi-workspace-dot" aria-hidden="true"></span>'
-            'QUANT INTELLIGENCE <span class="qi-workspace-separator">/</span>'
-            ' RESEARCH WORKSPACE'
-            '</div>',
-            unsafe_allow_html=True,
-        )
-    with actions:
-        with st.popover(
-            "Settings",
+    with st.container(key="qi_workspace_bar"):
+        header, actions = st.columns([0.92, 0.08], vertical_alignment="center")
+        with header:
+            st.markdown(
+                '<div class="qi-workspace-header">'
+                '<span class="qi-workspace-dot" aria-hidden="true"></span>'
+                'QUANT INTELLIGENCE <span class="qi-workspace-separator">/</span>'
+                ' RESEARCH WORKSPACE'
+                '</div>',
+                unsafe_allow_html=True,
+            )
+        with actions, st.container(key="qi_settings_gear"), st.popover(
+            "",
             icon=":material/settings:",
-            use_container_width=True,
+            help="Settings",
+            use_container_width=False,
         ):
             st.markdown("**Workspace preferences**")
             st.caption(
@@ -117,6 +117,7 @@ def render_workspace_settings() -> None:
                 ):
                     st.session_state["_navigation_request"] = "📄 Legal & Privacy"
                     st.rerun()
+    
 
     # Applied after preference widgets so a change is visible immediately.
     if st.session_state.get("qi_display_density") == "Compact":
@@ -139,6 +140,12 @@ def render_workspace_settings() -> None:
         )
     st.markdown(
         "<style>"
+        '.st-key-qi_workspace_bar [data-testid="stHorizontalBlock"] {flex-wrap:nowrap !important;}'
+        '.st-key-qi_workspace_bar [data-testid="stColumn"] {min-width:0 !important;}'
+        '.st-key-qi_workspace_bar [data-testid="stColumn"]:first-child {flex:1 1 0 !important;}'
+        '.st-key-qi_workspace_bar [data-testid="stColumn"]:last-child {flex:0 0 44px !important;}'
+        '.st-key-qi_settings_gear [data-testid="stPopover"] {display:flex;justify-content:flex-end;}'
+        '.st-key-qi_settings_gear button {width:2.5rem;min-width:2.5rem;padding:0.4rem;}'
         ".qi-workspace-header {color:#aebdd4;font-size:0.68rem;"
         "letter-spacing:0.15em;font-weight:650;padding:0.7rem 0;}"
         ".qi-workspace-dot {display:inline-block;width:7px;height:7px;"
