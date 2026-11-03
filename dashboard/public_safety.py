@@ -12,6 +12,7 @@ MARKET_DATA_ROUTES = frozenset({
     "💎 Quant Discovery",
     "🔍 Market Scanner",
     "💼 Portfolio Manager",
+    "🧠 Forecast Intelligence",
 })
 
 
