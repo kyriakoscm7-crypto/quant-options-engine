@@ -48,6 +48,8 @@ from app.market_data.stock_history import (  # noqa: E402
 from app.pricing.black_scholes import BlackScholes  # noqa: E402
 from dashboard.forecast_intelligence_page import render_forecast_intelligence  # noqa: E402
 from dashboard.learn_page import render_learn_page  # noqa: E402
+from dashboard.legal_pages import render_legal_pages  # noqa: E402
+from dashboard.public_safety import public_market_data_route_blocked  # noqa: E402
 from dashboard.market_scanner_page import render_market_scanner  # noqa: E402
 from dashboard.navigation_ux import render_navigation_ux  # noqa: E402
 from dashboard.portfolio_page import render_portfolio_manager  # noqa: E402
@@ -552,6 +554,7 @@ with st.sidebar:
             ("Strategy Research", "🧠 Strategy Research"),
         ]),
         ("Learn", "📚 Learn", []),
+        ("Legal", "📄 Legal & Privacy", []),
     ]
 
     route_groups = {}
@@ -598,6 +601,7 @@ with st.sidebar:
         "Portfolio": ":material/account_balance_wallet:",
         "Quant Lab": ":material/science:",
         "Learn": ":material/school:",
+        "Legal": ":material/gavel:",
     }
 
     with st.container(key="qi_navigation"):
@@ -661,6 +665,26 @@ with st.sidebar:
 # ============================================================
 # SHARED OPTION INPUTS
 # ============================================================
+
+# Fail closed on public-facing routes that currently use or derive results
+# from unlicensed/unverified external market feeds.
+st.caption(
+    "Research and education only · No individualized investment advice · "
+    "Models and data may be incomplete or inaccurate."
+)
+
+if public_market_data_route_blocked(page):
+    st.title("Market research temporarily unavailable")
+    st.warning(
+        "Live third-party market research is paused on this public app while "
+        "market-data permissions and display rights are being verified."
+    )
+    st.info(
+        "Quant Learn, theoretical options calculators, Greeks, and "
+        "hypothetical scenarios remain available. The pause does not imply "
+        "that this app is a registered investment adviser."
+    )
+    st.stop()
 
 if page in [
     "📈 Scenario Explorer",
@@ -734,6 +758,9 @@ if page in [
 if page == "🏠 Overview":
     render_premium_home()
 
+
+elif page == "📄 Legal & Privacy":
+    render_legal_pages()
 
 elif page == "📚 Learn":
     with st.container(key="qi_learn_page"):
@@ -980,7 +1007,7 @@ elif page == "🔎 Stock Explorer":
         # --------------------------------------------------------
 
         # --------------------------------------------------------
-        # INVESTMENT RECOMMENDATION ENGINE
+        # EXPERIMENTAL HISTORICAL TECHNICAL SCORING
         # --------------------------------------------------------
 
         from app.intelligence.recommendation_engine import assess_stock
@@ -995,7 +1022,7 @@ elif page == "🔎 Stock Explorer":
             )
         except (ValueError, RuntimeError, KeyError) as exc:
             st.warning(
-                f"Unable to retrieve investment rating history: {exc}"
+                f"Unable to retrieve historical scoring data: {exc}"
             )
             assessment_history = history
 
@@ -1022,11 +1049,11 @@ elif page == "🔎 Stock Explorer":
 
             with rating_col2:
                 recommendation_labels = {
-                    "STRONG TECHNICAL SIGNAL": "STRONG",
-                    "FAVORABLE TECHNICAL SIGNAL": "FAVORABLE",
-                    "NEUTRAL / MIXED": "NEUTRAL",
-                    "CAUTION": "CAUTION",
-                    "UNFAVORABLE TECHNICAL SIGNAL": "UNFAVORABLE",
+                    "STRONG TECHNICAL SIGNAL": "UPPER BAND",
+                    "FAVORABLE TECHNICAL SIGNAL": "ABOVE MID",
+                    "NEUTRAL / MIXED": "MID-RANGE",
+                    "CAUTION": "BELOW MID",
+                    "UNFAVORABLE TECHNICAL SIGNAL": "LOWER BAND",
                     "INSUFFICIENT EVIDENCE": "N/A",
                 }
 
@@ -1036,7 +1063,7 @@ elif page == "🔎 Stock Explorer":
                 )
 
                 st.metric(
-                    "Technical Classification",
+                    "Historical Score Band",
                     short_recommendation,
                 )
 
@@ -1055,12 +1082,15 @@ elif page == "🔎 Stock Explorer":
                 "a validated forecast or buy/sell recommendation."
             )
 
-            st.write(
-                f"**Model Outlook (Unvalidated):** {assessment.outlook}"
-            )
+            historical_context = {
+                "Bullish": "Positive historical technical indicators",
+                "Bearish": "Negative historical technical indicators",
+                "Neutral": "Mixed historical technical indicators",
+            }.get(assessment.outlook, "Historical indicators unavailable")
+            st.write(f"**Historical technical context:** {historical_context}")
 
             st.caption(
-                f"Prediction reliability: {assessment.reliability}"
+                f"Forward prediction: {assessment.reliability}"
             )
 
             with st.expander("How was this technical score calculated?", icon=":material/help:"):
