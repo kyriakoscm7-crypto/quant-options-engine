@@ -33,8 +33,7 @@ def chart_embed_html(symbol: str) -> str:
     }
     return f'''<!doctype html><html lang="en"><head><meta name="viewport"
 content="width=device-width, initial-scale=1"><title>Stock chart by TradingView</title>
-<style>html{{height:620px}}body{{height:100%;margin:0;background:#080D1D;color:#ddd}}a{{color:#FF78B7}}
-.tradingview-widget-copyright{{font:14px sans-serif;padding:8px 0}}</style></head><body>
+<style>html{{height:620px}}body{{height:100%;margin:0;background:#080D1D;color:#ddd}}</style></head><body>
 <!-- TradingView Widget BEGIN -->
 <div class="tradingview-widget-container" style="height:620px;width:100%">
 <div class="tradingview-widget-container__widget" style="height:calc(100% - 32px);width:100%"></div>
@@ -44,6 +43,11 @@ rel="noopener nofollow" target="_blank"><span class="blue-text">{html.escape(sym
 {json.dumps(config)}
 </script></div><!-- TradingView Widget END -->
 </body></html>'''
+
+
+def _enable_external_charts() -> None:
+    """Widget callback runs before the sidebar is rebuilt on the next rerun."""
+    st.session_state["qi_external_charts"] = True
 
 
 def render_stock_explorer() -> None:
@@ -56,21 +60,27 @@ def render_stock_explorer() -> None:
         "Use the chart's symbol search for more stocks. Not investment advice."
     )
     st.caption(
-        "Loading the external chart shares connection information, displayed symbol and "
-        "embedding URL with TradingView. Control loading in Legal / Settings / About."
+        "Loading the chart connects your browser to TradingView to display market data, "
+        "sharing your IP address, displayed symbol, widget type and embedding URL. "
+        "You can switch chart loading off in Legal / Settings / About."
     )
-    if st.session_state.get("qi_external_charts", True):
+    if st.session_state.get("qi_external_charts", False):
         components.html(chart_embed_html(symbol), height=640, scrolling=False)
         st.caption("Chart unavailable? The provider may restrict this symbol, or your browser may block external scripts.")
     else:
-        st.info("External charts are off. Enable them in Legal / Settings / About to display real stocks.")
+        st.button(
+            "Load real-stock chart", type="primary", on_click=_enable_external_charts,
+            key="qi_load_stock_chart",
+        )
+        st.caption("External charts are off until you choose to load them. This choice lasts for this session.")
     st.link_button("Open chart on TradingView ↗", "https://www.tradingview.com/symbols/" + symbol.replace(":", "-") + "/")
+    st.caption("Company selection is for exploration, not a recommendation or endorsement.")
     with st.expander("Experimental analytics / simulation lab"):
         st.markdown(
             "Custom scores, forecasts and risk metrics are **not computed from this chart**. "
             "A separate provider with explicit public-display and derived-data rights is "
             "required before real-stock model outputs can be enabled."
         )
-        if st.button("Open fictional-data analytics lab"):
-            st.session_state["_navigation_request"] = "🧠 Forecast Intelligence"
+        if st.button("Open risk & technical simulation lab"):
+            st.session_state["_navigation_request"] = "🧪 Simulation Lab"
             st.rerun()

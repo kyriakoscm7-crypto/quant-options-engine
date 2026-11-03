@@ -8,3 +8,9 @@ font = "sans serif"
 
 [client]
 showSidebarNavigation = false
+showErrorDetails = "none"
+
+# Self-hosted telemetry preference. Community Cloud may override this setting;
+# its privacy practices are disclosed separately in the in-app privacy notice.
+[browser]
+gatherUsageStats = false

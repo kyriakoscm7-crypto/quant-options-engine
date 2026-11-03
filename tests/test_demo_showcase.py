@@ -68,7 +68,7 @@ def test_unknown_symbol_and_horizon_are_rejected():
 
 def test_every_public_data_sensitive_route_is_in_the_demo_router(monkeypatch):
     monkeypatch.delenv("QI_MARKET_DATA_RIGHTS_CONFIRMED", raising=False)
-    assert len(RESEARCH_ROUTES) == 5
+    assert len(RESEARCH_ROUTES) == 6
     for route in RESEARCH_ROUTES:
         assert public_market_data_route_blocked(route)
 

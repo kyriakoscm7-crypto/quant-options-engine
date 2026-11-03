@@ -8,6 +8,7 @@ import os
 
 MARKET_DATA_ROUTES = frozenset({
     "🔎 Stock Explorer",
+    "🧪 Simulation Lab",
     "💎 Quant Discovery",
     "🔍 Market Scanner",
     "💼 Portfolio Manager",

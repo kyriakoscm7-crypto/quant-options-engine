@@ -60,6 +60,7 @@ for _i in range(1, 37):
 
 RESEARCH_ROUTES = frozenset({
     "🔎 Stock Explorer",
+    "🧪 Simulation Lab",
     "💎 Quant Discovery",
     "🔍 Market Scanner",
     "💼 Portfolio Manager",
@@ -184,7 +185,7 @@ def _ranking() -> pd.DataFrame:
 
 
 def render_demo_stock_explorer() -> None:
-    st.title(":primary[:material/search:] Stock Explorer")
+    st.title(":primary[:material/science:] Quantitative Simulation Lab")
     _demo_banner()
     a, b, c = st.columns([2, 1, 1])
     with a:
@@ -239,7 +240,7 @@ def render_demo_stock_explorer() -> None:
         st.markdown(
             "The same risk and technical-scoring Python engines used by "
             "Quant Intelligence process these fictional OHLCV inputs. "
-            "The formulas work; the resulting scores have **not** been "
+            "These formulas demonstrate risk calculations; the resulting scores have **not** been "
             "validated as predictions."
         )
         for explanation in score.reasons:
@@ -481,6 +482,7 @@ def render_demo_research_page(route: str) -> None:
         raise ValueError("Unrecognized demo research route")
     renderers = {
         "🔎 Stock Explorer": render_demo_stock_explorer,
+        "🧪 Simulation Lab": render_demo_stock_explorer,
         "💎 Quant Discovery": render_demo_discovery,
         "🔍 Market Scanner": render_demo_market_scanner,
         "💼 Portfolio Manager": render_demo_portfolio,

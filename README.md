@@ -2,7 +2,7 @@
 
 **An interactive quantitative finance and market research platform built with Python.**
 
-> **Public research showcase (November 2026):** Stock Explorer displays real-stock charts through the official, display-only TradingView widget with intact attribution. Data can be delayed or unavailable by exchange; no chart data enters the backend, downloads or custom models. Discovery, Scanner, Portfolio and Forecast remain interactive **fictional simulations**, independent of chart selection. Options/Greeks/scenario calculators use hypothetical inputs. The legacy `QI_MARKET_DATA_RIGHTS_CONFIRMED` flag no longer unlocks public analytics: a separately reviewed provider integration with explicit public-display and derived-data rights is required. Legal / Settings / About contains draft policies and an external-chart loading control; essential notices stay visible. See [provider review](docs/TRADINGVIEW_AND_PROVIDER_RIGHTS.md) and [release checklist](docs/PUBLIC_RELEASE_SAFETY_CHECKLIST.md). This branch is not legal clearance or a deployed release.
+> **Public research showcase (November 2026):** Stock Explorer displays real-stock charts through the official, display-only TradingView widget with intact attribution, after the visitor chooses to load the external chart. Data can be delayed or unavailable by exchange; no chart data enters the backend, downloads or custom models. Simulation Lab, Discovery, Scanner, Portfolio and Forecast remain interactive **fictional simulations**, independent of chart selection. Options/Greeks/scenario calculators use hypothetical inputs. The legacy `QI_MARKET_DATA_RIGHTS_CONFIRMED` flag no longer unlocks public analytics: a separately reviewed provider integration with explicit public-display and derived-data rights is required. Legal / Settings / About contains draft policies and an external-chart loading control; essential notices stay visible. See the [educational showcase review](docs/EDUCATIONAL_SHOWCASE_REVIEW.md), [provider review](docs/TRADINGVIEW_AND_PROVIDER_RIGHTS.md) and [release checklist](docs/PUBLIC_RELEASE_SAFETY_CHECKLIST.md). This branch is not legal clearance or a deployed release.
 
 
 
@@ -283,11 +283,16 @@ Features include:
 - Market-data-derived implied volatility estimates.
 - Support for analyzing volatility across strikes and maturities.
 
-### 5. Yahoo Finance Market Data
+### 5. Legacy research market-data adapter (not a public feed)
 
-Integrates with Yahoo Finance through `yfinance` to retrieve option-chain observations.
+The original `yfinance` adapter is retained for separately authorized development;
+its availability does not grant public redistribution rights. The HTTP route
+`/api/v1/market/options/{ticker}` now always returns **403** without contacting
+Yahoo, including when the legacy rights flag is set. It must be replaced by a
+separately reviewed licensed provider integration before any public real-data API
+can be offered. Real-stock experiment outputs are not bundled for deployment.
 
-Features include:
+The retained adapter's engineering capabilities include:
 
 - SPY option-chain retrieval.
 - Bid-ask quote filtering.
@@ -301,9 +306,9 @@ The market-data layer separates external data retrieval from the pricing and vis
 
 ### 6. FastAPI REST API
 
-Exposes quantitative pricing and market-data functionality through a REST API.
+Exposes hypothetical quantitative pricing through a REST API; no public third-party market-data feed is enabled.
 
-The application provides ten endpoints:
+The API has nine working health/calculation endpoints plus one disabled legacy market-data route:
 
 | Method | Endpoint | Description |
 |---|---|---|
@@ -311,7 +316,7 @@ The application provides ten endpoints:
 | POST | `/api/v1/options/price` | Single-contract European call and put pricing |
 | POST | `/api/v1/options/greeks` | Analytical option Greeks |
 | POST | `/api/v1/options/implied-volatility` | Numerical implied volatility estimation |
-| GET | `/api/v1/market/options/{ticker}` | Yahoo Finance option-chain market data |
+| GET | `/api/v1/market/options/{ticker}` | Disabled: HTTP 403, no provider access |
 | POST | `/api/v1/options/batch-price` | Vectorized pricing for up to 10,000 contracts |
 | POST | `/api/v1/options/batch-greeks` | Vectorized prices and Greeks for up to 10,000 contracts |
 | POST | `/api/v1/portfolio/value` | Portfolio theoretical valuation and position breakdown |

@@ -41,11 +41,11 @@ render_stock_explorer()
     app = AppTest.from_string(source).run()
     assert not app.exception
     assert len(app.get('iframe')) == 0
-    assert any('External charts are off' in item.value for item in app.info)
+    assert any('External charts are off' in item.value for item in app.caption)
 
 
 @pytest.mark.parametrize('route', [
-    '🔎 Stock Explorer', '💎 Quant Discovery', '🔍 Market Scanner',
+    '🔎 Stock Explorer', '🧪 Simulation Lab', '💎 Quant Discovery', '🔍 Market Scanner',
     '💼 Portfolio Manager', '🧠 Forecast Intelligence', '📄 Legal & Privacy',
 ])
 def test_main_public_routes_cannot_reenable_legacy_feeds(route, monkeypatch):
@@ -58,6 +58,7 @@ def test_main_public_routes_cannot_reenable_legacy_feeds(route, monkeypatch):
     monkeypatch.setattr(yahoo, 'fetch_option_chain', fail)
     app = AppTest.from_file(str(Path(__file__).parents[1] / 'dashboard/main.py'))
     app.session_state['selected_page'] = route
+    app.session_state['qi_external_charts'] = True
     app.run(timeout=45)
     assert not app.exception, [error.message for error in app.exception]
     if route == '🔎 Stock Explorer':
@@ -80,6 +81,10 @@ def test_compact_menu_opens_policies_and_can_disable_charts():
     app = AppTest.from_file(str(path))
     app.session_state['selected_page'] = '🔎 Stock Explorer'
     app.run(timeout=45)
+    assert len(app.get('iframe')) == 0
+    app.button(key='qi_load_stock_chart').click().run()
+    assert not app.exception
+    assert len(app.get('iframe')) == 1
     app.toggle(key='qi_external_charts').set_value(False).run()
     assert not app.exception
     assert len(app.get('iframe')) == 0
@@ -89,3 +94,38 @@ def test_compact_menu_opens_policies_and_can_disable_charts():
     assert not app.exception
     assert app.session_state['selected_page'] == '📄 Legal & Privacy'
     assert {tab.label for tab in app.tabs} == {'Financial disclosure', 'Terms of use', 'Privacy'}
+
+
+@pytest.mark.parametrize("module,renderer", [
+    ("dashboard.market_scanner_page", "render_market_scanner"),
+    ("dashboard.portfolio_page", "render_portfolio_manager"),
+    ("dashboard.forecast_intelligence_page", "render_forecast_intelligence"),
+])
+def test_direct_renderers_use_simulations(module, renderer, monkeypatch):
+    monkeypatch.setenv("QI_MARKET_DATA_RIGHTS_CONFIRMED", "true")
+    source = f"from {module} import {renderer}\n{renderer}()\n"
+    app = AppTest.from_string(source).run(timeout=45)
+    assert not app.exception
+    assert any("SYNTHETIC DEMO" in item.value for item in app.info)
+
+
+@pytest.mark.parametrize("route", [
+    "🏠 Overview", "🔎 Stock Explorer", "🧪 Simulation Lab", "💎 Quant Discovery",
+    "🔍 Market Scanner", "💼 Portfolio Manager", "🧠 Forecast Intelligence",
+    "💰 Options Lab", "📊 Greeks Analysis", "📈 Scenario Explorer",
+    "🧠 Strategy Research", "📚 Learn", "📄 Legal & Privacy",
+])
+def test_public_routes_make_no_server_http_requests(route, monkeypatch):
+    import requests
+    from curl_cffi import requests as curl_requests
+
+    def fail(*args, **kwargs):
+        raise AssertionError("Public page attempted server-side HTTP")
+
+    monkeypatch.setattr(requests.Session, "request", fail)
+    monkeypatch.setattr(curl_requests.Session, "request", fail)
+    app = AppTest.from_file(str(Path(__file__).parents[1] / "dashboard/main.py"))
+    app.session_state["selected_page"] = route
+    app.run(timeout=45)
+    assert not app.exception, [error.message for error in app.exception]
+    assert len(app.get("iframe")) == 0

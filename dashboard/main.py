@@ -540,6 +540,7 @@ with st.sidebar:
         ("Dashboard", "🏠 Overview", []),
         ("Research", "🔎 Stock Explorer", [
             ("Stock Explorer", "🔎 Stock Explorer"),
+            ("Simulation Lab", "🧪 Simulation Lab"),
             ("Forecast Intelligence", "🧠 Forecast Intelligence"),
         ]),
         ("Discover", "💎 Quant Discovery", [
@@ -655,7 +656,7 @@ with st.sidebar:
     st.divider()
     with st.popover("Legal / Settings / About", use_container_width=True):
         st.caption("Quant Intelligence · Experimental research and education")
-        st.toggle("Load external TradingView charts", value=True, key="qi_external_charts")
+        st.toggle("Load external TradingView charts", value=False, key="qi_external_charts")
         if st.button("Disclosures, Terms, Privacy & About"):
             st.session_state["_navigation_request"] = "📄 Legal & Privacy"
             st.rerun()

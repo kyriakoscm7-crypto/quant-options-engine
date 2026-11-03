@@ -9,8 +9,9 @@ import streamlit as st
 DISCLOSURE = """
 ### Financial research disclosure
 
-Quant Intelligence provides independent research, quantitative analysis,
-illustrative calculators, and educational material. It does not provide
+Quant Intelligence is an independent educational software and portfolio project
+developed by Kyriakos Margaritis. It demonstrates quantitative methods through
+real-stock display widgets, fictional simulations and illustrative calculators. It does not provide
 personalized investment, brokerage, legal, or tax advice, and its operators
 do not act as an investment adviser through this service.
 
@@ -18,8 +19,9 @@ No output should be treated as a recommendation to buy, sell, or hold
 a security or as a statement that an investment is suitable for anyone.
 Do not base investment decisions solely on this platform.
 
-**Data limitations:** Prices, corporate information, third-party headlines,
-and historical data can be delayed, missing, stale, adjusted, or incorrect.
+**Data limitations:** TradingView charts are external display widgets. Their
+prices can be delayed, missing, stale, adjusted, or incorrect. Fictional simulation
+inputs and model outputs are not actual market observations.
 Displayed values are not necessarily executable prices. Users should
 confirm material information with appropriate primary sources.
 
@@ -64,7 +66,8 @@ data in violation of applicable rights or restrictions.
 
 **TradingView charts.** External charts are display-only widgets governed by
 [TradingView terms](https://www.tradingview.com/policies/). Attribution must remain
-visible. Do not scrape, extract, export or repurpose widget data for models,
+visible. Use only provider-supported chart features. Do not scrape, bulk-extract
+or repurpose widget data for models,
 trading systems or redistribution. Availability and delays vary by exchange.
 
 **Third-party material.** Financial data, articles and external
@@ -90,29 +93,36 @@ PRIVACY = """
 
 **Status:** Public beta. Last revised November 3, 2026.
 
-This notice describes how the current experimental web interface is
-designed to operate. Hosting and infrastructure practices still need
-to be verified before broader public promotion.
+This notice describes the educational app in this branch. It does not certify
+the practices of an earlier deployed version. Hosting configuration and actual
+retention still require operator verification before release.
 
-**Information entered into the app.** Visitors may enter stock tickers,
-hypothetical options inputs, and example portfolio holdings. The
-portfolio editor currently uses Streamlit session state; it is not
-designed as a persistent brokerage account. Do not enter real account
+**Information entered into the app.** Visitors choose stocks for external
+charts and may enter hypothetical calculator values and fictional portfolio
+quantities. Streamlit controls send inputs to the app server and use session
+state. The app has no user registration, brokerage linking, payments or
+application-level database of visitor portfolios in these public flows. Do not enter real account
 numbers, passwords, government IDs, sensitive financial records or
 other confidential personal information.
 
 **Technical data.** Streamlit hosting and other infrastructure
 providers may process connection metadata, IP addresses, cookies,
 security logs or usage diagnostics under their own terms and notices.
-The operator must verify actual retention periods and subprocessors.
+The repository requests that Streamlit usage telemetry be disabled;
+[Community Cloud documentation](https://docs.streamlit.io/deploy/streamlit-community-cloud/status)
+says the host overrides this preference and hosts apps in the United States.
+Do not assume the repository setting disables host telemetry. See also
+[Streamlit privacy information](https://docs.streamlit.io/develop/concepts/configuration/options#telemetry).
+Actual host settings, log retention and subprocessors still require verification.
 
-**External charts.** When external charts are enabled (the default), your browser
+**External charts.** Charts are off initially. If you choose **Load real-stock
+chart** or enable chart loading in Legal / Settings / About, your browser
 connects directly to TradingView. Its widget FAQ states that widgets process the
 embedding page URL, widget type, displayed symbol and IP address, and do not set
 cookies. See [TradingView's widget FAQ](https://www.tradingview.com/widget-docs/faq/general/)
 and [privacy policy](https://www.tradingview.com/privacy-policy/).
-Disable loading in Legal / Settings / About before visiting Stock Explorer if
-preferred. This switch prevents future chart loads; it cannot undo prior requests.
+This choice lasts for the session. You can disable further chart loads in
+Legal / Settings / About. This switch prevents future chart loads; it cannot undo prior requests.
 The app does not receive chart prices or use them in its custom analytics.
 
 **Purposes.** Inputs are processed to display calculations and
@@ -123,10 +133,11 @@ delivery, security and diagnostics. No sale of personal data is intended.
 process certain data outside Canada. The operator must verify any
 relevant transfer, retention and disclosure arrangements.
 
-**Rights and requests.** Privacy and access requests should be handled
-through a private contact method supplied by the operator. Do not
-post sensitive information in public GitHub issues. A dedicated privacy
-contact must be published before the app is promoted to users.
+**Contact and requests.** For privacy/access requests, suspected errors or
+content-rights concerns, contact the operator, Kyriakos Margaritis, at
+[Kyriakoscm7@gmail.com](mailto:Kyriakoscm7@gmail.com). Describe the affected
+page and concern without sending account credentials or sensitive records.
+Do not post sensitive information in public GitHub issues.
 
 **Security.** No internet service can promise perfect security.
 The platform is not intended to receive sensitive financial or
@@ -140,7 +151,14 @@ features are introduced.
 
 def render_legal_pages() -> None:
     st.title("Legal & About")
-    st.caption("Quant Intelligence / research and educational platform")
+    st.caption("Quant Intelligence / independent educational software project")
+    st.markdown(
+        "Developed by **Kyriakos Margaritis** to teach financial concepts and "
+        "demonstrate quantitative software engineering. Real-stock charts are "
+        "provided by TradingView; custom risk, screening and forecast examples "
+        "use fictional inputs. No broker affiliation or provider endorsement is implied."
+    )
+    st.link_button("View source & methodology ↗", "https://github.com/kyriakoscm7-crypto/quant-options-engine")
     disclosure, terms, privacy = st.tabs(
         ["Financial disclosure", "Terms of use", "Privacy"]
     )
@@ -152,6 +170,6 @@ def render_legal_pages() -> None:
         st.markdown(PRIVACY)
     st.warning(
         "Operator review pending: verify market-data licensing, hosting "
-        "and privacy practices, add a private privacy contact, and have "
+        "and privacy practices, and have "
         "the terms reviewed for applicable law."
     )

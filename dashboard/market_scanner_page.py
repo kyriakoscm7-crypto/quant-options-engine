@@ -136,6 +136,14 @@ def render_market_scanner() -> None:
     Render the complete interactive Market Scanner page.
     """
 
+    from dashboard.public_safety import public_market_data_route_blocked
+
+    if public_market_data_route_blocked('🔍 Market Scanner'):
+        from dashboard.demo_showcase import render_demo_research_page
+
+        render_demo_research_page('🔍 Market Scanner')
+        return
+
     st.title(":primary[:material/radar:] Market Scanner")
 
     st.markdown(

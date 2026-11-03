@@ -15,18 +15,9 @@ LOCAL_RESULTS_PATH = (
     / "combined_feature_experiments.csv"
 )
 
-DEPLOYMENT_RESULTS_PATH = (
-    PROJECT_ROOT
-    / "deployment_data"
-    / "forecast"
-    / "combined_feature_experiments.csv"
-)
-
-RESULTS_PATH = (
-    LOCAL_RESULTS_PATH
-    if LOCAL_RESULTS_PATH.exists()
-    else DEPLOYMENT_RESULTS_PATH
-)
+# Legacy development experiments must be supplied locally with appropriate
+# source/derived-data rights. Do not bundle real-stock experiment datasets.
+RESULTS_PATH = LOCAL_RESULTS_PATH
 
 STOCK_NAMES = {
     "AAPL": "Apple",
@@ -44,6 +35,14 @@ HORIZON_NAMES = {
 
 def render_forecast_intelligence():
     """Display understandable conclusions before technical research."""
+
+    from dashboard.public_safety import public_market_data_route_blocked
+
+    if public_market_data_route_blocked('🧠 Forecast Intelligence'):
+        from dashboard.demo_showcase import render_demo_research_page
+
+        render_demo_research_page('🧠 Forecast Intelligence')
+        return
 
     st.title(":primary[:material/psychology:] Forecast Intelligence")
 

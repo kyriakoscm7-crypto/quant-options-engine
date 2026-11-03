@@ -6,7 +6,7 @@ Provides endpoints for:
 - European option pricing.
 - Analytical option Greeks.
 - Implied volatility.
-- Yahoo Finance option-chain data.
+- A disabled legacy market-data route (no redistribution licence selected).
 - Vectorized batch option pricing.
 - Vectorized batch option Greeks.
 - Portfolio theoretical valuation.
@@ -26,9 +26,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from starlette.concurrency import run_in_threadpool
 
-from app.market_data.yahoo_client import fetch_option_chain
 from app.pricing.black_scholes import BlackScholes
 from app.pricing.implied_volatility import implied_volatility
 from app.pricing.portfolio import OptionPosition, PortfolioAnalytics
@@ -589,83 +587,27 @@ def calculate_implied_volatility(request: ImpliedVolatilityRequest):
 # ENDPOINT 5: YAHOO FINANCE MARKET DATA
 # ============================================================
 
-@app.get("/api/v1/market/options/{ticker}")
-async def get_market_options(
-    ticker: str,
-    risk_free_rate: float = 0.045,
-    dividend_yield: float = 0.0,
-    minimum_days_to_expiry: int = 7,
-):
+@app.get(
+    "/api/v1/market/options/{ticker}",
+    deprecated=True,
+    summary="Unavailable: legacy third-party market-data redistribution",
+    responses={403: {"description": "No public redistribution rights configured"}},
+)
+async def get_market_options(ticker: str):
+    """Never fetch or redistribute Yahoo quotes through the public API.
 
-    # Restrict ticker symbols to common alphanumeric formats.
-    # This prevents unexpected characters from being passed
-    # directly into our market-data provider.
-    import re
-
-    ticker = ticker.upper()
-
-    if not re.fullmatch(r"[A-Z0-9.^-]{1,15}", ticker):
-        raise HTTPException(
-            status_code=422,
-            detail="Invalid ticker symbol.",
-        )
-
-    # Validate query parameters.
-    if not all(
-        math.isfinite(value)
-        for value in (risk_free_rate, dividend_yield)
-    ):
-        raise HTTPException(
-            status_code=422,
-            detail="Interest rate and dividend yield must be finite.",
-        )
-
-    if minimum_days_to_expiry < 1 or minimum_days_to_expiry > 365:
-        raise HTTPException(
-            status_code=422,
-            detail="minimum_days_to_expiry must be between 1 and 365.",
-        )
-
-    try:
-
-        # Yahoo Finance requests are synchronous and can be slow.
-        # Running them in a thread prevents blocking the API event loop.
-        df = await run_in_threadpool(
-            fetch_option_chain,
-            ticker_symbol=ticker,
-            risk_free_rate=risk_free_rate,
-            dividend_yield=dividend_yield,
-            minimum_days_to_expiry=minimum_days_to_expiry,
-        )
-
-    except Exception as exc:
-
-        # Record the unexpected error using our dedicated logger.
-        #
-        # logger.exception() automatically includes the
-        # exception traceback when called inside an except block.
-        #
-        # This helps developers diagnose failures without
-        # exposing internal provider errors to API users.
-        logger.exception("Market data request failed")
-
-        # Return a generic HTTP 503 response to the API client.
-        #
-        # HTTP 503 means the service is temporarily unavailable.
-        # The original exception is preserved internally.
-        raise HTTPException(
-            status_code=503,
-            detail="Market data is temporarily unavailable.",
-        ) from exc
-
-    # Convert the DataFrame into JSON-compatible records.
-    records = df.to_dict(orient="records")
-
-    return {
-        "ticker": ticker,
-        "count": len(records),
-        "options": records,
-    }
+    Research provider functions remain in app.market_data for separately
+    authorized development. A flag is not a licence and cannot unlock this
+    endpoint. A future provider integration needs a separate rights review.
+    """
+    raise HTTPException(
+        status_code=403,
+        detail=(
+            "Third-party market-data distribution is disabled. "
+            "Use Stock Explorer for display-only TradingView charts. "
+            "This API provides hypothetical pricing calculations only."
+        ),
+    )
 
 
 # ============================================================

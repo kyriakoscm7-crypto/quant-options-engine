@@ -164,6 +164,14 @@ def render_portfolio_manager() -> None:
     Render the interactive Portfolio Manager page.
     """
 
+    from dashboard.public_safety import public_market_data_route_blocked
+
+    if public_market_data_route_blocked('💼 Portfolio Manager'):
+        from dashboard.demo_showcase import render_demo_research_page
+
+        render_demo_research_page('💼 Portfolio Manager')
+        return
+
     st.title(":primary[:material/account_balance_wallet:] Portfolio Manager")
 
     st.markdown(
