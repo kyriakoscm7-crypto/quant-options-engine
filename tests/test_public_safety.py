@@ -11,6 +11,7 @@ def test_market_data_disabled_by_default(monkeypatch):
     assert market_data_rights_confirmed() is False
     assert public_market_data_route_blocked("🔎 Stock Explorer") is True
     assert public_market_data_route_blocked("💎 Quant Discovery") is True
+    assert public_market_data_route_blocked("🧠 Forecast Intelligence") is True
 
 
 def test_educational_pages_still_available(monkeypatch):
