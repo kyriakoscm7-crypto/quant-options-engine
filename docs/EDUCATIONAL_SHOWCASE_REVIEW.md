@@ -71,8 +71,8 @@ Hosting retention, security and actual deployment behavior still need verificati
 ## What remains uncertain
 
 Engineering changes cannot guarantee that a person will not file a claim or that
-defending one would be cost-free. Local testing does not inspect the current live
-site. Applicable securities, privacy, consumer and contract obligations depend on
+defending one would be cost-free. See the [subsequent end-to-end audit](END_TO_END_RISK_AUDIT.md) for a read-only
+live-interface inspection and the additional bundled database removal. Applicable securities, privacy, consumer and contract obligations depend on
 location, audience, actual operation and future claims/features. Professional legal
 review would provide assurance this engineering review cannot. No company structure,
 insurance coverage or jurisdiction-specific legal opinion has been obtained here.

@@ -2,6 +2,8 @@
 
 Last updated: November 3, 2026. This is an engineering and legal review checklist, not legal clearance.
 
+See [end-to-end findings and external decisions](END_TO_END_RISK_AUDIT.md).
+
 ## Immediate deployment safeguard
 - [x] Stock Explorer uses the official display-only TradingView chart embed. Other data-sensitive public research routes use **synthetic interactive demos**, without Yahoo API calls on those render paths.
 - [x] Preserve self-contained educational and hypothetical options tools.
@@ -44,3 +46,7 @@ See [current official sources and integration boundary](TRADINGVIEW_AND_PROVIDER
 - [x] Request telemetry opt-out for self-hosting; disclose Community Cloud's documented override and US hosting instead of promising zero tracking.
 - [x] Give visitors access to the existing risk/technical simulation lab and its methodology, separate from real-stock charts.
 - [ ] Review any future monetization, referral payments, real-stock rankings, personalized recommendations or account linking before adding them.
+
+- [x] Remove the additional bundled Discovery SQLite snapshot (359 companies / 711 cached rankings); block DB/CSV deployment artifacts in regression tests.
+- [x] Bound API body size and combined scenario work; redact validation inputs and handle numerical failures without browser tracebacks.
+- [ ] Resolve Community Cloud financial-information restrictions and deployer eligibility with the host; fictional inputs alone are not hosting approval.

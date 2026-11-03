@@ -1,3 +1,5 @@
+> **Draft safety review:** See [end-to-end audit](docs/END_TO_END_RISK_AUDIT.md) for verified controls, hosting/licensing limits and release blockers. PR #6 remains unmerged; the live site may run earlier code.
+
 # Quant Intelligence
 
 **An interactive quantitative finance and market research platform built with Python.**

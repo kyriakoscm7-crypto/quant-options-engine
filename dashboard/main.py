@@ -656,6 +656,11 @@ with st.sidebar:
     st.divider()
     with st.popover("Legal / Settings / About", use_container_width=True):
         st.caption("Quant Intelligence · Experimental research and education")
+        st.caption(
+            "External charts are optional. Enabling connects your browser to TradingView "
+            "and shares your IP address, page URL and displayed symbol. "
+            "Switching off prevents further chart loads; prior requests cannot be undone."
+        )
         st.toggle("Load external TradingView charts", value=False, key="qi_external_charts")
         if st.button("Disclosures, Terms, Privacy & About"):
             st.session_state["_navigation_request"] = "📄 Legal & Privacy"
@@ -702,6 +707,7 @@ if page in [
     stock_price = st.sidebar.number_input(
         "Stock Price ($)",
         min_value=0.01,
+        max_value=1_000_000.0,
         value=100.0,
         step=1.0,
     )
@@ -709,6 +715,7 @@ if page in [
     strike_price = st.sidebar.number_input(
         "Strike Price ($)",
         min_value=0.01,
+        max_value=1_000_000.0,
         value=105.0,
         step=1.0,
     )

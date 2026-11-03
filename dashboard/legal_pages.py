@@ -103,7 +103,8 @@ quantities. Streamlit controls send inputs to the app server and use session
 state. The app has no user registration, brokerage linking, payments or
 application-level database of visitor portfolios in these public flows. Do not enter real account
 numbers, passwords, government IDs, sensitive financial records or
-other confidential personal information.
+other confidential personal information. Use invented amounts rather than your actual
+income, debts, savings or holdings. The educational controls do not need real records.
 
 **Technical data.** Streamlit hosting and other infrastructure
 providers may process connection metadata, IP addresses, cookies,
@@ -124,6 +125,10 @@ and [privacy policy](https://www.tradingview.com/privacy-policy/).
 This choice lasts for the session. You can disable further chart loads in
 Legal / Settings / About. This switch prevents future chart loads; it cannot undo prior requests.
 The app does not receive chart prices or use them in its custom analytics.
+
+**Session controls.** The chart-loading choice resets with a new session. Closing a
+browser tab disconnects it but is not a verified deletion request for host logs.
+The operator must verify how long disconnected sessions and diagnostic logs persist.
 
 **Purposes.** Inputs are processed to display calculations and
 research outputs; technical information may be processed for service

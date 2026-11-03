@@ -26,3 +26,10 @@ def test_explicit_enable_flag_only(monkeypatch):
     monkeypatch.setenv("QI_MARKET_DATA_RIGHTS_CONFIRMED", "true")
     assert market_data_rights_confirmed() is True
     assert public_market_data_route_blocked("🔎 Stock Explorer") is True
+
+
+def test_deployment_tree_contains_no_legacy_market_snapshots():
+    from pathlib import Path
+    root = Path(__file__).parents[1] / "deployment_data"
+    assert not list(root.rglob("*.db"))
+    assert not list(root.rglob("*.csv"))

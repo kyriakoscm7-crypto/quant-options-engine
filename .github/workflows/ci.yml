@@ -46,13 +46,13 @@ jobs:
 
             # Upgrade setuptools to a version that addresses
             # the vulnerabilities reported by pip-audit.
-            python -m pip install --upgrade "setuptools>=83.0.0" 
+            python -m pip install --upgrade "setuptools>=84.1.0"
 
       # Check for common Python mistakes and style violations.
       # Ruff automatically reads the ruff.toml configuration file.
       - name: Run Ruff linting
         run: |
-          python -m ruff check app/ tests/
+          python -m ruff check app/ tests/ dashboard/public_safety.py dashboard/stock_explorer_widget.py dashboard/legal_pages.py dashboard/demo_showcase.py dashboard/options_workspace.py dashboard/greeks_workspace.py
 
       # Run all automated tests and calculate code coverage.
       # --cov=app measures how much of our application code is tested.
@@ -98,6 +98,9 @@ jobs:
           docker run \
             --detach \
             --name quant-options-engine-ci \
+            --read-only \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
             -p 8080:8080 \
             quant-options-engine
 

@@ -13,6 +13,8 @@ def render_greeks_workspace():
         "All results are theoretical, not live option quotes."
     )
 
+    st.caption("European exercise model · Constant rates and volatility · No fees, taxes or early assignment. Use hypothetical inputs only.")
+
     st.markdown("### 01 / Define your position")
     a, b, c = st.columns(3)
     with a:
@@ -35,12 +37,12 @@ def render_greeks_workspace():
     with a:
         spot = st.number_input(
             "Underlying price ($)", min_value=1.0,
-            value=100.0, step=1.0, key="qi_greeks_spot"
+            max_value=1_000_000.0, value=100.0, step=1.0, key="qi_greeks_spot"
         )
     with b:
         strike = st.number_input(
             "Strike price ($)", min_value=1.0,
-            value=100.0, step=1.0, key="qi_greeks_strike"
+            max_value=1_000_000.0, value=100.0, step=1.0, key="qi_greeks_strike"
         )
     with c:
         volatility = st.slider(
@@ -50,11 +52,11 @@ def render_greeks_workspace():
 
     with st.expander("Advanced assumptions"):
         rate = st.number_input(
-            "Risk-free interest rate (%)", value=4.0,
+            "Risk-free interest rate (%)", min_value=-20.0, max_value=100.0, value=4.0,
             step=0.25, key="qi_greeks_rate"
         )
         dividend = st.number_input(
-            "Dividend yield (%)", min_value=0.0,
+            "Dividend yield (%)", min_value=0.0, max_value=100.0,
             value=0.0, step=0.25, key="qi_greeks_dividend"
         )
 

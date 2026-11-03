@@ -23,6 +23,8 @@ def render_options_workspace():
         "Pricing is based on Black-Scholes, not a live option-chain quote."
     )
 
+    st.caption("European exercise model · Constant rates and volatility · No fees, taxes or early assignment. Use hypothetical inputs only.")
+
     st.markdown("### 01 / Construct a position")
     a, b, c = st.columns([1, 1, 1])
     with a:
@@ -45,12 +47,12 @@ def render_options_workspace():
     with a:
         spot = st.number_input(
             "Underlying price ($)", min_value=0.01,
-            value=100.0, step=1.0, key="qi_workspace_spot"
+            max_value=1_000_000.0, value=100.0, step=1.0, key="qi_workspace_spot"
         )
     with b:
         strike = st.number_input(
             "Strike price ($)", min_value=0.01,
-            value=100.0, step=1.0, key="qi_workspace_strike"
+            max_value=1_000_000.0, value=100.0, step=1.0, key="qi_workspace_strike"
         )
     with c:
         volatility = st.slider(
@@ -61,7 +63,7 @@ def render_options_workspace():
 
     with st.expander("Advanced model assumptions"):
         rate = st.number_input(
-            "Risk-free rate (%)", value=4.0, step=0.25,
+            "Risk-free rate (%)", min_value=-20.0, max_value=100.0, value=4.0, step=0.25,
             key="qi_workspace_rate"
         )
         dividend = st.number_input(
