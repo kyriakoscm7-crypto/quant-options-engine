@@ -1711,19 +1711,9 @@ elif page == "🧠 Forecast Intelligence":
 
 
 elif page == "🧠 Strategy Research":
+    from dashboard.strategy_research import render_strategy_research
 
-    st.title(":primary[:material/science:] Strategy Research")
-
-    st.info(
-        "Coming soon: Historical backtesting, "
-        "statistical research, and quantitative models."
-    )
-
-    st.write(
-        "We will evaluate strategies using "
-        "out-of-sample testing and realistic "
-        "transaction-cost assumptions."
-    )
+    render_strategy_research()
 
 
 # ============================================================
