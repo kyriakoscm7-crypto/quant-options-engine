@@ -2,6 +2,10 @@
 
 **An interactive quantitative finance and market research platform built with Python.**
 
+> **Public demo and market-data licensing (November 2026):** The public Streamlit interface ships with third-party market-data research pages paused by default until the operator verifies display and redistribution rights. Self-contained education, options calculations, Greeks and hypothetical scenarios remain accessible. This safeguard is controlled by `QI_MARKET_DATA_RIGHTS_CONFIRMED` (default off). The value `true` is an operator attestation **after** a licensing review, not a substitute for permission. No legal compliance or investment-adviser registration is implied. See `docs/PUBLIC_RELEASE_SAFETY_CHECKLIST.md` and the in-app Legal & Privacy section.
+
+
+
 Quant Intelligence combines stock research, options analytics, risk intelligence, and interactive financial education in one platform. It connects quantitative models with practical explanations, helping users investigate financial markets and understand the assumptions behind their results.
 
 **[Live Application](https://quant-intelligence-km.streamlit.app/)** | **[GitHub Repository](https://github.com/kyriakoscm7-crypto/quant-options-engine)**
