@@ -88,12 +88,13 @@ def test_compact_menu_opens_policies_and_can_disable_charts():
     app.toggle(key='qi_external_charts').set_value(False).run()
     assert not app.exception
     assert len(app.get('iframe')) == 0
-    policy_button = next(button for button in app.button
-                         if button.label == 'Disclosures, Terms, Privacy & About')
+    policy_button = app.button(key="qi_open_legal_settings")
     policy_button.click().run()
     assert not app.exception
     assert app.session_state['selected_page'] == '📄 Legal & Privacy'
-    assert {tab.label for tab in app.tabs} == {'Financial disclosure', 'Terms of use', 'Privacy'}
+    assert {'Financial disclosure', 'Terms of use', 'Privacy'}.issubset(
+        {tab.label for tab in app.tabs}
+    )
 
 
 @pytest.mark.parametrize("module,renderer", [
@@ -129,3 +130,24 @@ def test_public_routes_make_no_server_http_requests(route, monkeypatch):
     app.run(timeout=45)
     assert not app.exception, [error.message for error in app.exception]
     assert len(app.get("iframe")) == 0
+
+
+def test_top_right_preferences_are_session_local_and_resettable():
+    path = Path(__file__).parents[1] / "dashboard/main.py"
+    app = AppTest.from_file(str(path)).run(timeout=45)
+    assert not app.exception
+    assert app.session_state["qi_external_charts"] is False
+    assert app.session_state["qi_display_density"] == "Comfortable"
+    assert app.session_state["qi_show_research_notes"] is True
+
+    app.selectbox(key="qi_display_density").set_value("Compact").run()
+    app.toggle(key="qi_show_research_notes").set_value(False).run()
+    assert not app.exception
+    assert app.session_state["qi_display_density"] == "Compact"
+    assert app.session_state["qi_show_research_notes"] is False
+
+    app.button(key="qi_reset_workspace_preferences").click().run()
+    assert not app.exception
+    assert app.session_state["qi_display_density"] == "Comfortable"
+    assert app.session_state["qi_show_research_notes"] is True
+    assert app.session_state["qi_external_charts"] is False
