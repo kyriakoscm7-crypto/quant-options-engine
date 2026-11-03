@@ -50,6 +50,10 @@ from dashboard.forecast_intelligence_page import render_forecast_intelligence  #
 from dashboard.learn_page import render_learn_page  # noqa: E402
 from dashboard.legal_pages import render_legal_pages  # noqa: E402
 from dashboard.public_safety import public_market_data_route_blocked  # noqa: E402
+from dashboard.workspace_settings import (  # noqa: E402
+    render_workspace_settings,
+    research_notes_enabled,
+)
 from dashboard.market_scanner_page import render_market_scanner  # noqa: E402
 from dashboard.navigation_ux import render_navigation_ux  # noqa: E402
 from dashboard.portfolio_page import render_portfolio_manager  # noqa: E402
@@ -654,23 +658,17 @@ with st.sidebar:
     render_navigation_ux()
 
     st.divider()
-    with st.popover("Legal / Settings / About", use_container_width=True):
-        st.caption("Quant Intelligence · Experimental research and education")
-        st.caption(
-            "External charts are optional. Enabling connects your browser to TradingView "
-            "and shares your IP address, page URL and displayed symbol. "
-            "Switching off prevents further chart loads; prior requests cannot be undone."
-        )
-        st.toggle("Load external TradingView charts", value=False, key="qi_external_charts")
-        if st.button("Disclosures, Terms, Privacy & About"):
-            st.session_state["_navigation_request"] = "📄 Legal & Privacy"
-            st.rerun()
-    st.caption("PLATFORM")
-    st.caption("Quant Intelligence · Research Build")
+    st.caption("PRIVATE RESEARCH BUILD")
     st.caption(
-        "Independent financial research and education. "
-        "Not investment advice."
+        "Access managed in Streamlit Sharing · "
+        "Independent research and education"
     )
+
+
+# ============================================================
+# TOP-RIGHT WORKSPACE CONTROL
+# ============================================================
+render_workspace_settings()
 
 
 # ============================================================
@@ -770,10 +768,11 @@ if page in [
 
 
 if page == "🏠 Overview":
-    st.caption(
-        "Real-stock charts in Stock Explorer are provided by TradingView. "
-        "Discovery, scanner, portfolio and forecast models use labeled fictional simulations."
-    )
+    if research_notes_enabled():
+        st.caption(
+            "Real-stock charts in Stock Explorer are provided by TradingView. "
+            "Discovery, scanner, portfolio and forecast models use labeled fictional simulations."
+        )
     render_premium_home()
 
 
