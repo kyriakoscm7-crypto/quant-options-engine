@@ -2,6 +2,7 @@
 
 import pandas as pd
 import pytest
+from streamlit.testing.v1 import AppTest
 
 from dashboard.demo_showcase import (
     DEMO_ASSETS,
@@ -70,3 +71,14 @@ def test_every_public_data_sensitive_route_is_in_the_demo_router(monkeypatch):
     assert len(RESEARCH_ROUTES) == 5
     for route in RESEARCH_ROUTES:
         assert public_market_data_route_blocked(route)
+
+
+@pytest.mark.parametrize("route", sorted(RESEARCH_ROUTES))
+def test_every_synthetic_research_page_renders_without_exception(route):
+    # Exercise real Streamlit widget code, not only pure pricing logic.
+    source = (
+        "from dashboard.demo_showcase import render_demo_research_page\n"
+        f"render_demo_research_page({route!r})\n"
+    )
+    app = AppTest.from_string(source).run(timeout=45)
+    assert not app.exception, [str(error.message) for error in app.exception]
