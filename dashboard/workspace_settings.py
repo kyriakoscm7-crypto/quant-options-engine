@@ -106,7 +106,7 @@ def render_workspace_settings() -> None:
                     "This menu cannot manage accounts or revoke access."
                 )
                 st.caption(
-                    "Real stocks: provider-hosted TradingView chart only. "
+                    "Real stocks: provider-hosted TradingView charts, financials, technicals and news. "
                     "Models and screening: clearly labeled hypothetical "
                     "calculations and synthetic simulations."
                 )

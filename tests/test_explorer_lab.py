@@ -25,12 +25,10 @@ def test_invalid_assumptions_rejected(args):
         research_paths(*args)
 
 
-def test_lab_interactions_and_symbol_independence():
-    app = AppTest.from_string('from dashboard.stock_explorer_widget import render_stock_explorer\nrender_stock_explorer()').run()
+def test_optional_lab_interactions():
+    app = AppTest.from_string('from dashboard.stock_research_lab import render_research_lab\nrender_research_lab()').run()
     assert not app.exception
     initial = [metric.value for metric in app.metric]
-    app.selectbox[0].select('Microsoft · NASDAQ:MSFT').run()
-    assert [metric.value for metric in app.metric] == initial
     app.slider(key='lab_vol').set_value(50).run()
     assert not app.exception
     assert app.metric[1].value != initial[1]

@@ -48,3 +48,26 @@ existing public-route HTTP isolation tests. CI lints the new calculation/UI
 modules and runs the complete suite. Review both desktop/mobile and actual widget
 availability in the target environment before release. Hosting config is unchanged.
 PR #6 must remain draft; merge/deployment require explicit approval.
+
+## Real-stock research update
+
+Stock Explorer now focuses exclusively on actual symbols: chart, symbol overview,
+financials, company profile, technical analysis and related news in official
+TradingView display-only panels. A selected research view loads only its own
+widget. Arbitrary exchange-qualified symbols are supported, subject to provider
+availability. Missing data never falls back to synthetic numbers. These panels
+follow TradingView's documented multi-widget stock-page integration:
+https://www.tradingview.com/widget-docs/tutorials/iframe/build-page/widget-integration/
+
+The fictional workbench is no longer rendered in Stock Explorer. Its calculation
+module and tests remain for optional educational use. The earlier list of rights
+limitations refers to app-computed/downloaded data, not information that the
+provider makes available within its own display panels. No provider data is
+extracted, stored or transformed into custom company analytics. Technical ratings
+are the provider's indicator summary, not a Quant Intelligence recommendation.
+
+My analysis stores user-written notes separately for each symbol during the
+session and supports Markdown download. Notes survive research-view changes;
+a new browser session is not permanent storage. Text is processed by the hosted
+Streamlit server; notes are not transmitted into TradingView widgets. Simulation
+Lab remains explicitly fictional and now links directly to real Stock Explorer.

@@ -155,3 +155,52 @@ def test_top_right_preferences_are_session_local_and_resettable():
     assert app.session_state["qi_show_research_notes"] is True
     assert app.session_state["qi_reduce_motion"] is False
     assert app.session_state["qi_external_charts"] is False
+
+
+@pytest.mark.parametrize('view', ['Overview', 'Financials', 'Company', 'Technicals', 'News'])
+def test_real_stock_detail_widget_config(view):
+    from dashboard.stock_explorer_widget import DETAIL_WIDGETS, detail_embed_html
+    markup = detail_embed_html('NYSE:KO', view)
+    config = json.loads(re.search(r'async>\s*(\{.*?\})\s*</script>', markup, re.S)[1])
+    assert config['symbol'] == 'NYSE:KO'
+    assert config['colorTheme'] == 'dark'
+    assert f'embed-widget-{DETAIL_WIDGETS[view][0]}.js' in markup
+    assert 'tradingview-widget-copyright' in markup
+    assert 'fetch(' not in markup and 'postMessage' not in markup
+    with pytest.raises(ValueError):
+        detail_embed_html('</script>', view)
+
+
+@pytest.mark.parametrize('view', ['Chart', 'Overview', 'Financials', 'Company', 'Technicals', 'News', 'My analysis'])
+def test_real_stock_views_never_request_backend_data(view, monkeypatch):
+    import requests
+
+    def fail(*args, **kwargs):
+        raise AssertionError('Real-stock page attempted a backend data call')
+
+    monkeypatch.setattr(requests.Session, 'request', fail)
+    source = "from dashboard.stock_explorer_widget import render_stock_explorer\nrender_stock_explorer()"
+    app = AppTest.from_string(source)
+    app.session_state['qi_external_charts'] = True
+    app.session_state['qi_stock_view'] = view
+    app.run()
+    assert not app.exception
+    assert len(app.get('iframe')) == (0 if view == 'My analysis' else 1)
+    assert len(app.metric) == 0
+    assert not any('FICTIONAL MODEL LAB' in caption.value for caption in app.caption)
+
+
+def test_notes_survive_view_change_and_remain_per_symbol():
+    source = "from dashboard.stock_explorer_widget import render_stock_explorer\nrender_stock_explorer()"
+    app = AppTest.from_string(source)
+    app.session_state['qi_stock_view'] = 'My analysis'
+    app.run()
+    app.text_area[0].set_value('My own thesis').run()
+    app.radio(key='qi_stock_view').set_value('Chart').run()
+    app.radio(key='qi_stock_view').set_value('My analysis').run()
+    assert app.text_area[0].value == 'My own thesis'
+    app.selectbox[0].select('Microsoft · NASDAQ:MSFT').run()
+    assert app.text_area[0].value == ''
+    app.selectbox[0].select('Apple · NASDAQ:AAPL').run()
+    assert app.text_area[0].value == 'My own thesis'
+    assert not app.exception

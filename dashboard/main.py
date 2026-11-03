@@ -694,6 +694,10 @@ if public_market_data_route_blocked(page):
     # fictional data, never third-party historical or live market feeds.
     from dashboard.demo_showcase import render_demo_research_page
 
+    if page == "🧪 Simulation Lab":
+        if st.button("Looking for actual stocks? Open Stock Explorer", key="qi_sim_to_real"):
+            st.session_state["_navigation_request"] = "🔎 Stock Explorer"
+            st.rerun()
     render_demo_research_page(page)
     st.stop()
 
