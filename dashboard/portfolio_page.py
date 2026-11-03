@@ -164,7 +164,7 @@ def render_portfolio_manager() -> None:
     Render the interactive Portfolio Manager page.
     """
 
-    st.title("💼 Portfolio Manager")
+    st.title(":primary[:material/account_balance_wallet:] Portfolio Manager")
 
     st.markdown(
         "Construct and analyze a stock portfolio using "

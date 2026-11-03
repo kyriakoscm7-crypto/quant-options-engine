@@ -458,6 +458,42 @@ _HOMEPAGE_CSS = """
     line-height: 1.35 !important;
 }
 
+
+/* Single clickable destination cards */
+a.qi-home-card-link {
+    display: block;
+    position: relative;
+    color: inherit !important;
+    text-decoration: none !important;
+    cursor: pointer;
+    transition: transform .2s ease, border-color .2s ease,
+                box-shadow .2s ease;
+}
+a.qi-home-card-link:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 120, 183, .65) !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .15);
+}
+a.qi-home-card-link:focus-visible {
+    outline: 3px solid #FF78B7;
+    outline-offset: 3px;
+}
+.qi-home-card-arrow {
+    position: absolute;
+    right: 18px;
+    bottom: 14px;
+    color: #FF78B7;
+    font-size: 1.25rem;
+}
+@media (prefers-reduced-motion: reduce) {
+    a.qi-home-card-link {
+        transition: none;
+    }
+    a.qi-home-card-link:hover {
+        transform: none;
+    }
+}
+
 </style>
 """
 
@@ -523,33 +559,43 @@ def _navigate(destination: str) -> None:
     st.rerun()
 
 
-def _workspace_card(icon: str, title: str, description: str, destination: str, key: str, cta: str) -> None:
+def _workspace_card(
+    icon: str,
+    title: str,
+    description: str,
+    destination: str,
+    key: str,
+    cta: str,
+) -> None:
+    """Render a single accessible navigation card."""
+    from html import escape
+
+    routes = {
+        "discover": "discover",
+        "learn": "learn",
+        "stock": "research",
+        "portfolio": "portfolio",
+    }
+    if key not in routes:
+        raise ValueError(f"Unknown homepage destination: {key}")
+
+    url = f"?qi_go={routes[key]}"
     st.html(
-        f'<div class="qi-home-card">'
-        f'<span class="qi-home-card-icon" aria-hidden="true">{icon_svg(icon, 24)}</span>'
-        f'<h3>{title}</h3><p>{description}</p></div>'
+        f'<a class="qi-home-card qi-home-card-link" '
+        f'href="{url}" aria-label="{escape(cta, quote=True)}">'
+        f'<span class="qi-home-card-icon" aria-hidden="true">'
+        f'{icon_svg(icon, 24)}</span>'
+        f'<h3>{escape(title)}</h3>'
+        f'<p>{escape(description)}</p>'
+        f'<span class="qi-home-card-arrow" aria-hidden="true">'
+        f'&#8599;</span></a>'
     )
-    with st.container(key=f"qi_home_card_actions_{key}"):
-        if st.button(cta, key=f"qi_home_card_{key}", use_container_width=True):
-            _navigate(destination)
 
 
 def render_premium_home() -> None:
     """Clear, engaging homepage without a gesture-capturing chart."""
     st.html(_HOMEPAGE_CSS)
     st.html(_HERO.replace("__QI_NETWORK_IMAGE__", QI_NETWORK_DATA_URL))
-
-    with st.container(key="qi_home_primary_actions"):
-        a, b, c = st.columns(3, gap="small")
-        with a:
-            if st.button("Discover Markets", key="qi_home_discover", type="primary", use_container_width=True):
-                _navigate("💎 Quant Discovery")
-        with b:
-            if st.button("Stock Explorer", key="qi_home_stock", use_container_width=True):
-                _navigate("🔎 Stock Explorer")
-        with c:
-            if st.button("Quant Learn", key="qi_home_learn", use_container_width=True):
-                _navigate("📚 Learn")
 
     st.html(
         '<div class="qi-home-section-head"><h2>Where would you like to begin?</h2>'
