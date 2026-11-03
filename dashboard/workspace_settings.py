@@ -117,7 +117,7 @@ def render_workspace_settings() -> None:
                 ):
                     st.session_state["_navigation_request"] = "📄 Legal & Privacy"
                     st.rerun()
-    
+
 
     # Applied after preference widgets so a change is visible immediately.
     if st.session_state.get("qi_display_density") == "Compact":
