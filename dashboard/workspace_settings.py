@@ -82,15 +82,16 @@ def render_workspace_settings() -> None:
                     help="Minimize decorative movement for comfort and accessibility.",
                 )
                 st.toggle(
-                    "Enable external TradingView charts",
+                    "Automatically load TradingView panels",
                     key="qi_external_charts",
-                    help="Off by default. Enabling loads TradingView from your browser.",
+                    help="Opt in for this session. Stock Explorer then opens charts and research automatically.",
                 )
                 st.caption(
                     "TradingView receives connection metadata including IP "
                     "address, embedding URL and selected symbol when loaded. "
-                    "Disabling prevents future chart loads, not past requests."
+                    "Device and usage analytics may also be processed under its privacy policy. Disabling removes panels and prevents future app loads; it cannot undo past requests."
                 )
+                st.markdown("[TradingView privacy policy](https://www.tradingview.com/privacy-policy/)")
                 st.button(
                     "Reset preferences",
                     key="qi_reset_workspace_preferences",

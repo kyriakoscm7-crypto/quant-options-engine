@@ -21,7 +21,7 @@ def test_official_embed_preserves_attribution_and_configuration(symbol):
     config = json.loads(re.search(r'async>\s*(\{.*?\})\s*</script>', markup, re.S)[1])
     assert config['symbol'] == symbol
     assert config['theme'] == 'dark'
-    assert config['allow_symbol_change'] is True
+    assert config['allow_symbol_change'] is False
     assert 'postMessage' not in markup
     assert 'fetch(' not in markup
 
@@ -62,7 +62,7 @@ def test_main_public_routes_cannot_reenable_legacy_feeds(route, monkeypatch):
     app.run(timeout=45)
     assert not app.exception, [error.message for error in app.exception]
     if route == '🔎 Stock Explorer':
-        assert len(app.get('iframe')) == 1
+        assert len(app.get('iframe')) == 4
         assert not any('SYNTHETIC DEMO' in item.value for item in app.info)
     elif route != '📄 Legal & Privacy':
         assert any('SYNTHETIC DEMO' in item.value for item in app.info)
@@ -82,9 +82,9 @@ def test_compact_menu_opens_policies_and_can_disable_charts():
     app.session_state['selected_page'] = '🔎 Stock Explorer'
     app.run(timeout=45)
     assert len(app.get('iframe')) == 0
-    app.button(key='qi_load_stock_chart').click().run()
+    app.toggle(key='qi_explorer_consent').set_value(True).run()
     assert not app.exception
-    assert len(app.get('iframe')) == 1
+    assert len(app.get('iframe')) == 4
     app.toggle(key='qi_external_charts').set_value(False).run()
     assert not app.exception
     assert len(app.get('iframe')) == 0
@@ -185,7 +185,7 @@ def test_real_stock_views_never_request_backend_data(view, monkeypatch):
     app.session_state['qi_stock_view'] = view
     app.run()
     assert not app.exception
-    assert len(app.get('iframe')) == (0 if view == 'My analysis' else 1)
+    assert len(app.get('iframe')) == (2 if view == 'My analysis' else 4 if view in ('Chart', 'Overview') else 3)
     assert len(app.metric) == 0
     assert not any('FICTIONAL MODEL LAB' in caption.value for caption in app.caption)
 
@@ -199,8 +199,53 @@ def test_notes_survive_view_change_and_remain_per_symbol():
     app.radio(key='qi_stock_view').set_value('Chart').run()
     app.radio(key='qi_stock_view').set_value('My analysis').run()
     assert app.text_area[0].value == 'My own thesis'
-    app.selectbox[0].select('Microsoft · NASDAQ:MSFT').run()
+    app.selectbox[0].select('Microsoft · MSFT').run()
     assert app.text_area[0].value == ''
-    app.selectbox[0].select('Apple · NASDAQ:AAPL').run()
+    app.selectbox[0].select('Apple · AAPL').run()
     assert app.text_area[0].value == 'My own thesis'
     assert not app.exception
+
+
+@pytest.mark.parametrize("label,expected_range,expected_interval", [
+    ("1D", "1D", "1"), ("1W", "5D", "15"), ("1M", "1M", "30"),
+    ("3M", "3M", "60"), ("6M", "6M", "D"), ("1Y", "12M", "D"),
+    ("5Y", "60M", "W"), ("All", "ALL", "M"),
+])
+def test_lookback_is_distinct_from_candle_interval(label, expected_range, expected_interval):
+    markup = chart_embed_html("NASDAQ:AAPL", label)
+    config = json.loads(re.search(r'async>\s*(\{.*?\})\s*</script>', markup, re.S)[1])
+    assert config["range"] == expected_range
+    assert config["interval"] == expected_interval
+    assert config["withdateranges"] is False
+
+
+def test_simple_labels_keep_exchange_qualified_symbols():
+    assert SYMBOLS["Apple · AAPL"] == "NASDAQ:AAPL"
+    assert all(":" not in label and ":" in symbol for label, symbol in SYMBOLS.items())
+
+
+def test_session_opt_in_automatic_return_range_change_and_revoke():
+    app = AppTest.from_file(str(Path(__file__).parents[1] / "dashboard/main.py"))
+    app.session_state["selected_page"] = "🔎 Stock Explorer"
+    app.run(timeout=45)
+    assert len(app.get("iframe")) == 0
+    app.toggle(key="qi_explorer_consent").set_value(True).run()
+    assert not app.exception
+    assert len(app.get("iframe")) == 4
+    assert not any(button.label == "Load real-stock chart" for button in app.button)
+    app.radio(key="qi_stock_lookback").set_value("1D").run()
+    app.selectbox[1].select("Microsoft · MSFT").run()
+    assert not app.exception
+    assert app.session_state["qi_stock_lookback"] == "1D"
+    app.session_state["selected_page"] = "🏠 Overview"
+    app.run()
+    app.session_state["selected_page"] = "🔎 Stock Explorer"
+    app.run()
+    assert len(app.get("iframe")) == 4
+    app.toggle(key="qi_external_charts").set_value(False).run()
+    assert len(app.get("iframe")) == 0
+    assert app.toggle(key="qi_explorer_consent").value is False
+    app.toggle(key="qi_explorer_consent").set_value(True).run()
+    app.button(key="qi_reset_workspace_preferences").click().run()
+    assert not app.exception
+    assert len(app.get("iframe")) == 0

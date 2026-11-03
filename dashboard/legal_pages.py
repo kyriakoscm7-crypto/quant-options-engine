@@ -117,13 +117,12 @@ Do not assume the repository setting disables host telemetry. See also
 [Streamlit privacy information](https://docs.streamlit.io/develop/concepts/configuration/options#telemetry).
 Actual host settings, log retention and subprocessors still require verification.
 
-**External research panels.** Charts, financials, company profiles, technical ratings and news panels are off initially. If you choose **Load real-stock
-chart** or enable chart loading in the top-right Settings menu, your browser
+**External research panels.** Charts, financials, company profiles, technical ratings and news panels are off initially. If you allow automatic panels in Stock Explorer or the top-right Settings menu, charts and company research load automatically when you enter Stock Explorer during that session. Your browser
 connects directly to TradingView. Its widget FAQ states that widgets process the
 embedding page URL, widget type, displayed symbol and IP address, and do not set
 cookies. See [TradingView's widget FAQ](https://www.tradingview.com/widget-docs/faq/general/)
 and [privacy policy](https://www.tradingview.com/privacy-policy/).
-This choice lasts for the session. You can disable further chart loads in
+TradingView’s broader privacy policy also describes device and usage analytics, including third-party analytics providers. Private, invitation-only login does not itself constitute consent to these external requests. This choice lasts for the session. You can disable further chart loads in
 Settings. This switch prevents future chart loads; it cannot undo prior requests.
 The app does not receive provider panel data or use it in custom analytics. Research notes are your own text, processed by the Streamlit server, kept in session state and downloadable; they are not permanent account storage or sent to TradingView.
 

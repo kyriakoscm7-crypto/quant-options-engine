@@ -8,32 +8,47 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 SYMBOLS = {
-    "Apple · NASDAQ:AAPL": "NASDAQ:AAPL",
-    "Microsoft · NASDAQ:MSFT": "NASDAQ:MSFT",
-    "NVIDIA · NASDAQ:NVDA": "NASDAQ:NVDA",
-    "Amazon · NASDAQ:AMZN": "NASDAQ:AMZN",
-    "Alphabet · NASDAQ:GOOGL": "NASDAQ:GOOGL",
-    "Tesla · NASDAQ:TSLA": "NASDAQ:TSLA",
-    "JPMorgan Chase · NYSE:JPM": "NYSE:JPM",
+    "Apple · AAPL": "NASDAQ:AAPL",
+    "Microsoft · MSFT": "NASDAQ:MSFT",
+    "NVIDIA · NVDA": "NASDAQ:NVDA",
+    "Amazon · AMZN": "NASDAQ:AMZN",
+    "Alphabet · GOOGL": "NASDAQ:GOOGL",
+    "Tesla · TSLA": "NASDAQ:TSLA",
+    "JPMorgan Chase · JPM": "NYSE:JPM",
 }
 
 
-def chart_embed_html(symbol: str) -> str:
+# Range is visible history; interval is the size of each candle. Never substitute
+# a daily candle interval for a one-day lookback.
+LOOKBACKS = {
+    "1D": ("1D", "1", "Latest trading day · 1-minute candles"),
+    "1W": ("5D", "15", "Latest five trading days · 15-minute candles"),
+    "1M": ("1M", "30", "Past month · 30-minute candles"),
+    "3M": ("3M", "60", "Past three months · 1-hour candles"),
+    "6M": ("6M", "D", "Past six months · daily candles"),
+    "1Y": ("12M", "D", "Past year · daily candles"),
+    "5Y": ("60M", "W", "Past five years · weekly candles"),
+    "All": ("ALL", "M", "All available history · monthly candles"),
+}
+
+
+def chart_embed_html(symbol: str, lookback: str = "1M") -> str:
     """Build official iframe-widget markup with intact, visible attribution."""
     if not re.fullmatch(r"[A-Z0-9_]+:[A-Z0-9_.-]+", symbol):
         raise ValueError("Use an exchange-qualified stock symbol")
+    date_range, interval, _ = LOOKBACKS[lookback]
     symbol_url = "https://www.tradingview.com/symbols/" + symbol.replace(":", "-") + "/"
     config = {
-        "autosize": True, "symbol": symbol, "interval": "D",
+        "autosize": True, "symbol": symbol, "interval": interval, "range": date_range,
         "timezone": "Etc/UTC", "theme": "dark", "style": "1",
-        "locale": "en", "allow_symbol_change": True,
+        "locale": "en", "allow_symbol_change": False,
         "hide_top_toolbar": False, "hide_legend": False,
-        "withdateranges": True, "save_image": True,
+        "withdateranges": False, "save_image": True,
         "backgroundColor": "#080D1D", "gridColor": "rgba(255,255,255,0.06)",
     }
     return f'''<!doctype html><html lang="en"><head><meta name="viewport"
 content="width=device-width, initial-scale=1"><title>Stock chart by TradingView</title>
-<style>html{{height:620px}}body{{height:100%;margin:0;background:#080D1D;color:#ddd}}</style></head><body>
+<style>html{{height:620px}}body{{height:100%;margin:0;background:#080D1D;color:#ddd}}a{{color:#91b4f4}} .tradingview-widget-copyright{{font:12px sans-serif;padding:6px 0}}</style></head><body>
 <!-- TradingView Widget BEGIN -->
 <div class="tradingview-widget-container" style="height:620px;width:100%">
 <div class="tradingview-widget-container__widget" style="height:calc(100% - 32px);width:100%"></div>
@@ -43,11 +58,6 @@ rel="noopener nofollow" target="_blank"><span class="blue-text">{html.escape(sym
 {json.dumps(config)}
 </script></div><!-- TradingView Widget END -->
 </body></html>'''
-
-
-def _enable_external_charts() -> None:
-    """Widget callback runs before the sidebar is rebuilt on the next rerun."""
-    st.session_state["qi_external_charts"] = True
 
 
 DETAIL_WIDGETS = {
@@ -91,7 +101,7 @@ def _save_research_note(symbol: str, title: str, key: str) -> None:
 def render_stock_explorer() -> None:
     st.title(":primary[:material/search:] Stock Explorer")
     st.caption("REAL COMPANIES · CHARTS / FINANCIALS / TECHNICALS / NEWS")
-    choice = st.selectbox("Company / exchange", [*SYMBOLS, "Other exchange-qualified symbol"])
+    choice = st.selectbox("Find a company", [*SYMBOLS, "Other exchange-qualified symbol"])
     symbol = SYMBOLS.get(choice, "NASDAQ:AAPL")
     if choice == "Other exchange-qualified symbol":
         symbol = st.text_input("Exchange:symbol", "NASDAQ:AAPL", help="For example NYSE:KO or NASDAQ:META").strip().upper()
@@ -99,9 +109,37 @@ def render_stock_explorer() -> None:
             st.warning("Enter an exchange-qualified symbol such as NASDAQ:AAPL.")
             return
     st.caption("Market information by TradingView · May be delayed or unavailable · Not investment advice")
-    view = st.radio("Research view", ["Chart", "Overview", "Financials", "Company", "Technicals", "News", "My analysis"],
-                    horizontal=True, key="qi_stock_view")
     symbol_url = "https://www.tradingview.com/symbols/" + symbol.replace(":", "-") + "/"
+    enabled = st.session_state.get("qi_external_charts", False)
+    if not enabled:
+        with st.container(border=True):
+            st.markdown("### Your research workspace")
+            st.write("Allow TradingView to load charts and company research automatically for this session.")
+            st.caption("TradingView receives your IP address, selected symbol, widget type and embedding URL. Its privacy policy describes device and usage analytics, including third-party providers. Your notes are not sent to TradingView. Private sign-in does not replace your choice.")
+            st.markdown("[TradingView privacy policy](https://www.tradingview.com/privacy-policy/)")
+            st.session_state["qi_explorer_consent"] = False
+            st.toggle("Allow automatic TradingView panels this session", key="qi_explorer_consent",
+                      on_change=_apply_panel_consent)
+            st.caption("External charts are off until you choose to allow them. You can also enable or disable them in Settings.")
+    else:
+        components.html(detail_embed_html(symbol, "Overview"), height=260, scrolling=False)
+        lookback = st.radio("Price history · lookback", list(LOOKBACKS), index=2,
+                            horizontal=True, key="qi_stock_lookback")
+        st.caption(LOOKBACKS[lookback][2] + " · Exchange sessions and available history determine coverage.")
+        components.html(chart_embed_html(symbol, lookback), height=640, scrolling=False)
+        st.caption("Lookback controls the visible history; the chart toolbar controls candle size. Panning or zooming changes the visible window. Choose another lookback to reset it. Use the company selector to keep all panels aligned.")
+        st.markdown("### Company research")
+    view = st.radio("Research view", ["Chart", "Overview", "Financials", "Company", "Technicals", "News", "My analysis"],
+                    horizontal=True, key="qi_stock_view",
+                    help="The price chart stays open above. Overview opens financials and company background together.")
+    if enabled and view != "My analysis":
+        panels = ["Financials", "Company"] if view in ("Chart", "Overview") else [view]
+        for panel in panels:
+            st.markdown(f"#### {panel}")
+            components.html(detail_embed_html(symbol, panel), height=DETAIL_WIDGETS[panel][1] + 10, scrolling=False)
+        if view == "Technicals":
+            st.caption("TradingView's technical ratings summarize indicators, not a Quant Intelligence recommendation.")
+        st.caption("Panel unavailable? Coverage depends on the symbol, provider and browser. Open TradingView below; missing data is never replaced with fictional values.")
     if view == "My analysis":
         st.markdown(f"### Your research · {symbol}")
         st.caption("Your own observations, saved for this session only. Download to keep them. No automated company scores.")
@@ -113,21 +151,9 @@ def render_stock_explorer() -> None:
                                         on_change=_save_research_note, args=(symbol, title, key))
         export = "# " + symbol + "\n\n" + "\n\n".join(f"## {title}\n{value}" for title, value in notes.items())
         st.download_button("Download my research", export, symbol.replace(":", "-") + "-research.md", "text/markdown")
-    elif st.session_state.get("qi_external_charts", False):
-        if view == "Chart":
-            components.html(chart_embed_html(symbol), height=640, scrolling=False)
-            st.caption("Use Indicators for technical studies and the chart toolbar for comparisons where available. Chart-only symbol changes do not update the other views; use the company selector above to keep them aligned.")
-        else:
-            components.html(detail_embed_html(symbol, view), height=DETAIL_WIDGETS[view][1] + 10, scrolling=False)
-            if view == "Technicals":
-                st.caption("Provider-generated technical ratings summarize indicators, not your own conclusion. Change the interval inside the panel.")
-        st.caption("Missing data or a blocked panel? Availability depends on the symbol, provider and browser. Use the TradingView link below; no fictional substitute is shown.")
-    else:
-        with st.container(border=True):
-            st.markdown("### Research actual stocks")
-            st.write("Explore price history, company financials, technical indicators and related news through TradingView's hosted panels.")
-            st.caption("Loading shares your IP, symbol and embedding URL with TradingView. Control all panels in Settings.")
-            st.button("Load real-stock chart", type="primary", on_click=_enable_external_charts,
-                      key="qi_load_stock_chart")
-            st.caption("External charts are off until you choose to load them.")
     st.link_button("Open this stock on TradingView ↗", symbol_url)
+
+
+def _apply_panel_consent() -> None:
+    """Apply the disclosed visitor choice before Settings is rebuilt."""
+    st.session_state["qi_external_charts"] = st.session_state["qi_explorer_consent"]
