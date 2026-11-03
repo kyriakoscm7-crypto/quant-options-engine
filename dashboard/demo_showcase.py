@@ -406,6 +406,11 @@ def render_demo_portfolio() -> None:
         "fictional prices, and no trading costs or taxes."
     )
 
+    from dashboard.portfolio_risk_lab import render_portfolio_risk_lab
+
+    st.divider()
+    render_portfolio_risk_lab(prices, quantities)
+
 
 def forecast_demo_metrics(symbol: str, horizon: int) -> pd.DataFrame:
     """Build a chronological illustration with a simple no-change baseline."""
