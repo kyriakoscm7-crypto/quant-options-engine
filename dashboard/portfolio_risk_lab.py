@@ -42,6 +42,9 @@ def simulate_portfolio_distribution(
     ):
         raise ValueError("Quantities must be finite and nonnegative")
 
+    quantities = {key: value for key, value in quantities.items() if value > 0}
+    if not quantities:
+        raise ValueError("At least one nonzero position required")
     frame = prices[list(quantities)].astype(float)
     if not np.isfinite(frame.to_numpy()).all() or (frame <= 0).any().any():
         raise ValueError("Prices must be positive and finite")
@@ -114,13 +117,13 @@ def render_portfolio_risk_lab(
     with right:
         correlation_mode = st.selectbox(
             "Correlation assumption",
-            ["Estimated from synthetic histories", "Zero cross-asset correlation"],
+            ["Estimated from synthetic histories", "Independently shuffled histories"],
             key="qi_portfolio_mc_correlation",
         )
 
     # The independent-case toggle changes dependence assumptions while
     # maintaining every marginal asset's log-return volatility and drift.
-    if correlation_mode == "Zero cross-asset correlation":
+    if correlation_mode == "Independently shuffled histories":
         # Deterministic orthogonalized illustration: generate an independent
         # sample from each asset's synthetic marginal (no provider data).
         returns = np.log(prices / prices.shift(1)).dropna()
@@ -192,7 +195,7 @@ def render_portfolio_risk_lab(
             "The simulation estimates per-session mean and covariance "
             "from fictional log returns and draws a multivariate normal "
             "distribution. The portfolio is assumed rebalanced daily "
-            "to current example value weights. The zero-correlation "
+            "to current example value weights. The independent-shuffle "
             "option independently shuffles each fictional asset's returns. "
             "No taxes, trading costs, liquidity effects, regime changes, "
             "fat tails, or out-of-sample predictive validation are included."
