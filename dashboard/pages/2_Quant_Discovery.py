@@ -16,11 +16,9 @@ from dashboard.public_safety import public_market_data_route_blocked  # noqa: E4
 # This file may be opened directly as a Streamlit multipage entry point.
 # Apply the same public-use licence safeguard used by the main router.
 if public_market_data_route_blocked("💎 Quant Discovery"):
-    st.title("Market discovery temporarily unavailable")
-    st.warning(
-        "Third-party market research is paused until the operator verifies "
-        "data rights for public display."
-    )
+    from dashboard.demo_showcase import render_demo_research_page
+
+    render_demo_research_page("💎 Quant Discovery")
     st.stop()
 
 from app.discovery.database import (  # noqa: E402
