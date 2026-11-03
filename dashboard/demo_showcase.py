@@ -39,6 +39,25 @@ DEMO_ASSETS = {
               "noise": 0.000},
 }
 
+# Expand the illustrative research universe without embedding external data.
+# The curated names above are joined by 36 algorithmically defined fictional
+# instruments, giving the screening and ranking views genuine scale.
+_SYNTHETIC_SECTORS = (
+    "Technology", "Energy", "Healthcare", "Consumer",
+    "Industrials", "Financial Services",
+)
+for _i in range(1, 37):
+    DEMO_ASSETS[f"QX{_i:02d}"] = {
+        "name": f"Fictional Research Company {_i:02d}",
+        "sector": _SYNTHETIC_SECTORS[(_i - 1) % len(_SYNTHETIC_SECTORS)],
+        "seed": 2000 + 17 * _i,
+        "base": float(32 + (_i * 11) % 145),
+        "drift": 0.025 + ((_i * 3) % 23) / 100,
+        "beta": 0.55 + ((_i * 7) % 95) / 100,
+        "noise": 0.007 + ((_i * 3) % 13) / 1000,
+    }
+
+
 RESEARCH_ROUTES = frozenset({
     "🔎 Stock Explorer",
     "💎 Quant Discovery",
@@ -140,6 +159,7 @@ def _pct_change(history: pd.DataFrame, days: int) -> float:
     return float((close.iloc[-1] / close.iloc[-offset - 1] - 1) * 100)
 
 
+@st.cache_data(show_spinner=False)
 def _ranking() -> pd.DataFrame:
     rows = []
     benchmark = synthetic_history("ATLAS")
@@ -299,15 +319,23 @@ def render_demo_market_scanner() -> None:
     st.dataframe(filtered, hide_index=True, use_container_width=True)
     if filtered.empty:
         st.info("No fictional instruments match. Adjust the filters.")
-    fig = go.Figure()
-    for _, item in data.iterrows():
-        fig.add_trace(go.Scatter(
-            x=[item["Synthetic volatility (%)"]],
-            y=[item["20-session move (%)"]],
-            mode="markers+text", text=[item["Symbol"]],
-            textposition="top center", name=item["Symbol"],
-            marker={"size": 12},
-        ))
+    fig = go.Figure(go.Scatter(
+        x=data["Synthetic volatility (%)"],
+        y=data["20-session move (%)"],
+        mode="markers",
+        text=data["Symbol"],
+        hovertemplate=(
+            "Fictional instrument %{text}<br>"
+            "Simulated volatility: %{x:.1f}%<br>"
+            "Simulated 20-session move: %{y:+.1f}%<extra></extra>"
+        ),
+        marker={
+            "size": 12, "opacity": 0.8,
+            "color": data["Technical score / 100"],
+            "colorscale": "RdPu", "showscale": True,
+            "colorbar": {"title": "Score"},
+        },
+    ))
     fig.update_layout(xaxis_title="Synthetic annualized volatility (%)",
                       yaxis_title="Synthetic 20-session movement (%)")
     st.plotly_chart(_style(fig, "Volatility versus momentum · fictional"),
