@@ -26,7 +26,7 @@ were inspected or changed.
 | News tab | Official provider news panel; no copied news feed, scraping or invented company headlines. |
 | Historical Data tab and CSV | Original tab location retained with an explicit availability explanation and provider link. App price tables/exports remain unavailable without a verified data agreement. |
 | Research notes | Additional My analysis tab; per-company session notes, download of user-written text only. Public-company research only; no account details or real holdings. |
-| Discovery, Scanner, Forecast and Portfolio | Existing quantitative engines retained in source. Hosted demonstrations remain clearly fictional; Portfolio includes the synthetic Monte Carlo lab. They are not company-specific replacements for the selected real stock. |
+| Discovery, Scanner, Forecast and Portfolio | Existing quantitative engines retained in source. Discovery/Scanner now use official real-stock displays. Simulation Lab pairs real-company references with independent models; Portfolio/Forecast remain fictional demonstrations. Portfolio includes the synthetic Monte Carlo lab. Generated models are not company-specific replacements for observed history. |
 | Options, Greeks, Scenarios, Strategy and Learn | Existing mathematical and educational interactions preserved with illustrative inputs and assumptions. No brokerage connection or execution added. |
 
 The aim is continuity of navigation, controls, information hierarchy and existing

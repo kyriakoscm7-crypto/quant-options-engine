@@ -9,7 +9,11 @@ from __future__ import annotations
 
 import streamlit as st
 
+EXTERNAL_PANELS_NOTICE_VERSION = 2
+
+
 PREFERENCE_KEYS = (
+    "qi_external_panels_notice_version",
     "qi_external_charts",
     "qi_show_research_notes",
     "qi_display_density",
@@ -17,6 +21,7 @@ PREFERENCE_KEYS = (
 )
 
 DEFAULTS = {
+    "qi_external_panels_notice_version": 0,
     "qi_external_charts": False,
     "qi_show_research_notes": True,
     "qi_display_density": "Comfortable",
@@ -29,6 +34,19 @@ def initialize_workspace_preferences() -> None:
     for key, default in DEFAULTS.items():
         if key not in st.session_state:
             st.session_state[key] = default
+
+    # A prior chart-only choice must not silently become permission for automatic
+    # screeners across additional research pages after a hot reload.
+    if (st.session_state["qi_external_charts"]
+            and st.session_state["qi_external_panels_notice_version"] != EXTERNAL_PANELS_NOTICE_VERSION):
+        st.session_state["qi_external_charts"] = False
+        st.session_state["qi_external_panels_notice_version"] = 0
+
+
+def record_external_panel_choice() -> None:
+    st.session_state["qi_external_panels_notice_version"] = (
+        EXTERNAL_PANELS_NOTICE_VERSION if st.session_state["qi_external_charts"] else 0
+    )
 
 
 def reset_workspace_preferences() -> None:
@@ -84,7 +102,8 @@ def render_workspace_settings() -> None:
                 st.toggle(
                     "Automatically load TradingView panels",
                     key="qi_external_charts",
-                    help="Opt in for this session. Stock Explorer then opens its chart and all research tab panels automatically.",
+                    on_change=record_external_panel_choice,
+                    help="Opt in for this session. Charts, screeners and research panels then load across research pages, including unselected tabs.",
                 )
                 st.caption(
                     "TradingView receives connection metadata including IP "
@@ -107,8 +126,8 @@ def render_workspace_settings() -> None:
                     "This menu cannot manage accounts or revoke access."
                 )
                 st.caption(
-                    "Real stocks: provider-hosted TradingView charts, financials, technicals and news. "
-                    "Models and screening: clearly labeled hypothetical "
+                    "Real stocks: provider-hosted TradingView charts, screeners, financials, technicals and news. "
+                    "Independent models: clearly labeled hypothetical "
                     "calculations and synthetic simulations."
                 )
                 if st.button(

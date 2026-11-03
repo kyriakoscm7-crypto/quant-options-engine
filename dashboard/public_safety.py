@@ -1,7 +1,8 @@
 """Guard legacy public feeds until a separately licensed provider is integrated.
 
 Stock Explorer is intercepted by the main router for a display-only widget.
-Other research routes use offline simulations, independent of legacy flags.
+Discovery/Scanner use official screeners, Simulation Lab has independent models,
+and remaining demos stay offline, independent of legacy flags.
 """
 
 import os

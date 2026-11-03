@@ -7,6 +7,11 @@ import re
 import streamlit as st
 import streamlit.components.v1 as components
 
+from dashboard.workspace_settings import (
+    initialize_workspace_preferences,
+    record_external_panel_choice,
+)
+
 SYMBOLS = {
     "Apple · AAPL": "NASDAQ:AAPL",
     "Microsoft · MSFT": "NASDAQ:MSFT",
@@ -124,8 +129,26 @@ def _render_panel(symbol: str, view: str, enabled: bool) -> None:
         st.caption("Allow TradingView panels above or in Settings to view this company research.")
 
 
-def _open_simulation_lab() -> None:
+def _open_simulation_lab(symbol: str) -> None:
+    st.session_state["_qi_sim_reference_request"] = symbol
     st.session_state["_navigation_request"] = "🧪 Simulation Lab"
+
+
+def render_external_panel_consent(key: str = "qi_explorer_consent") -> bool:
+    """One disclosed choice per session, shared by all official panel pages."""
+    initialize_workspace_preferences()
+    if st.session_state.get("qi_external_charts", False):
+        return True
+    with st.container(border=True):
+        st.markdown("### Your research workspace")
+        st.write("Allow TradingView charts, screeners and company research to load automatically across research pages for this session, including panels in unselected tabs.")
+        st.caption("TradingView receives your IP address, selected symbol, widget type and embedding URL. Its privacy policy describes device and usage analytics, including third-party providers. Your notes are not sent to TradingView. Private sign-in does not replace your choice.")
+        st.markdown("[TradingView privacy policy](https://www.tradingview.com/privacy-policy/)")
+        st.session_state[key] = False
+        st.toggle("Allow automatic TradingView panels this session", key=key,
+                  on_change=_apply_panel_consent, args=(key,))
+        st.caption("External charts are off until you choose to allow them. Disable them or reset preferences in Settings at any time.")
+    return False
 
 
 def render_stock_explorer() -> None:
@@ -157,18 +180,8 @@ def render_stock_explorer() -> None:
             return
     st.caption("Market information by TradingView · May be delayed or unavailable · Not investment advice")
     symbol_url = "https://www.tradingview.com/symbols/" + symbol.replace(":", "-") + "/"
-    enabled = st.session_state.get("qi_external_charts", False)
-    if not enabled:
-        with st.container(border=True):
-            st.markdown("### Your research workspace")
-            st.write("Allow TradingView to load the chart and company research automatically for this session, including panels in the tabs below.")
-            st.caption("TradingView receives your IP address, selected symbol, widget type and embedding URL. Its privacy policy describes device and usage analytics, including third-party providers. Your notes are not sent to TradingView. Private sign-in does not replace your choice.")
-            st.markdown("[TradingView privacy policy](https://www.tradingview.com/privacy-policy/)")
-            st.session_state["qi_explorer_consent"] = False
-            st.toggle("Allow automatic TradingView panels this session", key="qi_explorer_consent",
-                      on_change=_apply_panel_consent)
-            st.caption("External charts are off until you choose to allow them. Disable them or reset preferences in Settings at any time.")
-    else:
+    enabled = render_external_panel_consent()
+    if enabled:
         _render_panel(symbol, "Overview", enabled)
         st.caption(LOOKBACKS[lookback][2] + " requested · Provider sessions, resolution and available history determine coverage.")
         components.html(chart_embed_html(symbol, lookback, chart_type), height=640, scrolling=False)
@@ -187,7 +200,7 @@ def render_stock_explorer() -> None:
         st.caption("TradingView's ratings summarize technical indicators. They are not Quant Intelligence scores, probabilities of profit or a personalized recommendation.")
         st.markdown("#### Historical risk intelligence")
         st.write("Company-specific volatility, drawdown, beta and custom scores need a separately authorized price-history feed. The display panels do not supply data to our quantitative engines.")
-        st.button("Explore risk formulas in Simulation Lab", on_click=_open_simulation_lab,
+        st.button("Explore risk formulas in Simulation Lab", on_click=_open_simulation_lab, args=(symbol,),
                   key="qi_stock_risk_lab")
     with news:
         st.subheader("Company news")
@@ -205,6 +218,7 @@ def render_stock_explorer() -> None:
     st.link_button("Open this stock on TradingView ↗", symbol_url)
 
 
-def _apply_panel_consent() -> None:
+def _apply_panel_consent(key: str = "qi_explorer_consent") -> None:
     """Apply the disclosed visitor choice before Settings is rebuilt."""
-    st.session_state["qi_external_charts"] = st.session_state["qi_explorer_consent"]
+    st.session_state["qi_external_charts"] = st.session_state[key]
+    record_external_panel_choice()

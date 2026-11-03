@@ -690,14 +690,10 @@ if page == "🔎 Stock Explorer":
     st.stop()
 
 if public_market_data_route_blocked(page):
-    # Public visitors see working model demonstrations with strictly
-    # fictional data, never third-party historical or live market feeds.
+    # Official browser-only displays and independent models; never
+    # unverified server-side historical or live market feeds.
     from dashboard.demo_showcase import render_demo_research_page
 
-    if page == "🧪 Simulation Lab":
-        if st.button("Looking for actual stocks? Open Stock Explorer", key="qi_sim_to_real"):
-            st.session_state["_navigation_request"] = "🔎 Stock Explorer"
-            st.rerun()
     render_demo_research_page(page)
     st.stop()
 
@@ -776,7 +772,7 @@ if page == "🏠 Overview":
     if research_notes_enabled():
         st.caption(
             "Real-stock charts in Stock Explorer are provided by TradingView. "
-            "Discovery, scanner, portfolio and forecast models use labeled fictional simulations."
+            "Discovery and Scanner use official provider displays. Simulation Lab uses independent assumptions; portfolio and forecast demos remain fictional."
         )
     render_premium_home()
 

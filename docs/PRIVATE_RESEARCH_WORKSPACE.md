@@ -30,7 +30,9 @@ It is **not** a self-hosted login system or a grant of data rights.
 - Real stocks: official, attributed TradingView embedded chart; loading
   requires a visitor's session opt-in. It is display-only and does not
   feed custom quant engines.
-- Risk and research: deterministic synthetic OHLCV + existing real math
+- Discovery and Scanner: official real-stock screener displays after session opt-in.
+- Simulation Lab: real-company reference charts plus independent assumption-driven models; no fictional company selector.
+- Remaining Portfolio/Forecast demonstrations: deterministic synthetic OHLCV + existing real math
   (beta, volatility, Sharpe, drawdown, technical scoring, screening).
 - Options, Greeks, hypothetical scenarios and Quant Learn remain fully
   interactive and usable with manually supplied illustrative inputs.
@@ -81,3 +83,12 @@ notes tab. All research-tab panels load after the same session consent. See
 ORIGINAL_EXPERIENCE_PARITY.md for preserved features, data limitations and hosting
 checks that still require operator verification. No repository edit claims that
 production access or all applicable legal requirements have been verified.
+
+
+Latest real-company update: Discovery and Scanner now use the official provider
+stock screener; Simulation Lab uses real-company reference panels with independent
+manual-assumption models. Its generated results never describe the selected
+company's actual history or calibrated forecast. The same consent/withdrawal
+control covers all provider research pages. See REAL_COMPANY_RESEARCH_REVIEW.md
+for checked primary sources, candidate data-licensing routes, and unresolved
+hosting/regulatory release checks. No merge/deployment is authorized by this work.

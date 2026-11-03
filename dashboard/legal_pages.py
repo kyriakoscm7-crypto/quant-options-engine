@@ -117,12 +117,12 @@ Do not assume the repository setting disables host telemetry. See also
 [Streamlit privacy information](https://docs.streamlit.io/develop/concepts/configuration/options#telemetry).
 Actual host settings, log retention and subprocessors still require verification.
 
-**External research panels.** Charts, financials, company profiles, technical ratings and news panels are off initially. If you allow automatic panels in Stock Explorer or the top-right Settings menu, the chart and company research, including panels in unselected tabs, load automatically when you enter Stock Explorer during that session. Your browser
+**External research panels.** Charts, screeners, financials, company profiles, technical ratings and news panels are off initially. If you allow automatic panels on a research page or in the top-right Settings menu, charts, screeners and company research, including panels in unselected tabs, load automatically across Stock Explorer, Discovery, Scanner and Simulation Lab during that session. Your browser
 connects directly to TradingView. Its widget FAQ states that widgets process the
 embedding page URL, widget type, displayed symbol and IP address, and do not set
 cookies. See [TradingView's widget FAQ](https://www.tradingview.com/widget-docs/faq/general/)
 and [privacy policy](https://www.tradingview.com/privacy-policy/).
-TradingView’s broader privacy policy also describes device and usage analytics, including third-party analytics providers. Private, invitation-only login does not itself constitute consent to these external requests. This choice lasts for the session. You can disable further chart loads in
+TradingView’s broader privacy policy also describes device and usage analytics, including third-party analytics providers. Private, invitation-only login does not itself constitute consent to these external requests. This choice lasts for the session. A prior chart-only choice is not automatically expanded to screeners across new pages; the updated disclosure requires a new opt-in. You can disable further panel loads in
 Settings. This switch prevents future chart loads; it cannot undo prior requests.
 The app does not receive provider panel data or use it in custom analytics. Research notes are your own text, processed by the Streamlit server, kept in session state and downloadable; they are not permanent account storage or sent to TradingView.
 
@@ -159,8 +159,8 @@ def render_legal_pages() -> None:
     st.caption("Quant Intelligence / restricted, independent engineering research workspace")
     st.markdown(
         "Developed by **Kyriakos Margaritis** to teach financial concepts and "
-        "demonstrate quantitative software engineering. Real-stock charts are "
-        "provided by TradingView; custom risk, screening and forecast examples "
+        "demonstrate quantitative software engineering. Real-stock displays are "
+        "provided by TradingView; independent scenario, portfolio and forecast examples "
         "use fictional inputs. No broker affiliation or provider endorsement is implied."
     )
     st.link_button("View source & methodology ↗", "https://github.com/kyriakoscm7-crypto/quant-options-engine")

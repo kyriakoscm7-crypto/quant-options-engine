@@ -24,14 +24,14 @@ def _chart(frame, title):
 
 def render_research_lab():
     st.markdown("## Quantitative workbench")
-    st.caption("FICTIONAL MODEL LAB · Independent of the company selected above. Nothing here is a company forecast, quote or recommendation.")
+    st.caption("ASSUMPTION-DRIVEN MODEL · Independent of the reference company. No market data is imported; these results are not company forecasts, quotes or recommendations.")
     with st.expander("Model assumptions · adjust your experiment", expanded=True):
         a, b = st.columns(2)
         drift = a.slider("Model A annual growth assumption (%)", -40, 40, 8, key="lab_drift") / 100
         vol = b.slider("Model A annual volatility (%)", 5, 80, 25, key="lab_vol") / 100
         corr = a.slider("Assumed shock correlation with Model B", -1.0, 1.0, 0.6, 0.05, key="lab_corr")
         seed = b.number_input("Reproducible experiment seed", 0, 10000, 17, key="lab_seed")
-        st.caption("253 fictional daily observations, index starts at 100. Model B: 6% growth, 16% volatility. Geometric Brownian paths; no company data. Risk-free rate: 0% for path statistics.")
+        st.caption("253 generated daily observations, index starts at 100. Model B: 6% growth, 16% volatility. Geometric Brownian paths; no company data. Risk-free rate: 0% for path statistics.")
     paths = research_paths(drift, vol, corr, int(seed))
     dates = pd.bdate_range("2000-01-03", periods=len(paths))
     def history(name):
@@ -45,15 +45,15 @@ def render_research_lab():
         column.metric(label, value)
     performance, exposure, options, research = st.tabs(["Performance & comparison", "Risk & portfolio", "Options & Greeks", "Research desk"])
     with performance:
-        _chart(paths, "Fictional paths · indexed growth / observation number")
+        _chart(paths, "Generated scenarios · indexed growth / observation number")
         st.caption("One generated realization, not an expected outcome. Changing the selected company never changes these paths.")
         st.dataframe(paths.describe().T[["min", "max", "mean"]].rename(columns={"mean": "Average index"}), use_container_width=True)
-        st.download_button("Download fictional paths · CSV", paths.to_csv(index_label="Observation"), "fictional-model-paths.csv", "text/csv")
+        st.download_button("Download generated model paths · CSV", paths.to_csv(index_label="Observation"), "fictional-model-paths.csv", "text/csv")
     with exposure:
         weight = st.slider("Buy-and-hold allocation to Model A (%)", 0, 100, 60) / 100
         blend = portfolio_path(paths, weight)
         drawdowns = paths.div(paths.cummax()).sub(1).mul(100)
-        _chart(drawdowns, "Fictional drawdowns (%) / observation number")
+        _chart(drawdowns, "Model drawdowns (%) / observation number")
         _chart(pd.DataFrame({"Model A": paths.iloc[:, 0], "Model B": paths.iloc[:, 1], "Blend": blend}), "Buy-and-hold comparison · index")
         st.write(f"Realized model beta vs Model B: **{risk['beta_vs_spy']:.2f}** · correlation: **{risk['correlation_vs_spy']:.2f}**")
         shock = st.slider("Manual instantaneous shock to Model A (%)", -60, 60, -20) / 100

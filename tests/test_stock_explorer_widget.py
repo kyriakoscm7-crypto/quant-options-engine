@@ -59,21 +59,32 @@ def test_main_public_routes_cannot_reenable_legacy_feeds(route, monkeypatch):
     app = AppTest.from_file(str(Path(__file__).parents[1] / 'dashboard/main.py'))
     app.session_state['selected_page'] = route
     app.session_state['qi_external_charts'] = True
+    app.session_state['qi_external_panels_notice_version'] = 2
     app.run(timeout=45)
     assert not app.exception, [error.message for error in app.exception]
     if route == '🔎 Stock Explorer':
         assert len(app.get('iframe')) == 6
         assert not any('SYNTHETIC DEMO' in item.value for item in app.info)
+    elif route == '🧪 Simulation Lab':
+        assert any('HYPOTHETICAL MODEL' in item.value for item in app.info)
+        assert len(app.get('iframe')) == 2
+    elif route in {'💎 Quant Discovery', '🔍 Market Scanner'}:
+        assert len(app.get('iframe')) == 1
+        assert not any('SYNTHETIC DEMO' in item.value for item in app.info)
     elif route != '📄 Legal & Privacy':
         assert any('SYNTHETIC DEMO' in item.value for item in app.info)
 
 
-def test_direct_discovery_remains_simulated_even_with_legacy_flag(monkeypatch):
+def test_direct_discovery_uses_official_display_even_with_legacy_flag(monkeypatch):
     monkeypatch.setenv('QI_MARKET_DATA_RIGHTS_CONFIRMED', 'true')
     path = Path(__file__).parents[1] / 'dashboard/pages/2_Quant_Discovery.py'
     app = AppTest.from_file(str(path)).run(timeout=45)
     assert not app.exception
-    assert any('SYNTHETIC DEMO' in item.value for item in app.info)
+    assert len(app.get('iframe')) == 0
+    assert not any('SYNTHETIC DEMO' in item.value for item in app.info)
+    app.toggle(key='qi_discovery_consent').set_value(True).run()
+    assert not app.exception
+    assert len(app.get('iframe')) == 1
 
 
 def test_compact_menu_opens_policies_and_can_disable_charts():
@@ -107,7 +118,11 @@ def test_direct_renderers_use_simulations(module, renderer, monkeypatch):
     source = f"from {module} import {renderer}\n{renderer}()\n"
     app = AppTest.from_string(source).run(timeout=45)
     assert not app.exception
-    assert any("SYNTHETIC DEMO" in item.value for item in app.info)
+    if renderer == "render_market_scanner":
+        assert not any("SYNTHETIC DEMO" in item.value for item in app.info)
+        assert len(app.get("iframe")) == 0
+    else:
+        assert any("SYNTHETIC DEMO" in item.value for item in app.info)
 
 
 @pytest.mark.parametrize("route", [
@@ -184,6 +199,7 @@ def test_restored_research_tabs_never_request_backend_data(enabled, monkeypatch)
     source = "from dashboard.stock_explorer_widget import render_stock_explorer\nrender_stock_explorer()"
     app = AppTest.from_string(source)
     app.session_state["qi_external_charts"] = enabled
+    app.session_state["qi_external_panels_notice_version"] = 2 if enabled else 0
     app.run()
     assert not app.exception
     assert [tab.label for tab in app.tabs] == [
@@ -282,6 +298,7 @@ def test_unknown_navigation_symbol_never_guesses_an_exchange():
     app = AppTest.from_string("from dashboard.stock_explorer_widget import render_stock_explorer\nrender_stock_explorer()")
     app.session_state["_research_ticker_request"] = "UNKNOWN"
     app.session_state["qi_external_charts"] = True
+    app.session_state["qi_external_panels_notice_version"] = 2
     app.run()
     assert not app.exception
     assert len(app.get("iframe")) == 0
@@ -292,7 +309,9 @@ def test_risk_shortcut_keeps_simulations_separate_from_real_company():
     app = AppTest.from_file(str(Path(__file__).parents[1] / "dashboard/main.py"))
     app.session_state["selected_page"] = "🔎 Stock Explorer"
     app.run(timeout=45)
+    app.selectbox(key="qi_stock_company").select("Microsoft · MSFT").run()
     app.button(key="qi_stock_risk_lab").click().run()
     assert not app.exception
     assert app.session_state["selected_page"] == "🧪 Simulation Lab"
-    assert any("SYNTHETIC DEMO" in item.value for item in app.info)
+    assert app.selectbox(key="qi_simulation_company").value == "Microsoft · MSFT"
+    assert any("HYPOTHETICAL MODEL" in item.value for item in app.info)
