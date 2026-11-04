@@ -74,7 +74,12 @@ def render_market_discovery(*, scanner: bool = False) -> None:
         a.button("Open Stock Explorer", type="primary", key="qi_discovery_open",
                  on_click=_open_company, args=(symbol,))
         b.link_button("Find issuer filings · SEC EDGAR ↗", official_filings_url(symbol))
-        st.caption("Verify the issuer match in EDGAR. For listings without SEC coverage, use the issuer's official investor-relations site.")
+        st.caption(
+            "For Apple and Microsoft, this opens an SEC-verified issuer record. "
+            "For other symbols, it opens SEC company search: enter the company "
+            "name or ticker and verify the exact issuer before relying on filings. "
+            "Some listings do not have SEC coverage."
+        )
     render_discovery_notebook(symbol)
 
 
