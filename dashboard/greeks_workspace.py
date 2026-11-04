@@ -4,6 +4,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from app.pricing.greeks_workspace import calculate_greeks, compare_repricing
+from dashboard.model_handoff import transfer_assumptions
 
 
 def render_greeks_workspace():
@@ -36,12 +37,12 @@ def render_greeks_workspace():
     a, b, c = st.columns(3)
     with a:
         spot = st.number_input(
-            "Underlying price ($)", min_value=1.0,
+            "Underlying price ($)", min_value=0.01,
             max_value=1_000_000.0, value=100.0, step=1.0, key="qi_greeks_spot"
         )
     with b:
         strike = st.number_input(
-            "Strike price ($)", min_value=1.0,
+            "Strike price ($)", min_value=0.01,
             max_value=1_000_000.0, value=100.0, step=1.0, key="qi_greeks_strike"
         )
     with c:
@@ -64,6 +65,11 @@ def render_greeks_workspace():
         kind, spot, strike, days, volatility, rate, dividend
     )
 
+    st.button("Use these assumptions in Options Lab", key="qi_greeks_to_options",
+              on_click=transfer_assumptions,
+              args=("greeks", "workspace", "💰 Options Lab"))
+    st.caption("Only your manual assumptions transfer. Provider prices and ratings are never model inputs.")
+
     st.markdown("### 02 / Understand your risk")
     st.metric("Theoretical option price / share", f"${greek['price']:.4f}")
 
@@ -80,10 +86,10 @@ def render_greeks_workspace():
     )
 
     st.markdown("### 03 / Test a price movement")
-    max_down = min(40, max(1, int(spot * 0.8)))
+    max_down = min(40.0, spot * 0.8)
     move = st.slider(
         "Underlying price change ($)",
-        -max_down, 40, 5, 1,
+        -max_down, 40.0, 5.0, 0.01,
         key="qi_greeks_move"
     )
 
@@ -92,7 +98,7 @@ def render_greeks_workspace():
         float(move), rate, dividend
     )
 
-    moves = range(-max_down, 41)
+    moves = [-max_down + i * (40.0 + max_down) / 80 for i in range(81)]
     outcomes = [
         compare_repricing(
             kind, spot, strike, days, volatility,

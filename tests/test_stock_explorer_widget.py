@@ -305,13 +305,14 @@ def test_unknown_navigation_symbol_never_guesses_an_exchange():
     assert app.warning
 
 
-def test_risk_shortcut_keeps_simulations_separate_from_real_company():
+def test_risk_shortcut_transfers_context_without_provider_values():
     app = AppTest.from_file(str(Path(__file__).parents[1] / "dashboard/main.py"))
     app.session_state["selected_page"] = "🔎 Stock Explorer"
     app.run(timeout=45)
     app.selectbox(key="qi_stock_company").select("Microsoft · MSFT").run()
     app.button(key="qi_stock_risk_lab").click().run()
     assert not app.exception
-    assert app.session_state["selected_page"] == "🧪 Simulation Lab"
-    assert app.selectbox(key="qi_simulation_company").value == "Microsoft · MSFT"
-    assert any("HYPOTHETICAL MODEL" in item.value for item in app.info)
+    assert app.session_state["selected_page"] == "💰 Options Lab"
+    assert app.session_state["qi_model_reference"] == "NASDAQ:MSFT"
+    assert app.number_input(key="qi_workspace_spot").value == 100.0
+    assert any("No prices, ratings or calibration were transferred" in item.value for item in app.caption)

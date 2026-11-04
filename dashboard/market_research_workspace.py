@@ -56,23 +56,26 @@ def _open_company(symbol: str) -> None:
 
 
 def render_market_discovery(*, scanner: bool = False) -> None:
-    st.title(":primary[:material/radar:] Market Scanner" if scanner else ":primary[:material/diamond:] Opportunity Discovery")
-    st.caption("REAL COMPANIES · PROVIDER-HOSTED SCREENING · INDEPENDENT RESEARCH")
-    st.write("Explore actual stocks by valuation, performance and technical characteristics using TradingView's screener. Change its filters, columns and sorting to investigate your own questions.")
-    if render_external_panel_consent("qi_discovery_consent"):
-        components.html(screener_embed_html(), height=760, scrolling=False)
-    st.caption("Screening and any ratings are provided by TradingView, not a Quant Intelligence ranking, validated forecast or recommendation. Data may be delayed, missing or unavailable. The app does not read or export the screener's results.")
-    st.markdown("### Investigate a company")
+    st.title(":primary[:material/diamond:] Opportunity Discovery")
+    st.caption("SCAN → INVESTIGATE → REVIEW · REAL COMPANIES · YOUR RESEARCH")
+    mode = st.radio("Research stage", ["Scan", "Investigate"], horizontal=True,
+                    index=0, key="qi_discovery_stage")
+    if mode == "Scan":
+        st.write("Find candidates with the provider's filters and sorting, then enter an exact listing below to investigate. Provider selections stay inside its panel.")
+        if render_external_panel_consent("qi_discovery_consent"):
+            components.html(screener_embed_html(), height=760, scrolling=False)
+        st.caption("TradingView supplies the screening and ratings inside its official display. These are not Quant Intelligence recommendations or validated forecasts. Data can be delayed or unavailable; the app cannot read or export results.")
+        st.link_button("Open full stock screener on TradingView ↗", "https://www.tradingview.com/screener/")
+    else:
+        st.write("Build an evidence trail: identify a listing, read primary reports, challenge your question and set a review trigger.")
     symbol = _select_company("qi_discovery_company")
     if symbol:
-        st.button("Open company research", type="primary", key="qi_discovery_open",
-                  on_click=_open_company, args=(symbol,))
-    if symbol:
-        st.link_button("Find issuer filings · SEC EDGAR ↗", official_filings_url(symbol))
-        st.caption("EDGAR search is a starting point, not a verified issuer match. Confirm the registrant; Canadian-only issuers may not file with the SEC. Read reports on the issuer's official investor-relations site when EDGAR coverage is absent.")
+        a, b = st.columns(2)
+        a.button("Open Stock Explorer", type="primary", key="qi_discovery_open",
+                 on_click=_open_company, args=(symbol,))
+        b.link_button("Find issuer filings · SEC EDGAR ↗", official_filings_url(symbol))
+        st.caption("Verify the issuer match in EDGAR. For listings without SEC coverage, use the issuer's official investor-relations site.")
     render_discovery_notebook(symbol)
-    st.caption("Choose the exact company above to open its chart, financials and news. Selections inside the provider screener do not synchronize with this selector.")
-    st.link_button("Open full stock screener on TradingView ↗", "https://www.tradingview.com/screener/")
 
 
 def render_company_simulation_lab() -> None:

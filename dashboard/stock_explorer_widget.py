@@ -129,9 +129,9 @@ def _render_panel(symbol: str, view: str, enabled: bool) -> None:
         st.caption("Allow TradingView panels above or in Settings to view this company research.")
 
 
-def _open_simulation_lab(symbol: str) -> None:
-    st.session_state["_qi_sim_reference_request"] = symbol
-    st.session_state["_navigation_request"] = "🧪 Simulation Lab"
+def _open_options_lab(symbol: str) -> None:
+    st.session_state["qi_model_reference"] = symbol
+    st.session_state["_navigation_request"] = "💰 Options Lab"
 
 
 def render_external_panel_consent(key: str = "qi_explorer_consent") -> bool:
@@ -200,7 +200,7 @@ def render_stock_explorer() -> None:
         st.caption("TradingView's ratings summarize technical indicators. They are not Quant Intelligence scores, probabilities of profit or a personalized recommendation.")
         st.markdown("#### Historical risk intelligence")
         st.write("Company-specific volatility, drawdown, beta and custom scores need a separately authorized price-history feed. The display panels do not supply data to our quantitative engines.")
-        st.button("Explore risk formulas in Simulation Lab", on_click=_open_simulation_lab, args=(symbol,),
+        st.button("Model manual assumptions in Options Lab", on_click=_open_options_lab, args=(symbol,),
                   key="qi_stock_risk_lab")
     with news:
         st.subheader("Company news")

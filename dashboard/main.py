@@ -546,13 +546,14 @@ with st.sidebar:
             ("Stock Explorer", "🔎 Stock Explorer"),
         ]),
         ("Discover", "💎 Quant Discovery", [
-            ("Opportunity Discovery", "💎 Quant Discovery"),
-            ("Market Scanner", "🔍 Market Scanner"),
+            ("Scan & investigate", "💎 Quant Discovery"),
         ]),
         ("Quant Lab", "💰 Options Lab", [
             ("Options Lab", "💰 Options Lab"),
             ("Greeks Analysis", "📊 Greeks Analysis"),
             ("Scenario Explorer", "📈 Scenario Explorer"),
+        ]),
+        ("Model testing", "🧠 Strategy Research", [
             ("Strategy Research · hypothetical", "🧠 Strategy Research"),
             ("Simulation Lab", "🧪 Simulation Lab"),
             ("Forecast Lab · synthetic", "🧠 Forecast Intelligence"),
@@ -589,8 +590,16 @@ with st.sidebar:
         "_navigation_request", None
     )
 
+    if requested_page == "🔍 Market Scanner":
+        requested_page = "💎 Quant Discovery"
+        st.session_state["qi_discovery_stage"] = "Scan"
+
     if requested_page in route_groups:
         st.session_state["selected_page"] = requested_page
+
+    if st.session_state["selected_page"] == "🔍 Market Scanner":
+        st.session_state["selected_page"] = "💎 Quant Discovery"
+        st.session_state["qi_discovery_stage"] = "Scan"
 
     if st.session_state["selected_page"] not in route_groups:
         st.session_state["selected_page"] = "🏠 Overview"
@@ -604,6 +613,7 @@ with st.sidebar:
         "Discover": ":material/radar:",
         "Portfolio": ":material/account_balance_wallet:",
         "Quant Lab": ":material/science:",
+        "Model testing": ":material/experiment:",
         "Learn": ":material/school:",
         "Legal": ":material/gavel:",
     }

@@ -61,3 +61,14 @@ def test_notes_survive_company_switch_and_session_isolation(monkeypatch):
     app.button(key='qi_discovery_add').click().run()
     assert not app.exception
     assert app.text_area(key='qi_shortlist_NASDAQ:MSFT_Research question').value == ''
+
+
+def test_shortlist_quick_status_and_exact_listing_handoff():
+    app = AppTest.from_string(APP).run()
+    app.button(key='qi_discovery_add').click().run()
+    app.selectbox(key='qi_shortlist_NASDAQ:AAPL_Status').select('Monitoring').run()
+    assert app.session_state['qi_discovery_notebook']['NASDAQ:AAPL']['Status'] == 'Monitoring'
+    app.button(key='qi_shortlist_open').click().run()
+    assert app.session_state['_research_ticker_request'] == 'NASDAQ:AAPL'
+    assert app.session_state['_navigation_request'] == '🔎 Stock Explorer'
+    assert not app.exception

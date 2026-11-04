@@ -4,6 +4,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
+from app.pricing.greeks_workspace import calculate_greeks
 from app.pricing.options_workspace import (
     CONTRACT_SIZE,
     breakeven,
@@ -11,6 +12,7 @@ from app.pricing.options_workspace import (
     scenario_mark_profit,
     theoretical_price,
 )
+from dashboard.model_handoff import transfer_assumptions
 
 PINK = "#FF78B7"
 BLUE = "#79B8FF"
@@ -24,6 +26,10 @@ def render_options_workspace():
     )
 
     st.caption("European exercise model · Constant rates and volatility · No fees, taxes or early assignment. Use hypothetical inputs only.")
+
+    reference = st.session_state.get("qi_model_reference")
+    if reference:
+        st.caption(f"Research context: {reference}. No prices, ratings or calibration were transferred. Use independently authorized or hypothetical inputs.")
 
     st.markdown("### 01 / Construct a position")
     a, b, c = st.columns([1, 1, 1])
@@ -93,6 +99,17 @@ def render_options_workspace():
         "bid or ask. The maximum loss for this long position is the "
         "premium paid, excluding fees."
     )
+
+    sensitivity = calculate_greeks(kind, spot, strike, days, volatility, rate, dividend)
+    st.write(
+        f"Near these assumptions, a $1 underlying increase changes the model value by about "
+        f"${sensitivity['delta'] * CONTRACT_SIZE * contracts:+,.2f} for the position; "
+        f"one calendar day changes it by about ${sensitivity['theta'] * CONTRACT_SIZE * contracts:+,.2f}, "
+        "holding other inputs fixed. Sensitivities change as assumptions move."
+    )
+    st.button("Investigate these assumptions in Greeks", key="qi_options_to_greeks",
+              on_click=transfer_assumptions,
+              args=("workspace", "greeks", "📊 Greeks Analysis"))
 
     st.markdown("### 03 / Profit or loss at expiration")
     lower = max(0.0, min(spot, strike, max(0.0, break_even)) * 0.5)
