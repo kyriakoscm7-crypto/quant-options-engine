@@ -48,10 +48,16 @@ from app.market_data.stock_history import (  # noqa: E402
 from app.pricing.black_scholes import BlackScholes  # noqa: E402
 from dashboard.forecast_intelligence_page import render_forecast_intelligence  # noqa: E402
 from dashboard.learn_page import render_learn_page  # noqa: E402
+from dashboard.legal_pages import render_legal_pages  # noqa: E402
 from dashboard.market_scanner_page import render_market_scanner  # noqa: E402
 from dashboard.navigation_ux import render_navigation_ux  # noqa: E402
 from dashboard.portfolio_page import render_portfolio_manager  # noqa: E402
 from dashboard.premium_home import render_premium_home  # noqa: E402
+from dashboard.public_safety import public_market_data_route_blocked  # noqa: E402
+from dashboard.workspace_settings import (  # noqa: E402
+    render_workspace_settings,
+    research_notes_enabled,
+)
 
 # ============================================================
 # PAGE CONFIGURATION
@@ -538,23 +544,25 @@ with st.sidebar:
         ("Dashboard", "🏠 Overview", []),
         ("Research", "🔎 Stock Explorer", [
             ("Stock Explorer", "🔎 Stock Explorer"),
-            ("Forecast Intelligence", "🧠 Forecast Intelligence"),
         ]),
         ("Discover", "💎 Quant Discovery", [
-            ("Opportunity Discovery", "💎 Quant Discovery"),
-            ("Market Scanner", "🔍 Market Scanner"),
+            ("Scan & investigate", "💎 Quant Discovery"),
         ]),
-        ("Portfolio", "💼 Portfolio Manager", []),
         ("Quant Lab", "💰 Options Lab", [
             ("Options Lab", "💰 Options Lab"),
             ("Greeks Analysis", "📊 Greeks Analysis"),
             ("Scenario Explorer", "📈 Scenario Explorer"),
-            ("Strategy Research", "🧠 Strategy Research"),
+        ]),
+        ("Model testing", "🧠 Strategy Research", [
+            ("Strategy Research · hypothetical", "🧠 Strategy Research"),
+            ("Simulation Lab", "🧪 Simulation Lab"),
+            ("Forecast Lab · synthetic", "🧠 Forecast Intelligence"),
+            ("Portfolio Lab · synthetic", "💼 Portfolio Manager"),
         ]),
         ("Learn", "📚 Learn", []),
     ]
 
-    route_groups = {}
+    route_groups = {"📄 Legal & Privacy": "Legal"}
 
     for group, landing, tools in sections:
         route_groups[landing] = group
@@ -582,8 +590,16 @@ with st.sidebar:
         "_navigation_request", None
     )
 
+    if requested_page == "🔍 Market Scanner":
+        requested_page = "💎 Quant Discovery"
+        st.session_state["qi_discovery_stage"] = "Scan"
+
     if requested_page in route_groups:
         st.session_state["selected_page"] = requested_page
+
+    if st.session_state["selected_page"] == "🔍 Market Scanner":
+        st.session_state["selected_page"] = "💎 Quant Discovery"
+        st.session_state["qi_discovery_stage"] = "Scan"
 
     if st.session_state["selected_page"] not in route_groups:
         st.session_state["selected_page"] = "🏠 Overview"
@@ -597,7 +613,9 @@ with st.sidebar:
         "Discover": ":material/radar:",
         "Portfolio": ":material/account_balance_wallet:",
         "Quant Lab": ":material/science:",
+        "Model testing": ":material/experiment:",
         "Learn": ":material/school:",
+        "Legal": ":material/gavel:",
     }
 
     with st.container(key="qi_navigation"):
@@ -650,17 +668,44 @@ with st.sidebar:
     render_navigation_ux()
 
     st.divider()
-    st.caption("PLATFORM")
-    st.caption("Quant Intelligence · Research Build")
+    st.caption("PRIVATE RESEARCH BUILD")
     st.caption(
-        "Independent financial research and education. "
-        "Not investment advice."
+        "Access managed in Streamlit Sharing · "
+        "Independent research and education"
     )
+
+
+# ============================================================
+# TOP-RIGHT WORKSPACE CONTROL
+# ============================================================
+render_workspace_settings()
 
 
 # ============================================================
 # SHARED OPTION INPUTS
 # ============================================================
+
+# Fail closed on public-facing routes that currently use or derive results
+# from unlicensed/unverified external market feeds.
+if page != "🔎 Stock Explorer":
+    st.caption(
+        "Research and education only · No individualized investment advice · "
+        "Models and data may be incomplete or inaccurate."
+    )
+
+if page == "🔎 Stock Explorer":
+    from dashboard.stock_explorer_widget import render_stock_explorer
+
+    render_stock_explorer()
+    st.stop()
+
+if public_market_data_route_blocked(page):
+    # Official browser-only displays and independent models; never
+    # unverified server-side historical or live market feeds.
+    from dashboard.demo_showcase import render_demo_research_page
+
+    render_demo_research_page(page)
+    st.stop()
 
 if page in [
     "📈 Scenario Explorer",
@@ -671,6 +716,7 @@ if page in [
     stock_price = st.sidebar.number_input(
         "Stock Price ($)",
         min_value=0.01,
+        max_value=1_000_000.0,
         value=100.0,
         step=1.0,
     )
@@ -678,6 +724,7 @@ if page in [
     strike_price = st.sidebar.number_input(
         "Strike Price ($)",
         min_value=0.01,
+        max_value=1_000_000.0,
         value=105.0,
         step=1.0,
     )
@@ -732,8 +779,16 @@ if page in [
 
 
 if page == "🏠 Overview":
+    if research_notes_enabled():
+        st.caption(
+            "Real-stock charts in Stock Explorer are provided by TradingView. "
+            "Discovery and Scanner use official provider displays. Simulation Lab uses independent assumptions; portfolio and forecast demos remain fictional."
+        )
     render_premium_home()
 
+
+elif page == "📄 Legal & Privacy":
+    render_legal_pages()
 
 elif page == "📚 Learn":
     with st.container(key="qi_learn_page"):
@@ -980,7 +1035,7 @@ elif page == "🔎 Stock Explorer":
         # --------------------------------------------------------
 
         # --------------------------------------------------------
-        # INVESTMENT RECOMMENDATION ENGINE
+        # EXPERIMENTAL HISTORICAL TECHNICAL SCORING
         # --------------------------------------------------------
 
         from app.intelligence.recommendation_engine import assess_stock
@@ -995,7 +1050,7 @@ elif page == "🔎 Stock Explorer":
             )
         except (ValueError, RuntimeError, KeyError) as exc:
             st.warning(
-                f"Unable to retrieve investment rating history: {exc}"
+                f"Unable to retrieve historical scoring data: {exc}"
             )
             assessment_history = history
 
@@ -1022,11 +1077,11 @@ elif page == "🔎 Stock Explorer":
 
             with rating_col2:
                 recommendation_labels = {
-                    "STRONG TECHNICAL SIGNAL": "STRONG",
-                    "FAVORABLE TECHNICAL SIGNAL": "FAVORABLE",
-                    "NEUTRAL / MIXED": "NEUTRAL",
-                    "CAUTION": "CAUTION",
-                    "UNFAVORABLE TECHNICAL SIGNAL": "UNFAVORABLE",
+                    "STRONG TECHNICAL SIGNAL": "UPPER BAND",
+                    "FAVORABLE TECHNICAL SIGNAL": "ABOVE MID",
+                    "NEUTRAL / MIXED": "MID-RANGE",
+                    "CAUTION": "BELOW MID",
+                    "UNFAVORABLE TECHNICAL SIGNAL": "LOWER BAND",
                     "INSUFFICIENT EVIDENCE": "N/A",
                 }
 
@@ -1036,7 +1091,7 @@ elif page == "🔎 Stock Explorer":
                 )
 
                 st.metric(
-                    "Technical Classification",
+                    "Historical Score Band",
                     short_recommendation,
                 )
 
@@ -1055,12 +1110,15 @@ elif page == "🔎 Stock Explorer":
                 "a validated forecast or buy/sell recommendation."
             )
 
-            st.write(
-                f"**Model Outlook (Unvalidated):** {assessment.outlook}"
-            )
+            historical_context = {
+                "Bullish": "Positive historical technical indicators",
+                "Bearish": "Negative historical technical indicators",
+                "Neutral": "Mixed historical technical indicators",
+            }.get(assessment.outlook, "Historical indicators unavailable")
+            st.write(f"**Historical technical context:** {historical_context}")
 
             st.caption(
-                f"Prediction reliability: {assessment.reliability}"
+                f"Forward prediction: {assessment.reliability}"
             )
 
             with st.expander("How was this technical score calculated?", icon=":material/help:"):
@@ -1664,19 +1722,9 @@ elif page == "🧠 Forecast Intelligence":
 
 
 elif page == "🧠 Strategy Research":
+    from dashboard.strategy_research import render_strategy_research
 
-    st.title(":primary[:material/science:] Strategy Research")
-
-    st.info(
-        "Coming soon: Historical backtesting, "
-        "statistical research, and quantitative models."
-    )
-
-    st.write(
-        "We will evaluate strategies using "
-        "out-of-sample testing and realistic "
-        "transaction-cost assumptions."
-    )
+    render_strategy_research()
 
 
 # ============================================================

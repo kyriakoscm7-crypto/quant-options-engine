@@ -6,7 +6,7 @@ Provides endpoints for:
 - European option pricing.
 - Analytical option Greeks.
 - Implied volatility.
-- Yahoo Finance option-chain data.
+- A disabled legacy market-data route (no redistribution licence selected).
 - Vectorized batch option pricing.
 - Vectorized batch option Greeks.
 - Portfolio theoretical valuation.
@@ -19,16 +19,15 @@ existing quantitative analytics modules.
 
 import logging
 import math
+import os
 
 import numpy as np
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from starlette.concurrency import run_in_threadpool
 
-from app.market_data.yahoo_client import fetch_option_chain
+from app.api.safety import RequestSafetyMiddleware
 from app.pricing.black_scholes import BlackScholes
 from app.pricing.implied_volatility import implied_volatility
 from app.pricing.portfolio import OptionPosition, PortfolioAnalytics
@@ -59,53 +58,27 @@ logger = logging.getLogger(__name__)
 # Version 1.3.0 adds portfolio analytics and scenario endpoints.
 app = FastAPI(
     title="Quant Options Engine",
-    description="Options pricing and quantitative analytics REST API.",
+    description=("Hypothetical European options calculations, not executable quotes or "
+                 "personalized investment advice. Do not submit real account records. "
+                 "Constant volatility/rates; no early exercise, trading fees or taxes."),
+    default_response_class=JSONResponse,
     version="1.3.0",
 )
+
+app.add_middleware(RequestSafetyMiddleware, api_token=os.environ.get("QI_API_TOKEN", ""))
+
+
+@app.exception_handler(OverflowError)
+@app.exception_handler(ValueError)
+async def calculation_domain_error(request: Request, exc: Exception):
+    return JSONResponse(status_code=422, content={
+        "detail": "Inputs exceed the supported numerical calculation range."
+    }, headers={"Cache-Control": "no-store"})
 
 
 # ============================================================
 # SAFE REQUEST VALIDATION ERROR HANDLER
 # ============================================================
-
-def make_validation_error_json_safe(value):
-    """
-    Recursively convert validation-error details into JSON-safe values.
-
-    FastAPI includes the rejected input in validation errors.
-
-    When that input is NaN, Infinity, or -Infinity, the default
-    JSON response serializer can raise ValueError because those
-    floating-point values are not permitted in standard JSON.
-
-    Convert non-finite floats into descriptive strings while
-    preserving the original validation error information.
-    """
-
-    if isinstance(value, float):
-
-        if math.isnan(value):
-            return "NaN"
-
-        if math.isinf(value):
-            return "Infinity" if value > 0 else "-Infinity"
-
-        return value
-
-    if isinstance(value, dict):
-        return {
-            str(key): make_validation_error_json_safe(item)
-            for key, item in value.items()
-        }
-
-    if isinstance(value, (list, tuple)):
-        return [
-            make_validation_error_json_safe(item)
-            for item in value
-        ]
-
-    return value
-
 
 @app.exception_handler(RequestValidationError)
 async def safe_request_validation_error_handler(
@@ -115,23 +88,18 @@ async def safe_request_validation_error_handler(
     """
     Return HTTP 422 for invalid requests without JSON serialization errors.
 
-    The handler preserves FastAPI's normal validation-error structure:
-
-        {"detail": [...]}
-
-    Non-finite numbers in error details are represented as strings.
+    Preserve field locations without reflecting rejected request contents.
     """
 
-    safe_errors = make_validation_error_json_safe(
-        exc.errors()
-    )
-
-    return JSONResponse(
-        status_code=422,
-        content=jsonable_encoder(
-            {"detail": safe_errors}
-        ),
-    )
+    # Do not echo submitted values, model-level input dictionaries, or validator
+    # contexts (which can contain exception objects and confidential records).
+    errors = [{"loc": (("body", "unrecognized_field")
+                       if error["type"] == "extra_forbidden" else error["loc"]),
+               "type": error["type"],
+               "msg": "Invalid input; check the documented field constraints."}
+              for error in exc.errors()]
+    return JSONResponse(status_code=422, content={"detail": errors},
+                        headers={"Cache-Control": "no-store"})
 
 
 # ============================================================
@@ -369,7 +337,7 @@ class MarketScenarioRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     # Descriptive scenario name.
-    name: str = Field(min_length=1)
+    name: str = Field(min_length=1, max_length=80)
 
     # Percentage stock-price change.
     #
@@ -426,8 +394,7 @@ class PortfolioScenarioRequest(PortfolioRequest):
 
     # Require between 1 and 100 scenarios.
     #
-    # With the maximum 10,000 positions, this allows
-    # up to 1,000,000 scenario-position combinations.
+    # A separate combined-work limit below bounds response and computation size.
     scenarios: list[MarketScenarioRequest] = Field(
         min_length=1,
         max_length=100,
@@ -442,6 +409,9 @@ class PortfolioScenarioRequest(PortfolioRequest):
         """
         Reject duplicate scenario names.
         """
+
+        if len(self.positions) * len(self.scenarios) > 10_000:
+            raise ValueError("At most 10,000 scenario-position combinations are supported.")
 
         names = [
             scenario.name
@@ -589,83 +559,27 @@ def calculate_implied_volatility(request: ImpliedVolatilityRequest):
 # ENDPOINT 5: YAHOO FINANCE MARKET DATA
 # ============================================================
 
-@app.get("/api/v1/market/options/{ticker}")
-async def get_market_options(
-    ticker: str,
-    risk_free_rate: float = 0.045,
-    dividend_yield: float = 0.0,
-    minimum_days_to_expiry: int = 7,
-):
+@app.get(
+    "/api/v1/market/options/{ticker}",
+    deprecated=True,
+    summary="Unavailable: legacy third-party market-data redistribution",
+    responses={403: {"description": "No public redistribution rights configured"}},
+)
+async def get_market_options(ticker: str):
+    """Never fetch or redistribute Yahoo quotes through the public API.
 
-    # Restrict ticker symbols to common alphanumeric formats.
-    # This prevents unexpected characters from being passed
-    # directly into our market-data provider.
-    import re
-
-    ticker = ticker.upper()
-
-    if not re.fullmatch(r"[A-Z0-9.^-]{1,15}", ticker):
-        raise HTTPException(
-            status_code=422,
-            detail="Invalid ticker symbol.",
-        )
-
-    # Validate query parameters.
-    if not all(
-        math.isfinite(value)
-        for value in (risk_free_rate, dividend_yield)
-    ):
-        raise HTTPException(
-            status_code=422,
-            detail="Interest rate and dividend yield must be finite.",
-        )
-
-    if minimum_days_to_expiry < 1 or minimum_days_to_expiry > 365:
-        raise HTTPException(
-            status_code=422,
-            detail="minimum_days_to_expiry must be between 1 and 365.",
-        )
-
-    try:
-
-        # Yahoo Finance requests are synchronous and can be slow.
-        # Running them in a thread prevents blocking the API event loop.
-        df = await run_in_threadpool(
-            fetch_option_chain,
-            ticker_symbol=ticker,
-            risk_free_rate=risk_free_rate,
-            dividend_yield=dividend_yield,
-            minimum_days_to_expiry=minimum_days_to_expiry,
-        )
-
-    except Exception as exc:
-
-        # Record the unexpected error using our dedicated logger.
-        #
-        # logger.exception() automatically includes the
-        # exception traceback when called inside an except block.
-        #
-        # This helps developers diagnose failures without
-        # exposing internal provider errors to API users.
-        logger.exception("Market data request failed")
-
-        # Return a generic HTTP 503 response to the API client.
-        #
-        # HTTP 503 means the service is temporarily unavailable.
-        # The original exception is preserved internally.
-        raise HTTPException(
-            status_code=503,
-            detail="Market data is temporarily unavailable.",
-        ) from exc
-
-    # Convert the DataFrame into JSON-compatible records.
-    records = df.to_dict(orient="records")
-
-    return {
-        "ticker": ticker,
-        "count": len(records),
-        "options": records,
-    }
+    Research provider functions remain in app.market_data for separately
+    authorized development. A flag is not a licence and cannot unlock this
+    endpoint. A future provider integration needs a separate rights review.
+    """
+    raise HTTPException(
+        status_code=403,
+        detail=(
+            "Third-party market-data distribution is disabled. "
+            "Use Stock Explorer for display-only TradingView charts. "
+            "This API provides hypothetical pricing calculations only."
+        ),
+    )
 
 
 # ============================================================

@@ -11,6 +11,16 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from dashboard.public_safety import public_market_data_route_blocked  # noqa: E402
+
+# This file may be opened directly as a Streamlit multipage entry point.
+# Apply the same public-use licence safeguard used by the main router.
+if public_market_data_route_blocked("💎 Quant Discovery"):
+    from dashboard.demo_showcase import render_demo_research_page
+
+    render_demo_research_page("💎 Quant Discovery")
+    st.stop()
+
 from app.discovery.database import (  # noqa: E402
     database_summary,
     initialize_database,

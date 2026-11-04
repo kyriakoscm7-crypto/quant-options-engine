@@ -18,6 +18,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the application source code.
 COPY app/ ./app/
 
+# Calculators do not need root or a writable application directory.
+USER 10001:10001
+
 # Document the default application port.
 EXPOSE 8080
 

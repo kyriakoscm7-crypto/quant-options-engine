@@ -1,6 +1,12 @@
+> **Draft safety review:** See [end-to-end audit](docs/END_TO_END_RISK_AUDIT.md) for verified controls, hosting/licensing limits and release blockers. PR #6 remains unmerged; the live site may run earlier code.
+
 # Quant Intelligence
 
 **An interactive quantitative finance and market research platform built with Python.**
+
+> **Private, invitation-only research workspace (November 2026):** Stock Explorer displays real-stock charts through the official, display-only TradingView widget with intact attribution, after the visitor chooses to load the external chart. Data can be delayed or unavailable by exchange; no chart data enters the backend, downloads or custom models. Simulation Lab, Discovery, Scanner, Portfolio and Forecast remain interactive **fictional simulations**, independent of chart selection. Options/Greeks/scenario calculators use hypothetical inputs. The legacy `QI_MARKET_DATA_RIGHTS_CONFIRMED` flag no longer unlocks public analytics: a separately reviewed provider integration with explicit public-display and derived-data rights is required. The top-right Settings gear contains display preferences, chart-loading control and Legal/Privacy/About; essential notices stay visible. See the [educational showcase review](docs/EDUCATIONAL_SHOWCASE_REVIEW.md), [provider review](docs/TRADINGVIEW_AND_PROVIDER_RIGHTS.md) and [release checklist](docs/PUBLIC_RELEASE_SAFETY_CHECKLIST.md). The private access setting is managed in Streamlit Community Cloud (not enforced by the app). See [private-workspace guide](docs/PRIVATE_RESEARCH_WORKSPACE.md). This branch is not legal clearance or a deployed release.
+
+
 
 Quant Intelligence combines stock research, options analytics, risk intelligence, and interactive financial education in one platform. It connects quantitative models with practical explanations, helping users investigate financial markets and understand the assumptions behind their results.
 
@@ -12,12 +18,13 @@ Quant Intelligence combines stock research, options analytics, risk intelligence
 
 | Feature | Description |
 |---|---|
-| **Stock Explorer** | Historical stock charts, market comparisons, technical indicators, and company research |
-| **Risk Intelligence** | Historical volatility, drawdown, Sharpe ratio, beta, and benchmark comparisons |
+| **Stock Explorer** | Official TradingView real-stock charts; delayed/restricted where required |
+| **Risk Intelligence** | Experimental volatility, drawdown and benchmark calculations on fictional inputs |
 | **Options Analytics** | Black-Scholes-Merton pricing, Greeks, implied volatility, and scenario analysis |
 | **Quant Learn** | Interactive financial education, valuation scenarios, diversification stress tests, and guided calculations |
-| **Quant Discovery** | Company data pipelines, screening infrastructure, and experimental research workflows |
-| **Portfolio Research** | Portfolio valuation, risk analysis, and strategy evaluation tools |
+| **Quant Discovery** | Fictional-universe screening and experimental scoring simulations |
+| **Portfolio Research** | Simulated fictional holdings, risk and strategy evaluation tools |
+| **Strategy Research** | Reproducible synthetic moving-average backtests with fees, no-lookahead position logic, Sharpe and drawdown |
 
 ## Engineering Highlights
 
@@ -27,7 +34,7 @@ Quant Intelligence combines stock research, options analytics, risk intelligence
 - **User experience:** Custom dark-mode interface, interactive visualizations, and guided interpretation.
 - **Quality assurance:** Automated pytest suite, GitHub Actions, Docker, and performance benchmarking.
 
-**Latest local validation: 1,709 automated tests passed (October 31, 2026).**
+**Validation:** See the latest branch CI for current Python tests, linting, dependency auditing and Docker checks. Historical performance benchmarks below are not current release certifications.
 
 ## Getting Started
 
@@ -279,11 +286,16 @@ Features include:
 - Market-data-derived implied volatility estimates.
 - Support for analyzing volatility across strikes and maturities.
 
-### 5. Yahoo Finance Market Data
+### 5. Legacy research market-data adapter (not a public feed)
 
-Integrates with Yahoo Finance through `yfinance` to retrieve option-chain observations.
+The original `yfinance` adapter is retained for separately authorized development;
+its availability does not grant public redistribution rights. The HTTP route
+`/api/v1/market/options/{ticker}` now always returns **403** without contacting
+Yahoo, including when the legacy rights flag is set. It must be replaced by a
+separately reviewed licensed provider integration before any public real-data API
+can be offered. Real-stock experiment outputs are not bundled for deployment.
 
-Features include:
+The retained adapter's engineering capabilities include:
 
 - SPY option-chain retrieval.
 - Bid-ask quote filtering.
@@ -297,9 +309,9 @@ The market-data layer separates external data retrieval from the pricing and vis
 
 ### 6. FastAPI REST API
 
-Exposes quantitative pricing and market-data functionality through a REST API.
+Exposes hypothetical quantitative pricing through a REST API; no public third-party market-data feed is enabled.
 
-The application provides ten endpoints:
+The API has nine working health/calculation endpoints plus one disabled legacy market-data route:
 
 | Method | Endpoint | Description |
 |---|---|---|
@@ -307,7 +319,7 @@ The application provides ten endpoints:
 | POST | `/api/v1/options/price` | Single-contract European call and put pricing |
 | POST | `/api/v1/options/greeks` | Analytical option Greeks |
 | POST | `/api/v1/options/implied-volatility` | Numerical implied volatility estimation |
-| GET | `/api/v1/market/options/{ticker}` | Yahoo Finance option-chain market data |
+| GET | `/api/v1/market/options/{ticker}` | Disabled: HTTP 403, no provider access |
 | POST | `/api/v1/options/batch-price` | Vectorized pricing for up to 10,000 contracts |
 | POST | `/api/v1/options/batch-greeks` | Vectorized prices and Greeks for up to 10,000 contracts |
 | POST | `/api/v1/portfolio/value` | Portfolio theoretical valuation and position breakdown |
@@ -2019,3 +2031,6 @@ This project is intended for educational, research, and software engineering por
 It is not financial advice, an investment recommendation, or a production trading system.
 
 Theoretical model outputs and market-data-derived estimates should not be relied upon for live trading decisions.
+## Current release preparation
+
+Draft PR #6 remains unmerged. See [production readiness and preview steps](docs/PRODUCTION_READINESS_2026_11.md) and [source-rights evidence](docs/SOURCE_RIGHTS_2026_11.md). Discovery offers provider-hosted screening plus session-local evidence shortlists; synthetic forecasts and portfolios live under Quant Lab. No new backend feed is licensed or enabled.

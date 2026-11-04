@@ -79,3 +79,9 @@ data/discovery_symbol_directory.csv
 
 # Local quantitative backtesting datasets and generated reports
 /deployment_data/backtesting/
+
+# Provider-derived research outputs are not public deployment assets.
+/deployment_data/forecast/
+
+# No provider-derived snapshots are approved for public deployment.
+/deployment_data/discovery/
