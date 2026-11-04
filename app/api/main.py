@@ -19,6 +19,7 @@ existing quantitative analytics modules.
 
 import logging
 import math
+import os
 
 import numpy as np
 from fastapi import FastAPI, HTTPException, Request
@@ -64,7 +65,7 @@ app = FastAPI(
     version="1.3.0",
 )
 
-app.add_middleware(RequestSafetyMiddleware)
+app.add_middleware(RequestSafetyMiddleware, api_token=os.environ.get("QI_API_TOKEN", ""))
 
 
 @app.exception_handler(OverflowError)

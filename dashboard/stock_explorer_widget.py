@@ -187,7 +187,7 @@ def render_stock_explorer() -> None:
         components.html(chart_embed_html(symbol, lookback, chart_type), height=640, scrolling=False)
         st.caption("Historical period selects the lookback; the chart toolbar selects candle size. Panning or zooming changes the visible window. Use the company selector to keep all panels aligned.")
     performance, risk, news, history, analysis = st.tabs(
-        ["Performance", "Risk & Scores", "News", "Historical Data", "My analysis"]
+        ["Financials & company", "Technicals & model limits", "News", "History & availability", "My analysis"]
     )
     with performance:
         st.subheader("Company overview & financials")

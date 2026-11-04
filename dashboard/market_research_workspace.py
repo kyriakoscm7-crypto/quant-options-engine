@@ -9,6 +9,7 @@ import re
 import streamlit as st
 import streamlit.components.v1 as components
 
+from dashboard.discovery_notebook import official_filings_url, render_discovery_notebook
 from dashboard.stock_explorer_widget import (
     SYMBOLS,
     chart_embed_html,
@@ -55,7 +56,7 @@ def _open_company(symbol: str) -> None:
 
 
 def render_market_discovery(*, scanner: bool = False) -> None:
-    st.title(":primary[:material/radar:] Market Scanner" if scanner else ":primary[:material/diamond:] Quant Discovery")
+    st.title(":primary[:material/radar:] Market Scanner" if scanner else ":primary[:material/diamond:] Opportunity Discovery")
     st.caption("REAL COMPANIES · PROVIDER-HOSTED SCREENING · INDEPENDENT RESEARCH")
     st.write("Explore actual stocks by valuation, performance and technical characteristics using TradingView's screener. Change its filters, columns and sorting to investigate your own questions.")
     if render_external_panel_consent("qi_discovery_consent"):
@@ -66,6 +67,10 @@ def render_market_discovery(*, scanner: bool = False) -> None:
     if symbol:
         st.button("Open company research", type="primary", key="qi_discovery_open",
                   on_click=_open_company, args=(symbol,))
+    if symbol:
+        st.link_button("Find issuer filings · SEC EDGAR ↗", official_filings_url(symbol))
+        st.caption("EDGAR search is a starting point, not a verified issuer match. Confirm the registrant; Canadian-only issuers may not file with the SEC. Read reports on the issuer's official investor-relations site when EDGAR coverage is absent.")
+    render_discovery_notebook(symbol)
     st.caption("Choose the exact company above to open its chart, financials and news. Selections inside the provider screener do not synchronize with this selector.")
     st.link_button("Open full stock screener on TradingView ↗", "https://www.tradingview.com/screener/")
 

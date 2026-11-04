@@ -203,7 +203,7 @@ def test_restored_research_tabs_never_request_backend_data(enabled, monkeypatch)
     app.run()
     assert not app.exception
     assert [tab.label for tab in app.tabs] == [
-        "Performance", "Risk & Scores", "News", "Historical Data", "My analysis",
+        "Financials & company", "Technicals & model limits", "News", "History & availability", "My analysis",
     ]
     assert len(app.get("iframe")) == (6 if enabled else 0)
     assert len(app.metric) == 0

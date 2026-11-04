@@ -90,3 +90,37 @@ def test_sensitive_calculations_and_errors_are_not_cacheable():
                      client.post('/api/v1/options/price', json={})]:
         assert response.headers['cache-control'] == 'no-store'
         assert response.headers['x-content-type-options'] == 'nosniff'
+
+
+def test_optional_api_auth_and_budget_do_not_rely_on_streamlit_sharing():
+    from fastapi import FastAPI
+    secured = FastAPI()
+    secured.add_middleware(RequestSafetyMiddleware, api_token='a' * 32, requests_per_minute=2)
+
+    @secured.get('/health')
+    def health():
+        return {'status': 'ok'}
+
+    @secured.post('/calculate')
+    def calculate():
+        return {'value': 1}
+
+    with TestClient(secured) as api:
+        assert api.get('/health').status_code == 200
+        denied = api.post('/calculate')
+        assert denied.status_code == 401
+        assert denied.headers['cache-control'] == 'no-store'
+        assert api.post('/calculate', headers={'Authorization': 'Bearer wrong'}).status_code == 401
+        headers = {'Authorization': 'Bearer ' + 'a' * 32}
+        assert api.post('/calculate', headers=headers).status_code == 200
+        assert api.post('/calculate', headers=headers).status_code == 200
+        throttled = api.post('/calculate', headers=headers)
+        assert throttled.status_code == 429
+        assert throttled.headers['retry-after'] == '60'
+        assert api.get('/health').status_code == 200
+
+
+def test_short_api_token_fails_instead_of_creating_weak_auth():
+    import pytest
+    with pytest.raises(ValueError, match='at least 32'):
+        RequestSafetyMiddleware(None, api_token='short')

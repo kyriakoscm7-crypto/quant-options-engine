@@ -124,7 +124,7 @@ cookies. See [TradingView's widget FAQ](https://www.tradingview.com/widget-docs/
 and [privacy policy](https://www.tradingview.com/privacy-policy/).
 TradingView’s broader privacy policy also describes device and usage analytics, including third-party analytics providers. Private, invitation-only login does not itself constitute consent to these external requests. This choice lasts for the session. A prior chart-only choice is not automatically expanded to screeners across new pages; the updated disclosure requires a new opt-in. You can disable further panel loads in
 Settings. This switch prevents future chart loads; it cannot undo prior requests.
-The app does not receive provider panel data or use it in custom analytics. Research notes are your own text, processed by the Streamlit server, kept in session state and downloadable; they are not permanent account storage or sent to TradingView.
+The app does not receive provider panel data or use it in custom analytics. Discovery shortlists, evidence dates, links and comparison records are user-entered and unverified, kept only in the session and downloadable. Clear the shortlist in Discovery when finished. No source links are fetched by the app. Research notes are your own text, processed by the Streamlit server, kept in session state and downloadable; they are not permanent account storage or sent to TradingView.
 
 **Session controls.** The chart-loading choice resets with a new session. Closing a
 browser tab disconnects it but is not a verified deletion request for host logs.

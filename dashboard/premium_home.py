@@ -604,7 +604,7 @@ def render_premium_home() -> None:
 
     first = st.columns(2, gap="large")
     with first[0]:
-        _workspace_card("radar", "Explore market analytics", "Explore simulated technical scoring, filtering, and research discovery workflows.", "💎 Quant Discovery", "discover", "Open Discovery")
+        _workspace_card("radar", "Opportunity Discovery", "Screen real companies in provider displays, build your shortlist and compare source-linked research.", "💎 Quant Discovery", "discover", "Open Discovery")
     with first[1]:
         _workspace_card("book-open", "Learn finance, simply", "Explore everyday money, taxes, investing and markets through interactive lessons.", "📚 Learn", "learn", "Explore Quant Learn")
 
@@ -612,7 +612,7 @@ def render_premium_home() -> None:
     with second[0]:
         _workspace_card("chart-line", "Explore research workflows", "Explore real-stock TradingView charts and separate experimental simulation tools.", "🔎 Stock Explorer", "stock", "Open Stock Explorer")
     with second[1]:
-        _workspace_card("briefcase", "Model a portfolio", "Test portfolio allocations and risk interactions using examples.", "💼 Portfolio Manager", "portfolio", "Open Portfolio Manager")
+        _workspace_card("briefcase", "Portfolio Lab · synthetic", "Experiment with fictional allocations and simulated risk. No real holdings or market history.", "💼 Portfolio Manager", "portfolio", "Open Portfolio Manager")
 
     st.html(
         '<div class="qi-home-section-head"><h2>Go deeper with Quant Lab</h2>'
@@ -624,7 +624,7 @@ def render_premium_home() -> None:
         ("Greeks Analysis", "📊 Greeks Analysis"),
         ("Scenario Explorer", "📈 Scenario Explorer"),
         ("Market Scanner", "🔍 Market Scanner"),
-        ("Forecast Research", "🧠 Forecast Intelligence"),
+        ("Forecast Lab · synthetic", "🧠 Forecast Intelligence"),
         ("Strategy Research", "🧠 Strategy Research"),
     ]
     for start in range(0, len(advanced), 3):

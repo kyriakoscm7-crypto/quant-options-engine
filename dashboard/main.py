@@ -49,15 +49,15 @@ from app.pricing.black_scholes import BlackScholes  # noqa: E402
 from dashboard.forecast_intelligence_page import render_forecast_intelligence  # noqa: E402
 from dashboard.learn_page import render_learn_page  # noqa: E402
 from dashboard.legal_pages import render_legal_pages  # noqa: E402
+from dashboard.market_scanner_page import render_market_scanner  # noqa: E402
+from dashboard.navigation_ux import render_navigation_ux  # noqa: E402
+from dashboard.portfolio_page import render_portfolio_manager  # noqa: E402
+from dashboard.premium_home import render_premium_home  # noqa: E402
 from dashboard.public_safety import public_market_data_route_blocked  # noqa: E402
 from dashboard.workspace_settings import (  # noqa: E402
     render_workspace_settings,
     research_notes_enabled,
 )
-from dashboard.market_scanner_page import render_market_scanner  # noqa: E402
-from dashboard.navigation_ux import render_navigation_ux  # noqa: E402
-from dashboard.portfolio_page import render_portfolio_manager  # noqa: E402
-from dashboard.premium_home import render_premium_home  # noqa: E402
 
 # ============================================================
 # PAGE CONFIGURATION
@@ -544,19 +544,19 @@ with st.sidebar:
         ("Dashboard", "🏠 Overview", []),
         ("Research", "🔎 Stock Explorer", [
             ("Stock Explorer", "🔎 Stock Explorer"),
-            ("Simulation Lab", "🧪 Simulation Lab"),
-            ("Forecast Intelligence", "🧠 Forecast Intelligence"),
         ]),
         ("Discover", "💎 Quant Discovery", [
             ("Opportunity Discovery", "💎 Quant Discovery"),
             ("Market Scanner", "🔍 Market Scanner"),
         ]),
-        ("Portfolio", "💼 Portfolio Manager", []),
         ("Quant Lab", "💰 Options Lab", [
             ("Options Lab", "💰 Options Lab"),
             ("Greeks Analysis", "📊 Greeks Analysis"),
             ("Scenario Explorer", "📈 Scenario Explorer"),
-            ("Strategy Research", "🧠 Strategy Research"),
+            ("Strategy Research · hypothetical", "🧠 Strategy Research"),
+            ("Simulation Lab", "🧪 Simulation Lab"),
+            ("Forecast Lab · synthetic", "🧠 Forecast Intelligence"),
+            ("Portfolio Lab · synthetic", "💼 Portfolio Manager"),
         ]),
         ("Learn", "📚 Learn", []),
     ]

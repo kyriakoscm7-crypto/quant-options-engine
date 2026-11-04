@@ -2031,3 +2031,6 @@ This project is intended for educational, research, and software engineering por
 It is not financial advice, an investment recommendation, or a production trading system.
 
 Theoretical model outputs and market-data-derived estimates should not be relied upon for live trading decisions.
+## Current release preparation
+
+Draft PR #6 remains unmerged. See [production readiness and preview steps](docs/PRODUCTION_READINESS_2026_11.md) and [source-rights evidence](docs/SOURCE_RIGHTS_2026_11.md). Discovery offers provider-hosted screening plus session-local evidence shortlists; synthetic forecasts and portfolios live under Quant Lab. No new backend feed is licensed or enabled.

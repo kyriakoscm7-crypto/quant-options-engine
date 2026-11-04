@@ -434,7 +434,7 @@ def forecast_demo_metrics(symbol: str, horizon: int) -> pd.DataFrame:
 
 
 def render_demo_forecast() -> None:
-    st.title(":primary[:material/psychology:] Forecast Intelligence")
+    st.title(":primary[:material/psychology:] Forecast Lab · Synthetic")
     _demo_banner()
     st.write(
         "Compare a no-change baseline against a very simple momentum "
