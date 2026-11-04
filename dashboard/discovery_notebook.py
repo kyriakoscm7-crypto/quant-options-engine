@@ -11,11 +11,27 @@ STATUSES = ("To investigate", "Reading filings", "Monitoring", "Archived")
 FIELDS = ("Research question", "Evidence & source links", "Risks & counterevidence", "Next review trigger")
 
 
+# Verified primary SEC entity identifiers. Never synthesize a CIK from a ticker.
+# EDGAR issuer IDs are not interchangeable with exchange tickers.
+_VERIFIED_CIK = {
+    "NASDAQ:AAPL": "0000320193",
+    "NASDAQ:MSFT": "0000789019",
+}
+
+
 def official_filings_url(symbol: str) -> str:
-    """Link to a search, not a claim of verified issuer identity or coverage."""
-    return "https://www.sec.gov/edgar/browse/?" + urlencode({
-        "CIK": symbol.split(":", 1)[-1], "owner": "exclude",
-    })
+    """Link to a verified SEC issuer, or to SEC's manual search.
+
+    A symbol isn't a CIK. Unknown, ambiguous, cross-listed or foreign
+    instruments must be matched by a human before using issuer filings.
+    Do not construct an EDGAR browse URL from an unverified ticker.
+    """
+    cik = _VERIFIED_CIK.get(symbol.upper().strip())
+    if cik is not None:
+        return "https://www.sec.gov/edgar/browse/?" + urlencode({
+            "CIK": cik, "owner": "exclude",
+        })
+    return "https://www.sec.gov/search-filings"
 
 
 def safe_source_url(value: str) -> bool:
