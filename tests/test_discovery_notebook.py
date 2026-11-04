@@ -19,10 +19,23 @@ render_discovery_notebook(symbol)
 '''
 
 
-def test_official_search_encodes_input_without_claiming_identity():
-    parsed = urlsplit(official_filings_url('NASDAQ:AAPL&owner=include'))
-    assert parsed.hostname == 'www.sec.gov'
-    assert parse_qs(parsed.query) == {'CIK': ['AAPL&owner=include'], 'owner': ['exclude']}
+@pytest.mark.parametrize("symbol,cik", [
+    ("NASDAQ:AAPL", "0000320193"),
+    ("NASDAQ:MSFT", "0000789019"),
+])
+def test_official_filings_link_uses_verified_issuer_identity(symbol, cik):
+    parsed = urlsplit(official_filings_url(symbol))
+    assert parsed.hostname == "www.sec.gov"
+    assert parsed.path == "/edgar/browse/"
+    assert parse_qs(parsed.query) == {"CIK": [cik], "owner": ["exclude"]}
+
+
+@pytest.mark.parametrize("symbol", [
+    "NASDAQ:AAPL&owner=include", "NYSE:UNKNOWN", "TSX:SHOP", "",
+    "AAPL", "CIK=000000AAPL",
+])
+def test_unverified_symbols_use_manual_sec_search_not_fake_cik(symbol):
+    assert official_filings_url(symbol) == "https://www.sec.gov/search-filings"
 
 
 @pytest.mark.parametrize('url', ['javascript:alert(1)', 'http://example.org',
