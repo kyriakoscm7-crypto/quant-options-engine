@@ -4,10 +4,11 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from app.pricing.greeks_workspace import calculate_greeks, compare_repricing
-from dashboard.model_handoff import transfer_assumptions
+from dashboard.model_handoff import hydrate_model, remember_model, transfer_assumptions
 
 
 def render_greeks_workspace():
+    hydrate_model("greeks")
     st.title("Greeks Risk Intelligence")
     st.caption(
         "Investigate how an option responds to changing market assumptions. "
@@ -21,44 +22,44 @@ def render_greeks_workspace():
     with a:
         kind = st.radio(
             "Option type", ["Call", "Put"], horizontal=True,
-            key="qi_greeks_kind"
+            key="qi_greeks_kind", on_change=remember_model, args=("greeks",)
         )
     with b:
         days = st.selectbox(
             "Days to expiration", [7, 14, 30, 60, 90, 180, 365],
-            index=2, key="qi_greeks_days"
+            index=2, key="qi_greeks_days", on_change=remember_model, args=("greeks",)
         )
     with c:
         contracts = st.number_input(
             "Contracts", min_value=1, max_value=100,
-            value=1, step=1, key="qi_greeks_contracts"
+            value=1, step=1, key="qi_greeks_contracts", on_change=remember_model, args=("greeks",)
         )
 
     a, b, c = st.columns(3)
     with a:
         spot = st.number_input(
             "Underlying price ($)", min_value=0.01,
-            max_value=1_000_000.0, value=100.0, step=1.0, key="qi_greeks_spot"
+            max_value=1_000_000.0, value=100.0, step=1.0, key="qi_greeks_spot", on_change=remember_model, args=("greeks",)
         )
     with b:
         strike = st.number_input(
             "Strike price ($)", min_value=0.01,
-            max_value=1_000_000.0, value=100.0, step=1.0, key="qi_greeks_strike"
+            max_value=1_000_000.0, value=100.0, step=1.0, key="qi_greeks_strike", on_change=remember_model, args=("greeks",)
         )
     with c:
         volatility = st.slider(
             "Annualized volatility (%)", 5, 150, 25, 5,
-            key="qi_greeks_volatility"
+            key="qi_greeks_volatility", on_change=remember_model, args=("greeks",)
         )
 
     with st.expander("Advanced assumptions"):
         rate = st.number_input(
             "Risk-free interest rate (%)", min_value=-20.0, max_value=100.0, value=4.0,
-            step=0.25, key="qi_greeks_rate"
+            step=0.25, key="qi_greeks_rate", on_change=remember_model, args=("greeks",)
         )
         dividend = st.number_input(
             "Dividend yield (%)", min_value=0.0, max_value=100.0,
-            value=0.0, step=0.25, key="qi_greeks_dividend"
+            value=0.0, step=0.25, key="qi_greeks_dividend", on_change=remember_model, args=("greeks",)
         )
 
     greek = calculate_greeks(

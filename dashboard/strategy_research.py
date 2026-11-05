@@ -81,9 +81,9 @@ def backtest_stats(result: pd.DataFrame) -> dict[str, float]:
     return {
         "strategy_return_pct": float((strategy.iloc[-1] / 100 - 1) * 100),
         "benchmark_return_pct": float((benchmark.iloc[-1] / 100 - 1) * 100),
-        "max_drawdown_pct": float((strategy / strategy.cummax() - 1).min() * 100),
+        "max_drawdown_pct": float((strategy / strategy.cummax().clip(lower=100.0) - 1).min() * 100),
         "sharpe": sharpe,
-        "entry_events": int(((result["Position"].diff() > 0).fillna(False)).sum()),
+        "entry_events": int(((result["Position"].diff().fillna(result["Position"].iloc[0]) > 0).fillna(False)).sum()),
         "time_in_market_pct": float(result["Position"].mean() * 100),
     }
 
@@ -143,7 +143,7 @@ def render_strategy_research() -> None:
         ("Buy-and-hold value", "#abb8d3"),
     ]:
         chart.add_trace(go.Scatter(
-            x=result.index, y=result[name],
+            x=list(range(len(result) + 1)), y=[100.0, *result[name]],
             name=name, mode="lines",
             line={"color": color, "width": 2.6},
         ))
@@ -170,7 +170,7 @@ def render_strategy_research() -> None:
     if research_notes_enabled():
         with st.expander("How this test avoids look-ahead bias", expanded=False):
             st.write(
-                "Signals are calculated using prior completed synthetic closes "
+                "Execution is simplified: prior-close signals apply to the next close-to-close return. Signals use prior completed synthetic closes "
                 "and applied to the next session's return. Moving averages "
                 "need enough prior data, both strategies use the same test "
                 "period, and every entry or exit incurs the selected fee."

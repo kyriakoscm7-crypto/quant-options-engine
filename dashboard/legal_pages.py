@@ -40,7 +40,7 @@ advice tailored to your circumstances.
 TERMS = """
 ### Terms of use
 
-**Status:** Private research workspace. Last revised November 3, 2026.
+**Status:** Private research workspace. Last revised November 4, 2026.
 
 By using this site, you agree to use it for lawful, personal research
 and educational purposes only. If you disagree with these terms,
@@ -91,12 +91,14 @@ continue to apply regardless of any disclaimer.
 PRIVACY = """
 ### Privacy notice
 
-**Status:** Private research workspace. Last revised November 3, 2026.
+**Status:** Private research workspace. Last revised November 4, 2026.
 
 This notice describes this private educational research build. Access restriction
 is configured in Streamlit Community Cloud, not enforced by this page.
 It does not certify the practices of an earlier deployed version. Hosting configuration and actual
 retention still require operator verification before release.
+
+**Hosting and provider review is unresolved.** Invitation-only access is not a hosting-suitability determination or a market-data licence. Until written review is complete, use only public-company observations and invented calculator inputs. No claim of legal immunity, regulatory approval or provider endorsement is made.
 
 **Information entered into the app.** Visitors choose stocks for external
 charts and may enter hypothetical calculator values and fictional portfolio
@@ -117,7 +119,7 @@ Do not assume the repository setting disables host telemetry. See also
 [Streamlit privacy information](https://docs.streamlit.io/develop/concepts/configuration/options#telemetry).
 Actual host settings, log retention and subprocessors still require verification.
 
-**External research panels.** Charts, screeners, financials, company profiles, technical ratings and news panels are off initially. If you allow automatic panels on a research page or in the top-right Settings menu, charts, screeners and company research, including panels in unselected tabs, load automatically across Stock Explorer, Discovery, Scanner and Simulation Lab during that session. Your browser
+**External research panels.** Charts, screeners, financials, company profiles, technical ratings and news panels are off initially. If you allow automatic panels on a research page or in the top-right Settings menu, charts, screeners and company research, only for the selected research view, load across Stock Explorer, Discovery, Scanner and Simulation Lab during that session. Your browser
 connects directly to TradingView. Its widget FAQ states that widgets process the
 embedding page URL, widget type, displayed symbol and IP address, and do not set
 cookies. See [TradingView's widget FAQ](https://www.tradingview.com/widget-docs/faq/general/)

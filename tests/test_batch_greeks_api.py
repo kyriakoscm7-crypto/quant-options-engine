@@ -273,7 +273,7 @@ def test_batch_greeks_supports_default_dividend_yield():
 
     expected = BlackScholes(**option).greeks()
 
-    assert response.json()["results"][0] == expected
+    assert response.json()["results"][0] == pytest.approx(expected, abs=5e-5)
 
 
 def test_batch_greeks_supports_nonzero_dividend_yield():
@@ -290,7 +290,7 @@ def test_batch_greeks_supports_nonzero_dividend_yield():
 
     expected = BlackScholes(**option).greeks()
 
-    assert response.json()["results"][0] == expected
+    assert response.json()["results"][0] == pytest.approx(expected, abs=5e-5)
 
 
 # ============================================================

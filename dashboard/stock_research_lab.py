@@ -1,13 +1,11 @@
 """Integrated research UI with deliberately company-independent assumptions."""
 
-import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
 from app.intelligence.explorer_lab import portfolio_path, research_paths
 from app.intelligence.risk_engine import calculate_risk_metrics
-from app.pricing.black_scholes import BlackScholes
 
 
 def _chart(frame, title):
@@ -61,25 +59,10 @@ def render_research_lab():
         st.metric("Hypothetical allocation shock", f"{weight * shock + (1-weight) * shock_b:.1%}")
         st.caption("Blend assumes initial weights and no rebalancing, fees or dividends. Shock uses initial weights; beta and correlation describe this generated sample only.")
     with options:
-        st.caption("Manual hypothetical European option inputs · no market premiums or implied volatility feed")
-        a, b = st.columns(2)
-        spot = a.number_input("Hypothetical spot ($)", 1.0, 100000.0, 100.0)
-        strike = b.number_input("Strike ($)", 1.0, 100000.0, 100.0)
-        days = a.slider("Days to expiry", 1, 730, 90)
-        sigma = b.slider("Assumed option volatility (%)", 1, 150, 25) / 100
-        rate = a.slider("Annual continuous risk-free rate (%)", -5.0, 20.0, 4.0) / 100
-        dividend = b.slider("Annual continuous dividend yield (%)", 0.0, 20.0, 0.0) / 100
-        model = BlackScholes(spot, strike, days / 365, rate, sigma, dividend)
-        greeks = model.greeks()
-        a.metric("Theoretical call / share", f"${model.call_price():.2f}")
-        b.metric("Theoretical put / share", f"${model.put_price():.2f}")
-        st.dataframe(pd.DataFrame({"Greek": ["Delta", "Gamma", "Vega / 1 vol point", "Theta / calendar day", "Rho / 1 rate point"],
-            "Call": [greeks[k] for k in ["call_delta", "gamma", "vega", "call_theta", "call_rho"]],
-            "Put": [greeks[k] for k in ["put_delta", "gamma", "vega", "put_theta", "put_rho"]]}), hide_index=True)
-        grid = np.linspace(spot * 0.5, spot * 1.5, 81)
-        _chart(pd.DataFrame({"Long call": np.maximum(grid - strike, 0) - model.call_price(),
-                             "Long put": np.maximum(strike - grid, 0) - model.put_price()}, index=grid), "Expiry P&L per share · hypothetical terminal spot ($)")
-        st.caption("European exercise, constant volatility/rates; no transaction costs. Expiry P&L excludes financing. These are model values, not tradable quotes.")
+        st.write("Continue in the shared Options workspace to price options and investigate Greeks with the same saved assumptions.")
+        if st.button("Open Options workspace", key="qi_simulation_options"):
+            st.session_state["_navigation_request"] = "💰 Options Lab"
+            st.rerun()
     with research:
         st.markdown("### From observation to experiment")
         st.write("Use the market chart to explore a question, then test assumptions here. Lower volatility, vary correlation or change allocation and compare outcomes. No synthetic score is assigned to the selected company.")

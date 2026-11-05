@@ -79,7 +79,7 @@ def test_chunked_body_limit_counts_actual_bytes_before_app_runs():
     async def send(message):
         sent.append(message)
 
-    asyncio.run(RequestSafetyMiddleware(downstream)({'type': 'http'}, receive, send))
+    asyncio.run(RequestSafetyMiddleware(downstream)({'type': 'http', 'client': ('127.0.0.1', 1), 'path': '/calculate', 'method': 'POST'}, receive, send))
     assert not called
     assert sent[0]['status'] == 413
 

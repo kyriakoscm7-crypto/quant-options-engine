@@ -65,7 +65,11 @@ app = FastAPI(
     version="1.3.0",
 )
 
-app.add_middleware(RequestSafetyMiddleware, api_token=os.environ.get("QI_API_TOKEN", ""))
+api_mode = os.environ.get("QI_API_MODE", "production")
+# Validate at import/startup, rather than waiting for the first HTTP request.
+RequestSafetyMiddleware(None, api_token=os.environ.get("QI_API_TOKEN", ""), mode=api_mode)
+app.add_middleware(RequestSafetyMiddleware, api_token=os.environ.get("QI_API_TOKEN", ""),
+                   mode=os.environ.get("QI_API_MODE", "production"))
 
 
 @app.exception_handler(OverflowError)
@@ -518,7 +522,9 @@ def calculate_option_greeks(request: OptionRequest):
     )
 
     # Return the option sensitivity measurements.
-    return engine.greeks()
+    # Preserve the public JSON display convention; internal Greeks remain full precision.
+    return {key: round(float(value), 4) if value is not None else None
+            for key, value in engine.greeks().items()}
 
 
 # ============================================================

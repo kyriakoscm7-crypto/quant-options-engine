@@ -103,7 +103,7 @@ def render_workspace_settings() -> None:
                     "Automatically load TradingView panels",
                     key="qi_external_charts",
                     on_change=record_external_panel_choice,
-                    help="Opt in for this session. Charts, screeners and research panels then load across research pages, including unselected tabs.",
+                    help="Opt in for this session. Charts, screeners and research panels then load across research pages, only for the selected view.",
                 )
                 st.caption(
                     "TradingView receives connection metadata including IP "
@@ -118,6 +118,9 @@ def render_workspace_settings() -> None:
                     on_click=reset_workspace_preferences,
                 )
             with workspace:
+                from dashboard.build_info import build_info
+                st.json(build_info())
+                st.caption("Runtime package versions above are nonsecret. Host deployment, retention and API protection still require operator verification.")
                 st.markdown("**Independent quantitative research**")
                 st.caption(
                     "Access is invitation-only if the hosting dashboard "

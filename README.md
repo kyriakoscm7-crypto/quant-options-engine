@@ -1,3 +1,11 @@
+> November 4 audit fixes are under review; production is unchanged. See
+> [issue checklist](docs/AUDIT_FIXES_2026_11_04.md),
+> [build/release procedure](docs/BUILD_AND_RELEASE.md) and
+> [unresolved external reviews](docs/EXTERNAL_REVIEW.md).
+> Separate API startup now requires production authentication; isolated local development
+> requires `QI_API_MODE=development` with a loopback bind. Historical instructions below
+> do not override these controls.
+
 > **Draft safety review:** See [end-to-end audit](docs/END_TO_END_RISK_AUDIT.md) for verified controls, hosting/licensing limits and release blockers. PR #6 remains unmerged; the live site may run earlier code.
 
 # Quant Intelligence

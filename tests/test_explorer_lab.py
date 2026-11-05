@@ -32,8 +32,7 @@ def test_optional_lab_interactions():
     app.slider(key='lab_vol').set_value(50).run()
     assert not app.exception
     assert app.metric[1].value != initial[1]
-    old_call = app.metric[5].value
-    next(x for x in app.number_input if x.label == 'Hypothetical spot ($)').set_value(120).run()
-    assert not app.exception
-    assert app.metric[5].value != old_call
-    assert len(app.get('plotly_chart')) == 4
+    assert any(b.label == 'Open Options workspace' for b in app.button)
+    assert len(app.get('plotly_chart')) == 3
+    app.button(key='qi_simulation_options').click().run()
+    assert app.session_state['_navigation_request'] == '💰 Options Lab'

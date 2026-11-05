@@ -4,6 +4,7 @@ The landing page uses a decorative, non-interactive SVG instead of a Plotly
 options-pricing chart. The actual options research tools remain available.
 """
 
+import re
 import re as _qi_re
 from base64 import b64encode
 
@@ -570,32 +571,22 @@ def _workspace_card(
     """Render a single accessible navigation card."""
     from html import escape
 
-    routes = {
-        "discover": "discover",
-        "learn": "learn",
-        "stock": "research",
-        "portfolio": "portfolio",
-    }
-    if key not in routes:
-        raise ValueError(f"Unknown homepage destination: {key}")
+    with st.container(border=True):
+        st.markdown(f"### {escape(title)}")
+        st.write(description)
+        st.button(cta, key=f"qi_home_card_{key}", on_click=_request_route, args=(destination,), use_container_width=True)
 
-    url = f"?qi_go={routes[key]}"
-    st.html(
-        f'<a class="qi-home-card qi-home-card-link" '
-        f'href="{url}" aria-label="{escape(cta, quote=True)}">'
-        f'<span class="qi-home-card-icon" aria-hidden="true">'
-        f'{icon_svg(icon, 24)}</span>'
-        f'<h3>{escape(title)}</h3>'
-        f'<p>{escape(description)}</p>'
-        f'<span class="qi-home-card-arrow" aria-hidden="true">'
-        f'&#8599;</span></a>'
-    )
+
+def _request_route(destination):
+    st.session_state["_navigation_request"] = destination
 
 
 def render_premium_home() -> None:
     """Clear, engaging homepage without a gesture-capturing chart."""
     st.html(_HOMEPAGE_CSS)
-    st.html(_HERO.replace("__QI_NETWORK_IMAGE__", QI_NETWORK_DATA_URL))
+    st.html(re.sub(r'<a class="qi-network-endpoint.*?</a>', "", _HERO.replace("__QI_NETWORK_IMAGE__", QI_NETWORK_DATA_URL), flags=re.S))
+    for col, (label, route) in zip(st.columns(4), [("Discover", "💎 Quant Discovery"), ("Research", "🔎 Stock Explorer"), ("Learn", "📚 Learn"), ("Analyze", "💰 Options Lab")]):
+        col.button(label, key=f"qi_network_{label}", on_click=_request_route, args=(route,), use_container_width=True)
 
     st.html(
         '<div class="qi-home-section-head"><h2>Where would you like to begin?</h2>'
@@ -623,7 +614,7 @@ def render_premium_home() -> None:
         ("Options Lab", "💰 Options Lab"),
         ("Greeks Analysis", "📊 Greeks Analysis"),
         ("Scenario Explorer", "📈 Scenario Explorer"),
-        ("Market Scanner", "🔍 Market Scanner"),
+        ("Simulation Lab", "🧪 Simulation Lab"),
         ("Forecast Lab · synthetic", "🧠 Forecast Intelligence"),
         ("Strategy Research", "🧠 Strategy Research"),
     ]

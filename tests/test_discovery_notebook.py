@@ -57,15 +57,16 @@ def test_notes_survive_company_switch_and_session_isolation(monkeypatch):
     monkeypatch.setattr(requests.Session, 'request', lambda *a, **k: pytest.fail('network call'))
     app = AppTest.from_string(APP).run()
     app.button(key='qi_discovery_add').click().run()
-    app.text_area(key='qi_shortlist_NASDAQ:AAPL_Research question').set_value('Check debt maturities').run()
-    app.text_input(key='qi_shortlist_NASDAQ:AAPL_Source URL').set_value('https://www.sec.gov/').run()
+    app.text_area(key='qi_edit_NASDAQ:AAPL_Research question').set_value('Check debt maturities')
+    app.text_input(key='qi_edit_NASDAQ:AAPL_Source URL').set_value('https://www.sec.gov/')
+    next(b for b in app.button if b.label == 'Save & prepare export').click().run()
     app.selectbox(key='listing').select('NASDAQ:MSFT').run()
     app.button(key='qi_discovery_add').click().run()
     app.selectbox(key='qi_shortlist_edit').select('NASDAQ:MSFT').run()
     assert not app.exception
-    assert app.text_area(key='qi_shortlist_NASDAQ:MSFT_Research question').value == ''
+    assert app.text_area(key='qi_edit_NASDAQ:MSFT_Research question').value == ''
     app.selectbox(key='qi_shortlist_edit').select('NASDAQ:AAPL').run()
-    assert app.text_area(key='qi_shortlist_NASDAQ:AAPL_Research question').value == 'Check debt maturities'
+    assert app.text_area(key='qi_edit_NASDAQ:AAPL_Research question').value == 'Check debt maturities'
     other = AppTest.from_string(APP).run()
     assert other.session_state['qi_discovery_notebook'] == {}
     app.button(key='qi_shortlist_clear').click().run()
@@ -73,13 +74,14 @@ def test_notes_survive_company_switch_and_session_isolation(monkeypatch):
     assert app.session_state['qi_discovery_notebook'] == {}
     app.button(key='qi_discovery_add').click().run()
     assert not app.exception
-    assert app.text_area(key='qi_shortlist_NASDAQ:MSFT_Research question').value == ''
+    assert app.text_area(key='qi_edit_NASDAQ:MSFT_Research question').value == ''
 
 
 def test_shortlist_quick_status_and_exact_listing_handoff():
     app = AppTest.from_string(APP).run()
     app.button(key='qi_discovery_add').click().run()
-    app.selectbox(key='qi_shortlist_NASDAQ:AAPL_Status').select('Monitoring').run()
+    app.selectbox(key='qi_edit_NASDAQ:AAPL_status').select('Monitoring')
+    next(b for b in app.button if b.label == 'Save & prepare export').click().run()
     assert app.session_state['qi_discovery_notebook']['NASDAQ:AAPL']['Status'] == 'Monitoring'
     app.button(key='qi_shortlist_open').click().run()
     assert app.session_state['_research_ticker_request'] == 'NASDAQ:AAPL'

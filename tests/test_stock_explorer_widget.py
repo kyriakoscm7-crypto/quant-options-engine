@@ -15,7 +15,7 @@ def test_official_embed_preserves_attribution_and_configuration(symbol):
     markup = chart_embed_html(symbol)
     assert 'src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js"' in markup
     assert 'tradingview-widget-copyright' in markup
-    assert 'by TradingView' in markup
+    assert 'Track all markets on TradingView' in markup
     assert 'height:calc(100% - 32px)' in markup
     assert 'html{height:620px}' in markup
     config = json.loads(re.search(r'async>\s*(\{.*?\})\s*</script>', markup, re.S)[1])
@@ -63,7 +63,7 @@ def test_main_public_routes_cannot_reenable_legacy_feeds(route, monkeypatch):
     app.run(timeout=45)
     assert not app.exception, [error.message for error in app.exception]
     if route == '🔎 Stock Explorer':
-        assert len(app.get('iframe')) == 6
+        assert len(app.get('iframe')) == 1
         assert not any('SYNTHETIC DEMO' in item.value for item in app.info)
     elif route == '🧪 Simulation Lab':
         assert any('HYPOTHETICAL MODEL' in item.value for item in app.info)
@@ -95,7 +95,7 @@ def test_compact_menu_opens_policies_and_can_disable_charts():
     assert len(app.get('iframe')) == 0
     app.toggle(key='qi_explorer_consent').set_value(True).run()
     assert not app.exception
-    assert len(app.get('iframe')) == 6
+    assert len(app.get('iframe')) == 1
     app.toggle(key='qi_external_charts').set_value(False).run()
     assert not app.exception
     assert len(app.get('iframe')) == 0
@@ -202,21 +202,25 @@ def test_restored_research_tabs_never_request_backend_data(enabled, monkeypatch)
     app.session_state["qi_external_panels_notice_version"] = 2 if enabled else 0
     app.run()
     assert not app.exception
-    assert [tab.label for tab in app.tabs] == [
-        "Financials & company", "Technicals & model limits", "News", "History & availability", "My analysis",
-    ]
-    assert len(app.get("iframe")) == (6 if enabled else 0)
+    assert app.selectbox(key='qi_stock_view').value == 'Chart'
+    assert len(app.get("iframe")) == (1 if enabled else 0)
     assert len(app.metric) == 0
     assert not any("FICTIONAL MODEL LAB" in caption.value for caption in app.caption)
     # Preserve a download of user-authored notes, never historical prices.
+    assert len(app.get("download_button")) == 0
+    app.selectbox(key="qi_stock_view").set_value("My analysis").run()
+    next(b for b in app.button if b.label == "Save & prepare export").click().run()
     assert len(app.get("download_button")) == 1
+    assert len(app.get("iframe")) == 0
 
 
 def test_notes_survive_view_change_and_remain_per_symbol():
     source = "from dashboard.stock_explorer_widget import render_stock_explorer\nrender_stock_explorer()"
     app = AppTest.from_string(source)
     app.run()
-    app.text_area[0].set_value('My own thesis').run()
+    app.selectbox(key='qi_stock_view').set_value('My analysis').run()
+    app.text_area[0].set_value('My own thesis')
+    next(b for b in app.button if b.label == 'Save & prepare export').click().run()
     app.selectbox(key='qi_stock_lookback').set_value('5Y').run()
     app.selectbox(key='qi_stock_chart_type').set_value('Candlestick').run()
     assert app.text_area[0].value == 'My own thesis'
@@ -252,7 +256,7 @@ def test_session_opt_in_automatic_return_range_change_and_revoke():
     assert len(app.get("iframe")) == 0
     app.toggle(key="qi_explorer_consent").set_value(True).run()
     assert not app.exception
-    assert len(app.get("iframe")) == 6
+    assert len(app.get("iframe")) == 1
     assert not any(button.label == "Load real-stock chart" for button in app.button)
     app.selectbox(key="qi_stock_lookback").set_value("1D").run()
     app.selectbox[1].select("Microsoft · MSFT").run()
@@ -262,7 +266,7 @@ def test_session_opt_in_automatic_return_range_change_and_revoke():
     app.run()
     app.session_state["selected_page"] = "🔎 Stock Explorer"
     app.run()
-    assert len(app.get("iframe")) == 6
+    assert len(app.get("iframe")) == 1
     app.toggle(key="qi_external_charts").set_value(False).run()
     assert len(app.get("iframe")) == 0
     assert app.toggle(key="qi_explorer_consent").value is False

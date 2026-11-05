@@ -48,7 +48,6 @@ def chart_embed_html(symbol: str, lookback: str = "1M", chart_type: str = "Candl
         raise ValueError("Use an exchange-qualified stock symbol")
     date_range, interval, _ = LOOKBACKS[lookback]
     style = {"Line": "2", "Candlestick": "1"}[chart_type]
-    symbol_url = "https://www.tradingview.com/symbols/" + symbol.replace(":", "-") + "/"
     config = {
         "autosize": True, "symbol": symbol, "interval": interval, "range": date_range,
         "timezone": "Etc/UTC", "theme": "dark", "style": style,
@@ -59,12 +58,12 @@ def chart_embed_html(symbol: str, lookback: str = "1M", chart_type: str = "Candl
     }
     return f'''<!doctype html><html lang="en"><head><meta name="viewport"
 content="width=device-width, initial-scale=1"><title>Stock chart by TradingView</title>
-<style>html{{height:620px}}body{{height:100%;margin:0;background:#080D1D;color:#ddd}}a{{color:#91b4f4}} .tradingview-widget-copyright{{font:12px sans-serif;padding:6px 0}}</style></head><body>
+<style>html{{height:620px}}body{{height:100%;margin:0;background:#080D1D;color:#ddd}}</style></head><body>
 <!-- TradingView Widget BEGIN -->
 <div class="tradingview-widget-container" style="height:620px;width:100%">
 <div class="tradingview-widget-container__widget" style="height:calc(100% - 32px);width:100%"></div>
-<div class="tradingview-widget-copyright"><a href="{html.escape(symbol_url)}"
-rel="noopener nofollow" target="_blank"><span class="blue-text">{html.escape(symbol)} chart</span></a><span class="trademark"> by TradingView</span></div>
+<div class="tradingview-widget-copyright"><a href="https://www.tradingview.com/"
+rel="noopener nofollow" target="_blank"><span class="blue-text">Track all markets on TradingView</span></a></div>
 <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
 {json.dumps(config)}
 </script></div><!-- TradingView Widget END -->
@@ -95,7 +94,7 @@ def detail_embed_html(symbol: str, view: str) -> str:
         config.update(feedMode="symbol", displayMode="regular")
     return f'''<!doctype html><html lang="en"><head><meta name="viewport"
 content="width=device-width, initial-scale=1"><title>{html.escape(view)} by TradingView</title>
-<style>body{{margin:0;background:#080D1D;color:white}}a{{color:#91b4f4}}</style></head><body>
+<style>body{{margin:0;background:#080D1D;color:white}}</style></head><body>
 <div class="tradingview-widget-container">
 <div class="tradingview-widget-container__widget"></div>
 <div class="tradingview-widget-copyright"><a href="https://www.tradingview.com/"
@@ -105,21 +104,15 @@ rel="noopener nofollow" target="_blank"><span class="blue-text">Track all market
 </script></div></body></html>'''
 
 
-def _save_research_note(symbol: str, title: str, key: str) -> None:
-    st.session_state.setdefault("qi_research_notes", {}).setdefault(symbol, {})[title] = st.session_state[key]
-
-
 def _render_notes(symbol: str) -> None:
-    st.markdown(f"### Your research · {symbol.split(':', 1)[1]}")
-    st.caption("Your observations are processed by the server and saved for this session only. Download to keep them. Use public-company research only; do not enter account details, real holdings or personal financial information.")
-    notes = {}
-    for title in ["Thesis & valuation", "Evidence & source links", "Risks & what would change my mind"]:
-        key = f"qi_notes_{symbol}_{title}"
-        saved = st.session_state.get("qi_research_notes", {}).get(symbol, {}).get(title, "")
-        notes[title] = st.text_area(title, value=saved, key=key, height=140, max_chars=10000,
-                                    on_change=_save_research_note, args=(symbol, title, key))
-    export = "# " + symbol + "\n\n" + "\n\n".join(f"## {title}\n{value}" for title, value in notes.items())
-    st.download_button("Download my research", export, symbol.replace(":", "-") + "-research.md", "text/markdown")
+    from dashboard.discovery_notebook import _add, render_record_editor
+    st.markdown(f"### Shared research · {symbol}")
+    st.caption("Session only. Public-company observations and fictional inputs only; no account records or sensitive personal financial information.")
+    _add(symbol)
+    if symbol in st.session_state.get("qi_discovery_notebook", {}):
+        render_record_editor(symbol)
+    else:
+        st.warning("50-record limit reached. Delete a record in Discovery to free a slot. Archives still count.")
 
 
 def _render_panel(symbol: str, view: str, enabled: bool) -> None:
@@ -140,10 +133,11 @@ def render_external_panel_consent(key: str = "qi_explorer_consent") -> bool:
     if st.session_state.get("qi_external_charts", False):
         return True
     with st.container(border=True):
-        st.markdown("### Your research workspace")
-        st.write("Allow TradingView charts, screeners and company research to load automatically across research pages for this session, including panels in unselected tabs.")
-        st.caption("TradingView receives your IP address, selected symbol, widget type and embedding URL. Its privacy policy describes device and usage analytics, including third-party providers. Your notes are not sent to TradingView. Private sign-in does not replace your choice.")
-        st.markdown("[TradingView privacy policy](https://www.tradingview.com/privacy-policy/)")
+        st.markdown("### External research panels")
+        st.write("Optional TradingView displays load only for your selected research view. TradingView receives your IP address, symbol, widget type and embedding page URL. Your notes are not sent to TradingView.")
+        with st.expander("Privacy & display details"):
+            st.caption("TradingView may process device and usage analytics, including third-party providers, under its privacy policy. Private sign-in does not replace this choice. Display data is never read into our models or exports.")
+            st.markdown("[TradingView privacy policy](https://www.tradingview.com/privacy-policy/)")
         st.session_state[key] = False
         st.toggle("Allow automatic TradingView panels this session", key=key,
                   on_change=_apply_panel_consent, args=(key,))
@@ -181,38 +175,21 @@ def render_stock_explorer() -> None:
     st.caption("Market information by TradingView · May be delayed or unavailable · Not investment advice")
     symbol_url = "https://www.tradingview.com/symbols/" + symbol.replace(":", "-") + "/"
     enabled = render_external_panel_consent()
-    if enabled:
-        _render_panel(symbol, "Overview", enabled)
-        st.caption(LOOKBACKS[lookback][2] + " requested · Provider sessions, resolution and available history determine coverage.")
-        components.html(chart_embed_html(symbol, lookback, chart_type), height=640, scrolling=False)
-        st.caption("Historical period selects the lookback; the chart toolbar selects candle size. Panning or zooming changes the visible window. Use the company selector to keep all panels aligned.")
-    performance, risk, news, history, analysis = st.tabs(
-        ["Financials & company", "Technicals & model limits", "News", "History & availability", "My analysis"]
-    )
-    with performance:
-        st.subheader("Company overview & financials")
-        st.caption("Use Compare in the main chart toolbar to compare another instrument, such as SPY, where supported. Any comparison and scale are controlled by TradingView; no app-calculated relative-return cards are shown.")
-        _render_panel(symbol, "Financials", enabled)
-        _render_panel(symbol, "Company", enabled)
-    with risk:
-        st.subheader("Technical assessment")
-        _render_panel(symbol, "Technicals", enabled)
-        st.caption("TradingView's ratings summarize technical indicators. They are not Quant Intelligence scores, probabilities of profit or a personalized recommendation.")
-        st.markdown("#### Historical risk intelligence")
-        st.write("Company-specific volatility, drawdown, beta and custom scores need a separately authorized price-history feed. The display panels do not supply data to our quantitative engines.")
-        st.button("Model manual assumptions in Options Lab", on_click=_open_options_lab, args=(symbol,),
-                  key="qi_stock_risk_lab")
-    with news:
-        st.subheader("Company news")
-        _render_panel(symbol, "News", enabled)
-        st.caption("Headlines and linked articles are provided by TradingView. Coverage varies; no app-generated or copied company news is substituted.")
-    with history:
-        st.subheader("Historical Market Data")
-        st.write("Explore available price history in the chart above. The current integration is display-only, so raw price tables and historical CSV downloads are unavailable here.")
-        st.caption("Restoring the original data table, adjusted-history calculations and exports requires a separately verified data agreement. A TradingView subscription or private login does not supply those permissions.")
-        st.link_button("View this company's provider page ↗", symbol_url)
-    with analysis:
+    view = st.selectbox("Research view", ["Chart", "Overview", "Financials", "Company", "Technicals", "News", "History & availability", "My analysis"], key="qi_stock_view")
+    # Conditional rendering mounts at most one official external widget.
+    if view == "Chart":
+        st.caption(LOOKBACKS[lookback][2] + " requested · Coverage depends on the provider.")
+        if enabled:
+            components.html(chart_embed_html(symbol, lookback, chart_type), height=640, scrolling=False)
+    elif view in DETAIL_WIDGETS:
+        _render_panel(symbol, view, enabled)
+        if view == "Technicals":
+            st.caption("Provider technical indicators are not app scores or probabilities. No display values enter models.")
+    elif view == "My analysis":
         _render_notes(symbol)
+    else:
+        st.write("Display-only integration: no raw history export or app-derived historical metrics. Coverage and delays vary by listing.")
+    st.button("Model manual assumptions in Options Lab", on_click=_open_options_lab, args=(symbol,), key="qi_stock_risk_lab")
     if enabled:
         st.caption("Missing panel? Availability depends on the symbol, provider and browser. Missing data is never replaced with fictional values.")
     st.link_button("Open this stock on TradingView ↗", symbol_url)
