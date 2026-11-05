@@ -1,0 +1,35 @@
+{
+  "production_base": "3611d515b22b87a323785320bfafa8ed41748a31",
+  "branch": "fix/production-audit-2026-11-04",
+  "full_local_python311": "1960 passed, 208 warnings",
+  "full_linux_python311": "1960 passed, 208 warnings in exact 90d51a8 review image",
+  "ruff": "passed",
+  "dependency_audit": "No known vulnerabilities in the reviewed runtime lock",
+  "bandit": {
+    "CONFIDENCE.HIGH": 6,
+    "CONFIDENCE.LOW": 0,
+    "CONFIDENCE.MEDIUM": 1,
+    "CONFIDENCE.UNDEFINED": 0,
+    "SEVERITY.HIGH": 0,
+    "SEVERITY.LOW": 7,
+    "SEVERITY.MEDIUM": 0,
+    "SEVERITY.UNDEFINED": 0,
+    "loc": 20150,
+    "nosec": 0,
+    "skipped_tests": 0
+  },
+  "history_scan": "No selected high-confidence secret patterns found in 121 reachable commits",
+  "docker_smoke": "API health, auth denial, calculation and legacy 403 passed",
+  "production_startup_without_token": "ValueError before serving calculations",
+  "live_deployment_sha": "unverified; no deployment performed",
+  "public_api_host": "unverified",
+  "external_reviews": "prepared, unsent, unresolved",
+  "manual_QA_limits": [
+    "real device",
+    "assistive technology",
+    "revoked viewer accounts",
+    "all provider combinations",
+    "host/proxy/runtime attestation"
+  ],
+  "ci_note": "Initial run passed all non-browser gates; mobile browser render synchronization was corrected in a follow-up commit. Final CI status is recorded in PR #8."
+}

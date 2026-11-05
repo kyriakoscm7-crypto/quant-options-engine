@@ -37,13 +37,7 @@ class BlackScholes:
     """
 
     def __init__(
-        self,
-        S: float,
-        K: float,
-        T: float,
-        r: float,
-        sigma: float,
-        q: float = 0.0
+        self, S: float, K: float, T: float, r: float, sigma: float, q: float = 0.0
     ):
 
         # Convert all inputs to standard Python floating-point numbers.
@@ -55,14 +49,7 @@ class BlackScholes:
         self.q = float(q)
 
         # Reject non-finite values such as NaN and infinity.
-        parameters = (
-            self.S,
-            self.K,
-            self.T,
-            self.r,
-            self.sigma,
-            self.q
-        )
+        parameters = (self.S, self.K, self.T, self.r, self.sigma, self.q)
 
         if not all(math.isfinite(value) for value in parameters):
             raise ValueError("All parameters must be finite numbers.")
@@ -82,18 +69,38 @@ class BlackScholes:
         if self.sigma < 0:
             raise ValueError("Volatility cannot be negative.")
 
+        # Supported floating-point domain: discount exponents within ±700,
+        # finite discounted legs/variance and a representable time-vol scale.
+        # Fail explicitly instead of returning inf/NaN or dividing by zero.
+        if self.T > 0:
+            discount_r, discount_q = -self.r * self.T, -self.q * self.T
+            if (
+                abs(discount_r) > 700
+                or abs(discount_q) > 700
+                or math.log(self.S) + discount_q > 709.78
+                or math.log(self.K) + discount_r > 709.78
+            ):
+                raise ValueError(
+                    "Discounted inputs exceed the supported numerical range."
+                )
+            if self.sigma > 0:
+                scale = self.sigma * math.sqrt(self.T)
+                if (
+                    scale == 0
+                    or not math.isfinite(scale)
+                    or not math.isfinite(self.sigma * self.sigma * self.T)
+                ):
+                    raise ValueError(
+                        "Time-volatility scale exceeds the supported numerical range."
+                    )
+
         # Calculate d1 and d2 only when their formulas are valid.
         if self.T > 0 and self.sigma > 0:
-
             sqrt_T = math.sqrt(self.T)
 
             self.d1 = (
-                math.log(self.S / self.K)
-                + (
-                    self.r
-                    - self.q
-                    + 0.5 * self.sigma ** 2
-                ) * self.T
+                (math.log(self.S) - math.log(self.K))
+                + (self.r - self.q + 0.5 * self.sigma**2) * self.T
             ) / (self.sigma * sqrt_T)
 
             self.d2 = self.d1 - self.sigma * sqrt_T
@@ -111,22 +118,15 @@ class BlackScholes:
 
         # With zero volatility, the terminal stock price is deterministic.
         if self.sigma == 0:
-
             discounted_stock = self.S * math.exp(-self.q * self.T)
             discounted_strike = self.K * math.exp(-self.r * self.T)
 
             return max(discounted_stock - discounted_strike, 0.0)
 
         # Standard Black-Scholes-Merton call pricing formula.
-        call = (
-            self.S
-            * math.exp(-self.q * self.T)
-            * norm.cdf(self.d1)
-            -
-            self.K
-            * math.exp(-self.r * self.T)
-            * norm.cdf(self.d2)
-        )
+        call = self.S * math.exp(-self.q * self.T) * norm.cdf(
+            self.d1
+        ) - self.K * math.exp(-self.r * self.T) * norm.cdf(self.d2)
 
         return float(call)
 
@@ -137,21 +137,14 @@ class BlackScholes:
             return max(self.K - self.S, 0.0)
 
         if self.sigma == 0:
-
             discounted_stock = self.S * math.exp(-self.q * self.T)
             discounted_strike = self.K * math.exp(-self.r * self.T)
 
             return max(discounted_strike - discounted_stock, 0.0)
 
-        put = (
-            self.K
-            * math.exp(-self.r * self.T)
-            * norm.cdf(-self.d2)
-            -
-            self.S
-            * math.exp(-self.q * self.T)
-            * norm.cdf(-self.d1)
-        )
+        put = self.K * math.exp(-self.r * self.T) * norm.cdf(
+            -self.d2
+        ) - self.S * math.exp(-self.q * self.T) * norm.cdf(-self.d1)
 
         return float(put)
 
@@ -176,10 +169,9 @@ class BlackScholes:
         put = self.put_price()
 
         if self.T == 0 or self.sigma == 0:
-
             return {
-                "call_price": round(call, 4),
-                "put_price": round(put, 4),
+                "call_price": call,
+                "put_price": put,
                 "call_delta": None,
                 "put_delta": None,
                 "gamma": None,
@@ -187,7 +179,7 @@ class BlackScholes:
                 "call_theta": None,
                 "put_theta": None,
                 "call_rho": None,
-                "put_rho": None
+                "put_rho": None,
             }
 
         sqrt_T = math.sqrt(self.T)
@@ -203,26 +195,15 @@ class BlackScholes:
         put_delta = discount_q * (norm.cdf(self.d1) - 1.0)
 
         # Gamma measures how quickly delta changes.
-        gamma = (
-            discount_q * pdf_d1
-            / (self.S * self.sigma * sqrt_T)
-        )
+        gamma = discount_q * pdf_d1 / (self.S * self.sigma * sqrt_T)
 
         # Vega measures sensitivity to implied volatility.
         # Divide by 100 for a one percentage-point volatility change.
-        vega = (
-            self.S * discount_q * pdf_d1 * sqrt_T
-        ) / 100.0
+        vega = (self.S * discount_q * pdf_d1 * sqrt_T) / 100.0
 
         # Theta measures sensitivity to the passage of time.
         # Divide annual theta by 365 for calendar-day theta.
-        common_theta = (
-            -self.S
-            * discount_q
-            * pdf_d1
-            * self.sigma
-            / (2.0 * sqrt_T)
-        )
+        common_theta = -self.S * discount_q * pdf_d1 * self.sigma / (2.0 * sqrt_T)
 
         call_theta = (
             common_theta
@@ -238,38 +219,26 @@ class BlackScholes:
 
         # Rho measures sensitivity to the risk-free interest rate.
         # Divide by 100 for a one percentage-point rate change.
-        call_rho = (
-            self.K * self.T * discount_r * norm.cdf(self.d2)
-        ) / 100.0
+        call_rho = (self.K * self.T * discount_r * norm.cdf(self.d2)) / 100.0
 
-        put_rho = (
-            -self.K * self.T * discount_r * norm.cdf(-self.d2)
-        ) / 100.0
+        put_rho = (-self.K * self.T * discount_r * norm.cdf(-self.d2)) / 100.0
 
         return {
-            "call_price": round(float(call), 4),
-            "put_price": round(float(put), 4),
-            "call_delta": round(float(call_delta), 4),
-            "put_delta": round(float(put_delta), 4),
-            "gamma": round(float(gamma), 4),
-            "vega": round(float(vega), 4),
-            "call_theta": round(float(call_theta), 4),
-            "put_theta": round(float(put_theta), 4),
-            "call_rho": round(float(call_rho), 4),
-            "put_rho": round(float(put_rho), 4)
+            "call_price": float(call),
+            "put_price": float(put),
+            "call_delta": float(call_delta),
+            "put_delta": float(put_delta),
+            "gamma": float(gamma),
+            "vega": float(vega),
+            "call_theta": float(call_theta),
+            "put_theta": float(put_theta),
+            "call_rho": float(call_rho),
+            "put_rho": float(put_rho),
         }
 
 
 if __name__ == "__main__":
-
-    engine = BlackScholes(
-        S=100,
-        K=100,
-        T=1.0,
-        r=0.05,
-        sigma=0.20,
-        q=0.0
-    )
+    engine = BlackScholes(S=100, K=100, T=1.0, r=0.05, sigma=0.20, q=0.0)
 
     print("--- Black-Scholes Test ---")
     print(engine.greeks())

@@ -1,0 +1,23 @@
+{
+  "audited": {
+    "widget_mounts": 6,
+    "cold_external_script_requests": 6,
+    "additional_warm_script_requests": 1,
+    "cold_app_ready_seconds": 1.239,
+    "warm_observation_seconds": 1.584,
+    "timing_note": "Local browser, includes fixed observation waits; not a provider latency benchmark."
+  },
+  "fixed": {
+    "widget_mounts": 1,
+    "cold_external_script_requests": 1,
+    "additional_warm_script_requests": 1,
+    "cold_app_ready_seconds": 1.178,
+    "warm_observation_seconds": 1.586,
+    "timing_note": "Local browser, includes fixed observation waits; not a provider latency benchmark."
+  },
+  "signed_out_production": {
+    "url": "https://share.streamlit.io/app/quant-intelligence-km/",
+    "denied": true,
+    "app_content_visible": false
+  }
+}

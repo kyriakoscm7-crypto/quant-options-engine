@@ -4,6 +4,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
+from app.pricing.greeks_workspace import calculate_greeks
 from app.pricing.options_workspace import (
     CONTRACT_SIZE,
     breakeven,
@@ -11,63 +12,71 @@ from app.pricing.options_workspace import (
     scenario_mark_profit,
     theoretical_price,
 )
+from dashboard.model_handoff import hydrate_model, remember_model, transfer_assumptions
 
 PINK = "#FF78B7"
 BLUE = "#79B8FF"
 
 
 def render_options_workspace():
+    hydrate_model("workspace")
     st.title("Options Research Workspace")
     st.caption(
         "Explore a hypothetical long call or long put. "
         "Pricing is based on Black-Scholes, not a live option-chain quote."
     )
 
+    st.caption("European exercise model · Constant rates and volatility · No fees, taxes or early assignment. Use hypothetical inputs only.")
+
+    reference = st.session_state.get("qi_model_reference")
+    if reference:
+        st.caption(f"Research context: {reference}. No prices, ratings or calibration were transferred. Use independently authorized or hypothetical inputs.")
+
     st.markdown("### 01 / Construct a position")
     a, b, c = st.columns([1, 1, 1])
     with a:
         kind = st.radio(
             "Position", ["Call", "Put"], horizontal=True,
-            key="qi_workspace_kind"
+            key="qi_workspace_kind", on_change=remember_model, args=("workspace",)
         )
     with b:
         contracts = st.number_input(
             "Contracts", min_value=1, max_value=100,
-            value=1, step=1, key="qi_workspace_contracts"
+            value=1, step=1, key="qi_workspace_contracts", on_change=remember_model, args=("workspace",)
         )
     with c:
         days = st.selectbox(
             "Days to expiration", [7, 14, 30, 60, 90, 180, 365],
-            index=2, key="qi_workspace_days"
+            index=2, key="qi_workspace_days", on_change=remember_model, args=("workspace",)
         )
 
     a, b, c = st.columns(3)
     with a:
         spot = st.number_input(
             "Underlying price ($)", min_value=0.01,
-            value=100.0, step=1.0, key="qi_workspace_spot"
+            max_value=1_000_000.0, value=100.0, step=1.0, key="qi_workspace_spot", on_change=remember_model, args=("workspace",)
         )
     with b:
         strike = st.number_input(
             "Strike price ($)", min_value=0.01,
-            value=100.0, step=1.0, key="qi_workspace_strike"
+            max_value=1_000_000.0, value=100.0, step=1.0, key="qi_workspace_strike", on_change=remember_model, args=("workspace",)
         )
     with c:
         volatility = st.slider(
             "Annualized volatility (%)", min_value=5,
             max_value=150, value=25, step=5,
-            key="qi_workspace_vol"
+            key="qi_workspace_vol", on_change=remember_model, args=("workspace",)
         )
 
     with st.expander("Advanced model assumptions"):
         rate = st.number_input(
-            "Risk-free rate (%)", value=4.0, step=0.25,
-            key="qi_workspace_rate"
+            "Risk-free rate (%)", min_value=-20.0, max_value=100.0, value=4.0, step=0.25,
+            key="qi_workspace_rate", on_change=remember_model, args=("workspace",)
         )
         dividend = st.number_input(
             "Dividend yield (%)", min_value=0.0,
             max_value=100.0, value=0.0, step=0.25,
-            key="qi_workspace_dividend"
+            key="qi_workspace_dividend", on_change=remember_model, args=("workspace",)
         )
 
     premium = theoretical_price(
@@ -92,6 +101,19 @@ def render_options_workspace():
         "premium paid, excluding fees."
     )
 
+    sensitivity = calculate_greeks(kind, spot, strike, days, volatility, rate, dividend)
+    st.text(
+        f"Near these assumptions, a $1 underlying increase changes the model value by about "
+        f"${sensitivity['delta'] * CONTRACT_SIZE * contracts:+,.2f} for the position; "
+        f"one calendar day changes it by about ${sensitivity['theta'] * CONTRACT_SIZE * contracts:+,.2f}, "
+        "holding other inputs fixed. Sensitivities change as assumptions move."
+    )
+    st.button("Investigate these assumptions in Greeks", key="qi_options_to_greeks",
+              on_click=transfer_assumptions,
+              args=("workspace", "greeks", "📊 Greeks Analysis"))
+
+    st.button("Stress these assumptions in Scenario Explorer", on_click=transfer_assumptions,
+              args=("workspace", "scenario", "📈 Scenario Explorer"), key="qi_options_to_scenario")
     st.markdown("### 03 / Profit or loss at expiration")
     lower = max(0.0, min(spot, strike, max(0.0, break_even)) * 0.5)
     upper = max(spot, strike, max(0.0, break_even)) * 1.6
@@ -161,7 +183,10 @@ def render_options_workspace():
         )
 
     scenario_spot = spot * (1 + spot_change / 100)
-    scenario_vol = max(1.0, volatility + vol_change)
+    scenario_vol = volatility + vol_change
+    if scenario_vol < 0:
+        st.error("This shock implies negative volatility. Increase starting volatility or reduce the negative shock. No flooring is applied.")
+        return
     remaining = days - elapsed
     scenario_price = theoretical_price(
         kind, scenario_spot, strike, remaining,

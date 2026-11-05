@@ -19,9 +19,6 @@ It is not a prediction or investment recommendation.
 import sys
 from pathlib import Path
 
-import numpy as np
-import pandas as pd
-import plotly.graph_objects as go
 import streamlit as st
 
 # ============================================================
@@ -35,23 +32,15 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.intelligence.catalyst_engine import analyze_headline  # noqa: E402
-from app.intelligence.news_engine import fetch_company_news  # noqa: E402
-from app.intelligence.risk_engine import calculate_risk_metrics  # noqa: E402
-from app.intelligence.risk_interpreter import interpret_risk_metrics  # noqa: E402
-from app.market_data.stock_history import (  # noqa: E402
-    calculate_normalized_performance,
-    calculate_stock_statistics,
-    fetch_stock_history,
-    validate_ticker,
-)
-from app.pricing.black_scholes import BlackScholes  # noqa: E402
-from dashboard.forecast_intelligence_page import render_forecast_intelligence  # noqa: E402
 from dashboard.learn_page import render_learn_page  # noqa: E402
-from dashboard.market_scanner_page import render_market_scanner  # noqa: E402
+from dashboard.legal_pages import render_legal_pages  # noqa: E402
 from dashboard.navigation_ux import render_navigation_ux  # noqa: E402
-from dashboard.portfolio_page import render_portfolio_manager  # noqa: E402
 from dashboard.premium_home import render_premium_home  # noqa: E402
+from dashboard.public_safety import public_market_data_route_blocked  # noqa: E402
+from dashboard.workspace_settings import (  # noqa: E402
+    render_workspace_settings,
+    research_notes_enabled,
+)
 
 # ============================================================
 # PAGE CONFIGURATION
@@ -102,7 +91,7 @@ st.markdown(
     }
 
     div.stButton > button {
-        background-color: #2563eb;
+        background-color: #FF78B7;
         color: white;
         border-radius: 8px;
         border: none;
@@ -110,7 +99,7 @@ st.markdown(
     }
 
     div.stButton > button:hover {
-        background-color: #1d4ed8;
+        background-color: #FF96C7;
         color: white;
     }
 
@@ -156,367 +145,6 @@ st.markdown(
 # CACHE MARKET DATA
 # ============================================================
 
-@st.cache_data(ttl=900, show_spinner=False)
-def load_stock_history(
-    ticker: str,
-    period: str,
-) -> pd.DataFrame:
-    """
-    Retrieve and cache historical stock prices.
-
-    The cache expires after 15 minutes.
-
-    This reduces repeated Yahoo Finance requests when
-    users interact with charts and dashboard controls.
-
-    A cache lifetime does not guarantee that Yahoo's
-    underlying market data is current.
-    """
-
-    return fetch_stock_history(
-        ticker=ticker,
-        period=period,
-    )
-
-
-# ============================================================
-# OPTION PRICING HELPERS
-# ============================================================
-
-def create_engine(
-    stock_price: float,
-    strike_price: float,
-    days: int,
-    interest_rate: float,
-    volatility: float,
-    dividend_yield: float,
-) -> BlackScholes:
-    """Build the existing Black-Scholes pricing engine."""
-
-    return BlackScholes(
-        S=stock_price,
-        K=strike_price,
-        T=days / 365.0,
-        r=interest_rate / 100.0,
-        sigma=volatility / 100.0,
-        q=dividend_yield / 100.0,
-    )
-
-
-def display_number(
-    value: float | None,
-    decimals: int = 4,
-) -> str:
-    """Format a numerical value or show N/A."""
-
-    if value is None:
-        return "N/A"
-
-    return f"{value:,.{decimals}f}"
-
-
-# ============================================================
-# GENERAL CHART HELPER
-# ============================================================
-
-def make_chart(
-    x_values,
-    y_values,
-    title: str,
-    x_title: str,
-    y_title: str,
-    color: str = "#38bdf8",
-) -> go.Figure:
-    """Create a consistently styled interactive line chart."""
-
-    figure = go.Figure()
-
-    figure.add_trace(
-        go.Scatter(
-            x=x_values,
-            y=y_values,
-            mode="lines",
-            line={
-                "color": color,
-                "width": 3,
-            },
-            fill="tozeroy",
-            fillcolor="rgba(56, 189, 248, 0.08)",
-            hovertemplate="%{x}<br>%{y:.4f}<extra></extra>",
-        )
-    )
-
-    figure.update_layout(
-        title=title,
-        template="plotly_dark",
-        paper_bgcolor="#111c2e",
-        plot_bgcolor="#111c2e",
-        font={"color": "#cbd5e1"},
-        xaxis_title=x_title,
-        yaxis_title=y_title,
-        margin={
-            "l": 20,
-            "r": 20,
-            "t": 55,
-            "b": 20,
-        },
-        height=390,
-        hovermode="x unified",
-    )
-
-    figure.update_xaxes(gridcolor="#243247")
-    figure.update_yaxes(gridcolor="#243247")
-
-    return figure
-
-
-# ============================================================
-# STOCK PRICE CHART
-# ============================================================
-
-def make_stock_price_chart(
-    history: pd.DataFrame,
-    ticker: str,
-    chart_type: str,
-) -> go.Figure:
-    """
-    Display historical stock prices as a line or candlestick chart.
-
-    Uses the adjusted OHLC data returned by stock_history.py.
-    """
-
-    figure = go.Figure()
-
-    if chart_type == "Candlestick":
-
-        figure.add_trace(
-            go.Candlestick(
-                x=history["Date"],
-                open=history["Open"],
-                high=history["High"],
-                low=history["Low"],
-                close=history["Close"],
-                name=ticker,
-                increasing_line_color="#22c55e",
-                decreasing_line_color="#ef4444",
-            )
-        )
-
-    else:
-
-        figure.add_trace(
-            go.Scatter(
-                x=history["Date"],
-                y=history["Close"],
-                mode="lines",
-                name=ticker,
-                line={
-                    "color": "#38bdf8",
-                    "width": 3,
-                },
-                hovertemplate=(
-                    "%{x|%Y-%m-%d}<br>"
-                    "$%{y:,.2f}<extra></extra>"
-                ),
-            )
-        )
-
-    figure.update_layout(
-        title=f"{ticker} | Historical Price",
-        template="plotly_dark",
-        paper_bgcolor="#111c2e",
-        plot_bgcolor="#111c2e",
-        font={"color": "#cbd5e1"},
-        xaxis_title="Date",
-        yaxis_title="Adjusted Price ($)",
-        height=480,
-        margin={
-            "l": 20,
-            "r": 20,
-            "t": 55,
-            "b": 20,
-        },
-        xaxis_rangeslider_visible=False,
-        hovermode=(
-            "x"
-            if chart_type == "Candlestick"
-            else "x unified"
-        ),
-    )
-
-    figure.update_xaxes(gridcolor="#243247")
-    figure.update_yaxes(gridcolor="#243247")
-
-    return figure
-
-
-# ============================================================
-# NORMALIZED PERFORMANCE COMPARISON
-# ============================================================
-
-def make_comparison_chart(
-    stock_history: pd.DataFrame,
-    benchmark_history: pd.DataFrame,
-    ticker: str,
-) -> tuple[go.Figure, float, float]:
-    """
-    Compare stock and SPY performance over matching dates.
-
-    Both assets start at 100 on their first common date.
-
-    Returns:
-        comparison chart
-        stock return percentage
-        benchmark return percentage
-    """
-
-    stock = calculate_normalized_performance(
-        stock_history
-    )
-
-    benchmark = calculate_normalized_performance(
-        benchmark_history
-    )
-
-    # Keep raw closing prices for proper common-date alignment.
-    stock = stock_history[
-        ["Date", "Close"]
-    ].copy()
-
-    benchmark = benchmark_history[
-        ["Date", "Close"]
-    ].copy()
-
-    # Preserve intraday timestamps when comparing short periods.
-    # Daily observations are matched by trading date.
-    stock["Date"] = pd.to_datetime(
-        stock["Date"],
-        utc=True,
-    )
-
-    benchmark["Date"] = pd.to_datetime(
-        benchmark["Date"],
-        utc=True,
-    )
-
-    def is_intraday(frame: pd.DataFrame) -> bool:
-        timestamps = frame["Date"].sort_values().dropna()
-        differences = timestamps.diff().dropna()
-        return bool(
-            not differences.empty
-            and differences.min() < pd.Timedelta(hours=12)
-        )
-
-    intraday = is_intraday(stock) or is_intraday(benchmark)
-
-    if not intraday:
-        stock["Date"] = stock["Date"].dt.date
-        benchmark["Date"] = benchmark["Date"].dt.date
-
-    stock = stock.rename(
-        columns={"Close": "Stock"}
-    )
-
-    benchmark = benchmark.rename(
-        columns={"Close": "Benchmark"}
-    )
-
-    aligned = pd.merge(
-        stock,
-        benchmark,
-        on="Date",
-        how="inner",
-    )
-
-    aligned = aligned.sort_values(
-        "Date"
-    ).reset_index(drop=True)
-
-    if len(aligned) < 2:
-        raise ValueError(
-            "Not enough matching trading dates "
-            "to compare performance."
-        )
-
-    # Rebase only AFTER aligning dates.
-    #
-    # This avoids comparing different start dates.
-    aligned["StockNormalized"] = (
-        aligned["Stock"]
-        / aligned["Stock"].iloc[0]
-        * 100.0
-    )
-
-    aligned["BenchmarkNormalized"] = (
-        aligned["Benchmark"]
-        / aligned["Benchmark"].iloc[0]
-        * 100.0
-    )
-
-    stock_return = (
-        aligned["StockNormalized"].iloc[-1] - 100.0
-    )
-
-    benchmark_return = (
-        aligned["BenchmarkNormalized"].iloc[-1] - 100.0
-    )
-
-    figure = go.Figure()
-
-    figure.add_trace(
-        go.Scatter(
-            x=aligned["Date"],
-            y=aligned["StockNormalized"],
-            name=ticker,
-            mode="lines",
-            line={
-                "color": "#38bdf8",
-                "width": 3,
-            },
-        )
-    )
-
-    figure.add_trace(
-        go.Scatter(
-            x=aligned["Date"],
-            y=aligned["BenchmarkNormalized"],
-            name="SPY",
-            mode="lines",
-            line={
-                "color": "#f59e0b",
-                "width": 3,
-            },
-        )
-    )
-
-    figure.update_layout(
-        title=f"{ticker} vs SPY | Normalized Performance",
-        template="plotly_dark",
-        paper_bgcolor="#111c2e",
-        plot_bgcolor="#111c2e",
-        font={"color": "#cbd5e1"},
-        xaxis_title="Date",
-        yaxis_title="Growth of 100",
-        height=430,
-        margin={
-            "l": 20,
-            "r": 20,
-            "t": 55,
-            "b": 20,
-        },
-        hovermode="x unified",
-    )
-
-    figure.update_xaxes(gridcolor="#243247")
-    figure.update_yaxes(gridcolor="#243247")
-
-    return (
-        figure,
-        float(stock_return),
-        float(benchmark_return),
-    )
-
-
 # ============================================================
 # SIDEBAR NAVIGATION
 # ============================================================
@@ -538,23 +166,25 @@ with st.sidebar:
         ("Dashboard", "🏠 Overview", []),
         ("Research", "🔎 Stock Explorer", [
             ("Stock Explorer", "🔎 Stock Explorer"),
-            ("Forecast Intelligence", "🧠 Forecast Intelligence"),
         ]),
         ("Discover", "💎 Quant Discovery", [
-            ("Opportunity Discovery", "💎 Quant Discovery"),
-            ("Market Scanner", "🔍 Market Scanner"),
+            ("Scan & investigate", "💎 Quant Discovery"),
         ]),
-        ("Portfolio", "💼 Portfolio Manager", []),
         ("Quant Lab", "💰 Options Lab", [
             ("Options Lab", "💰 Options Lab"),
             ("Greeks Analysis", "📊 Greeks Analysis"),
             ("Scenario Explorer", "📈 Scenario Explorer"),
-            ("Strategy Research", "🧠 Strategy Research"),
+        ]),
+        ("Model testing", "🧠 Strategy Research", [
+            ("Strategy Research · hypothetical", "🧠 Strategy Research"),
+            ("Simulation Lab", "🧪 Simulation Lab"),
+            ("Forecast Lab · synthetic", "🧠 Forecast Intelligence"),
+            ("Portfolio Lab · synthetic", "💼 Portfolio Manager"),
         ]),
         ("Learn", "📚 Learn", []),
     ]
 
-    route_groups = {}
+    route_groups = {"📄 Legal & Privacy": "Legal"}
 
     for group, landing, tools in sections:
         route_groups[landing] = group
@@ -572,6 +202,7 @@ with st.sidebar:
         "research": "🔎 Stock Explorer",
         "learn": "📚 Learn",
         "analyze": "💰 Options Lab",
+        "portfolio": "💼 Portfolio Manager",
     }
     _qi_orbit_destination = _qi_orbit_routes.get(st.query_params.get("qi_go", ""))
     if _qi_orbit_destination:
@@ -582,8 +213,16 @@ with st.sidebar:
         "_navigation_request", None
     )
 
+    if requested_page == "🔍 Market Scanner":
+        requested_page = "💎 Quant Discovery"
+        st.session_state["qi_discovery_stage"] = "Scan"
+
     if requested_page in route_groups:
         st.session_state["selected_page"] = requested_page
+
+    if st.session_state["selected_page"] == "🔍 Market Scanner":
+        st.session_state["selected_page"] = "💎 Quant Discovery"
+        st.session_state["qi_discovery_stage"] = "Scan"
 
     if st.session_state["selected_page"] not in route_groups:
         st.session_state["selected_page"] = "🏠 Overview"
@@ -597,7 +236,9 @@ with st.sidebar:
         "Discover": ":material/radar:",
         "Portfolio": ":material/account_balance_wallet:",
         "Quant Lab": ":material/science:",
+        "Model testing": ":material/experiment:",
         "Learn": ":material/school:",
+        "Legal": ":material/gavel:",
     }
 
     with st.container(key="qi_navigation"):
@@ -650,81 +291,44 @@ with st.sidebar:
     render_navigation_ux()
 
     st.divider()
-    st.caption("PLATFORM")
-    st.caption("Quant Intelligence · Research Build")
+    st.caption("PRIVATE RESEARCH BUILD")
     st.caption(
-        "Independent financial research and education. "
-        "Not investment advice."
+        "Access managed in Streamlit Sharing · "
+        "Independent research and education"
     )
+
+
+# ============================================================
+# TOP-RIGHT WORKSPACE CONTROL
+# ============================================================
+render_workspace_settings()
 
 
 # ============================================================
 # SHARED OPTION INPUTS
 # ============================================================
 
-if page in [
-    "📈 Scenario Explorer",
-]:
-
-    st.sidebar.markdown("### ⚙️ Option Parameters")
-
-    stock_price = st.sidebar.number_input(
-        "Stock Price ($)",
-        min_value=0.01,
-        value=100.0,
-        step=1.0,
+# Fail closed on public-facing routes that currently use or derive results
+# from unlicensed/unverified external market feeds.
+if page != "🔎 Stock Explorer":
+    st.caption(
+        "Research and education only · No individualized investment advice · "
+        "Models and data may be incomplete or inaccurate."
     )
 
-    strike_price = st.sidebar.number_input(
-        "Strike Price ($)",
-        min_value=0.01,
-        value=105.0,
-        step=1.0,
-    )
+if page == "🔎 Stock Explorer":
+    from dashboard.stock_explorer_widget import render_stock_explorer
 
-    days = st.sidebar.number_input(
-        "Days Until Expiration",
-        min_value=0,
-        max_value=3650,
-        value=30,
-        step=1,
-    )
+    render_stock_explorer()
+    st.stop()
 
-    volatility = st.sidebar.number_input(
-        "Annual Volatility (%)",
-        min_value=0.0,
-        max_value=500.0,
-        value=25.0,
-        step=1.0,
-    )
+if public_market_data_route_blocked(page):
+    # Official browser-only displays and independent models; never
+    # unverified server-side historical or live market feeds.
+    from dashboard.demo_showcase import render_demo_research_page
 
-    interest_rate = st.sidebar.number_input(
-        "Risk-Free Interest Rate (%)",
-        min_value=-20.0,
-        max_value=100.0,
-        value=4.0,
-        step=0.25,
-    )
-
-    dividend_yield = st.sidebar.number_input(
-        "Dividend Yield (%)",
-        min_value=0.0,
-        max_value=100.0,
-        value=0.0,
-        step=0.25,
-    )
-
-    engine = create_engine(
-        stock_price=stock_price,
-        strike_price=strike_price,
-        days=days,
-        interest_rate=interest_rate,
-        volatility=volatility,
-        dividend_yield=dividend_yield,
-    )
-
-    results = engine.greeks()
-
+    render_demo_research_page(page)
+    st.stop()
 
 # ============================================================
 # OVERVIEW
@@ -732,752 +336,20 @@ if page in [
 
 
 if page == "🏠 Overview":
+    if research_notes_enabled():
+        st.caption(
+            "Real-stock charts in Stock Explorer are provided by TradingView. "
+            "Discovery and Scanner use official provider displays. Simulation Lab uses independent assumptions; portfolio and forecast demos remain fictional."
+        )
     render_premium_home()
 
+
+elif page == "📄 Legal & Privacy":
+    render_legal_pages()
 
 elif page == "📚 Learn":
     with st.container(key="qi_learn_page"):
         render_learn_page()
-
-elif page == "🔎 Stock Explorer":
-
-    incoming_ticker = st.session_state.pop(
-        "_research_ticker_request", None
-    )
-
-    if incoming_ticker:
-        st.session_state["qi_stock_explorer_ticker"] = incoming_ticker
-
-    if "qi_stock_explorer_ticker" not in st.session_state:
-        st.session_state["qi_stock_explorer_ticker"] = "AAPL"
-
-    st.title(":primary[:material/search:] Stock Explorer")
-
-    st.caption(
-        "Research historical stock and ETF performance "
-        "using Yahoo Finance market data."
-    )
-
-    # --------------------------------------------------------
-    # SEARCH CONTROLS
-    # --------------------------------------------------------
-
-    ticker_col, period_col, chart_col = st.columns(
-        [2, 1, 1]
-    )
-
-    with ticker_col:
-
-        ticker_input = st.text_input(
-            "Ticker Symbol",
-            key="qi_stock_explorer_ticker",
-            placeholder="Enter AAPL, MSFT, NVDA, SPY...",
-        )
-
-    with period_col:
-
-        selected_period = st.selectbox(
-            "Historical Period",
-            [
-                "1d",
-                "5d",
-                "1mo",
-                "3mo",
-                "6mo",
-                "1y",
-                "5y",
-                "max",
-            ],
-            index=5,
-        )
-
-    with chart_col:
-
-        chart_type = st.selectbox(
-            "Chart Type",
-            [
-                "Line",
-                "Candlestick",
-            ],
-        )
-
-    # --------------------------------------------------------
-    # VALIDATE TICKER
-    # --------------------------------------------------------
-
-    try:
-
-        ticker = validate_ticker(
-            ticker_input
-        )
-
-    except ValueError as exc:
-
-        st.error(str(exc))
-        st.stop()
-
-    # --------------------------------------------------------
-    # DOWNLOAD HISTORICAL DATA
-    # --------------------------------------------------------
-
-    # Create the presentation areas before rendering detailed analysis.
-    summary_slot = st.container()
-    chart_slot = st.container()
-
-    (
-        performance_tab,
-        risk_tab,
-        news_tab,
-        data_tab,
-    ) = st.tabs(
-        [
-            "Performance",
-            "Risk & Scores",
-            "News",
-            "Historical Data",
-        ]
-    )
-
-    with risk_tab:
-        with st.spinner(
-            f"Loading historical market data for {ticker}..."
-        ):
-
-            try:
-
-                history = load_stock_history(
-                    ticker,
-                    selected_period,
-                )
-
-                statistics = calculate_stock_statistics(
-                    history
-                )
-
-                # QUANT_RISK_INTELLIGENCE_V1
-                # Use independent daily history for consistent risk statistics.
-                st.markdown("### Risk Intelligence")
-                st.caption(
-                    "Historical risk calculated from approximately one year "
-                    "of daily prices, independent of the chart timeframe."
-                )
-
-                try:
-                    risk_stock_history = fetch_stock_history(
-                        ticker, period="1y"
-                    )
-                    risk_spy_history = fetch_stock_history(
-                        "SPY", period="1y"
-                    )
-
-                    risk_metrics = calculate_risk_metrics(
-                        risk_stock_history,
-                        risk_spy_history,
-                    )
-
-                    # QUANT_PERSONALIZED_RISK_V2
-                    risk_explanations = interpret_risk_metrics(risk_metrics)
-
-                    def format_risk(value, suffix="", decimals=2):
-                        if value is None:
-                            return "N/A"
-                        return f"{value:.{decimals}f}{suffix}"
-
-
-                    risk_items = [
-                        (
-                            "1Y Volatility",
-                            format_risk(
-                                risk_metrics["annualized_volatility_pct"], "%"
-                            ),
-                            risk_explanations["annualized_volatility_pct"],
-                        ),
-                        (
-                            "1Y Max Drawdown",
-                            format_risk(
-                                risk_metrics["maximum_drawdown_pct"], "%"
-                            ),
-                            risk_explanations["maximum_drawdown_pct"],
-                        ),
-                        (
-                            "Sharpe Ratio",
-                            format_risk(risk_metrics["sharpe_ratio"]),
-                            risk_explanations["sharpe_ratio"],
-                        ),
-                        (
-                            "Market Sensitivity (Beta)",
-                            format_risk(risk_metrics["beta_vs_spy"]),
-                            risk_explanations["beta_vs_spy"],
-                        ),
-                        (
-                            "Market Correlation",
-                            format_risk(risk_metrics["correlation_vs_spy"]),
-                            risk_explanations["correlation_vs_spy"],
-                        ),
-                    ]
-
-                    with st.container(key="qi_risk_metrics"):
-                        for start in range(0, len(risk_items), 2):
-                            row_items = risk_items[start:start + 2]
-
-                            if len(row_items) == 2:
-                                columns = st.columns(
-                                    2, gap="medium", wrap=True
-                                )
-                            else:
-                                columns = [st.container()]
-
-                            for column, (label, value, explanation) in zip(
-                                columns, row_items
-                            ):
-                                with column:
-                                    st.metric(label, value)
-                                    st.caption(explanation)
-
-                    st.caption(
-                        f"Daily price observations: "
-                        f"{risk_metrics['daily_observations']} | "
-                        f"SPY overlapping dates: "
-                        f"{risk_metrics['benchmark_overlap_days']}"
-                    )
-
-                except (ValueError, KeyError, TypeError, OSError) as exc:
-                    st.info(f"Risk Intelligence unavailable: {exc}")
-
-                # QUANT_INTRADAY_STATISTICS_V1
-                # Intraday returns must not be annualized as daily returns.
-                is_intraday_period = selected_period in ("1d", "5d")
-
-                if is_intraday_period:
-                    statistics["annualized_volatility_pct"] = None
-
-            except (ValueError, RuntimeError) as exc:
-
-                st.error(
-                    f"Unable to load {ticker}: {exc}"
-                )
-
-                st.stop()
-
-        # --------------------------------------------------------
-        # DATA INFORMATION
-        # --------------------------------------------------------
-
-        latest_observation = pd.to_datetime(
-            history["Date"].iloc[-1],
-            utc=True,
-        )
-
-        st.caption(
-            f"Ticker: {ticker} | "
-            f"Latest available daily observation: "
-            f"{latest_observation.strftime('%Y-%m-%d')} | "
-            f"Data may be delayed or incomplete."
-        )
-
-        # --------------------------------------------------------
-        # STOCK INTELLIGENCE | BEGINNER SUMMARY
-        # --------------------------------------------------------
-
-        # --------------------------------------------------------
-        # INVESTMENT RECOMMENDATION ENGINE
-        # --------------------------------------------------------
-
-        from app.intelligence.recommendation_engine import assess_stock
-
-        # Always use a dedicated five-year history for research scoring.
-        # Chart selections must not change the investment assessment.
-        # The scoring engine evaluates its most recent 252 observations.
-        try:
-            assessment_history = fetch_stock_history(
-                ticker,
-                period="5y",
-            )
-        except (ValueError, RuntimeError, KeyError) as exc:
-            st.warning(
-                f"Unable to retrieve investment rating history: {exc}"
-            )
-            assessment_history = history
-
-        try:
-            assessment = assess_stock(assessment_history)
-        except (ValueError, TypeError, KeyError) as exc:
-            st.warning(f"Investment assessment unavailable: {exc}")
-            assessment = None
-
-        if assessment is not None:
-
-            st.markdown("### :primary[:material/analytics:] Experimental Technical Assessment")
-
-            rating_col1, rating_col2, rating_col3 = st.columns(3)
-
-            with rating_col1:
-                if assessment.score is None:
-                    st.metric("Technical Score", "N/A")
-                else:
-                    st.metric(
-                        "Technical Score",
-                        f"{assessment.score}/100",
-                    )
-
-            with rating_col2:
-                recommendation_labels = {
-                    "STRONG TECHNICAL SIGNAL": "STRONG",
-                    "FAVORABLE TECHNICAL SIGNAL": "FAVORABLE",
-                    "NEUTRAL / MIXED": "NEUTRAL",
-                    "CAUTION": "CAUTION",
-                    "UNFAVORABLE TECHNICAL SIGNAL": "UNFAVORABLE",
-                    "INSUFFICIENT EVIDENCE": "N/A",
-                }
-
-                short_recommendation = recommendation_labels.get(
-                    assessment.recommendation,
-                    "UNKNOWN",
-                )
-
-                st.metric(
-                    "Technical Classification",
-                    short_recommendation,
-                )
-
-            with rating_col3:
-                st.metric(
-                    "Historical Risk",
-                    assessment.risk.replace(
-                        "Lower Historical Volatility",
-                        "Low",
-                    ),
-                )
-
-            st.caption(
-                "This experimental classification describes "
-                "historical technical conditions. It is not "
-                "a validated forecast or buy/sell recommendation."
-            )
-
-            st.write(
-                f"**Model Outlook (Unvalidated):** {assessment.outlook}"
-            )
-
-            st.caption(
-                f"Prediction reliability: {assessment.reliability}"
-            )
-
-            with st.expander("How was this technical score calculated?", icon=":material/help:"):
-                for reason in assessment.reasons:
-                    st.write(f"• {reason}")
-
-                st.info(
-                    "This score summarizes historical technical "
-                    "signals. It is not a probability of profit "
-                    "or a validated BUY/SELL recommendation."
-                )
-
-            st.divider()
-
-
-
-    with news_tab:
-        # QUANT_INTELLIGENCE_NEWS_PANEL_V1
-        st.markdown("---")
-        st.markdown("### :primary[:material/article:] News Intelligence")
-        st.caption(
-            "Recent company headlines from Google News. "
-            "News does not currently affect investment scores."
-        )
-
-        @st.cache_data(ttl=900, show_spinner=False)
-        def _cached_company_news(symbol: str):
-            return fetch_company_news(symbol, days=7, limit=12)
-
-        try:
-            with st.spinner("Retrieving recent company news..."):
-                news_articles = _cached_company_news(ticker)
-
-            if not news_articles:
-                st.info("No recent articles found for this ticker.")
-            else:
-                st.caption(f"{len(news_articles)} recent articles")
-
-                for article in news_articles:
-                    title = article.get("title") or "Untitled article"
-                    publisher = article.get("publisher") or "Unknown publisher"
-                    published = str(article.get("published") or "")
-                    article_url = article.get("url")
-
-                    st.markdown(f"**{title}**")
-
-                    catalysts = analyze_headline(title)
-
-                    if catalysts:
-                        for catalyst in catalysts:
-                            st.caption(
-                                f"🔵 {catalyst.label}: "
-                                f"{catalyst.explanation}"
-                            )
-                    else:
-                        st.caption("⚪ No recognized catalyst")
-
-                    publication_date = published[:10] if published else "Date unavailable"
-                    st.caption(f"{publisher} · {publication_date}")
-
-                    if article_url and str(article_url).startswith(
-                        ("https://", "http://")
-                    ):
-                        st.link_button(
-                            "Read article ↗",
-                            article_url,
-                        )
-                    else:
-                        st.caption("Article link unavailable")
-
-                    st.divider()
-
-        except Exception as exc:
-            st.warning(f"News temporarily unavailable: {exc}")
-
-
-    with risk_tab:
-        latest_price = float(statistics["latest_close"])
-        historical_return = float(statistics["total_return_pct"])
-        annual_volatility = statistics["annualized_volatility_pct"]
-
-        # Describe historical direction without claiming to predict prices.
-        if historical_return > 3:
-            trend_label = "📈 Positive historical trend"
-            trend_explanation = (
-                "The asset increased in price over the selected period."
-            )
-        elif historical_return < -3:
-            trend_label = "📉 Negative historical trend"
-            trend_explanation = (
-                "The asset decreased in price over the selected period."
-            )
-        else:
-            trend_label = "➡️ Relatively flat historical trend"
-            trend_explanation = (
-                "The asset's overall price change was relatively small "
-                "over the selected period."
-            )
-
-        # These are descriptive volatility bands, not validated risk scores.
-        if annual_volatility is None:
-            risk_label = "Unknown"
-            risk_explanation = "Not enough data to estimate volatility."
-        elif annual_volatility < 20:
-            risk_label = "Lower historical volatility"
-            risk_explanation = (
-                "Price fluctuations were relatively small "
-                "on an annualized basis."
-            )
-        elif annual_volatility < 40:
-            risk_label = "Moderate historical volatility"
-            risk_explanation = (
-                "The asset experienced meaningful price fluctuations."
-            )
-        else:
-            risk_label = "Higher historical volatility"
-            risk_explanation = (
-                "The asset experienced substantial price fluctuations."
-            )
-
-        st.markdown("### :primary[:material/assignment:] Understanding the Results")
-
-        st.write(f"**Price trend:** {trend_label}")
-        st.write(trend_explanation)
-
-        st.write(f"**Risk:** {risk_label}")
-        st.write(risk_explanation)
-
-        st.caption(
-            "These interpretations are descriptive. "
-            "Predictive accuracy has not been validated."
-        )
-
-        with st.expander("How These Measurements Work", icon=":material/science:"):
-            st.write(
-                "**Historical return:** The percentage change in price "
-                "over the selected historical period."
-            )
-            st.write(
-                "**Annualized volatility:** A statistical measure of "
-                "how much daily returns have fluctuated, expressed "
-                "on an annualized basis."
-            )
-            st.write(
-                "**Historical trend:** A simple description based on "
-                "the total return over the selected period. "
-                "It is not a forecast."
-            )
-            st.write(
-                "**Risk labels:** Descriptive volatility categories, "
-                "not personalized investment risk assessments."
-            )
-
-        st.divider()
-
-        # --------------------------------------------------------
-        # MAIN STATISTICS
-        # --------------------------------------------------------
-
-
-
-        # --------------------------------------------------------
-        # HISTORICAL PRICE CHART
-        # --------------------------------------------------------
-
-
-    with summary_slot:
-        st.markdown("### :primary[:material/insights:] At a Glance")
-
-        glance_a, glance_b, glance_c, glance_d = st.columns(4)
-
-        glance_a.metric(
-            "Latest Adjusted Close",
-            f"${statistics['latest_close']:,.2f}",
-        )
-
-        glance_b.metric(
-            "Historical Return",
-            f"{statistics['total_return_pct']:+.2f}%",
-        )
-
-        glance_volatility = statistics["annualized_volatility_pct"]
-
-        glance_c.metric(
-            "Annualized Volatility",
-            (
-                f"{glance_volatility:.2f}%"
-                if glance_volatility is not None
-                else "N/A"
-            ),
-        )
-
-        glance_change = statistics["latest_change_pct"]
-
-        glance_d.metric(
-            (
-                "Latest Bar Change"
-                if selected_period in ("1d", "5d")
-                else "Latest Daily Change"
-            ),
-            (
-                f"{glance_change:+.2f}%"
-                if glance_change is not None
-                else "N/A"
-            ),
-        )
-
-        st.caption(
-            "Historical measurements, not forecasts or "
-            "investment recommendations."
-        )
-
-    with chart_slot:
-        st.subheader("Historical Price Chart")
-
-        price_figure = make_stock_price_chart(
-            history=history,
-            ticker=ticker,
-            chart_type=chart_type,
-        )
-
-        st.plotly_chart(
-            price_figure,
-            use_container_width=True,
-        )
-
-        # --------------------------------------------------------
-        # ADDITIONAL RISK STATISTICS
-        # --------------------------------------------------------
-
-
-    with risk_tab:
-        st.subheader("Historical Risk Statistics")
-
-        risk1, risk2, risk3 = st.columns(3)
-
-        with risk1:
-
-            st.metric(
-                "Maximum Drawdown",
-                f"{statistics['maximum_drawdown_pct']:.2f}%",
-            )
-
-        with risk2:
-
-            st.metric(
-                (
-                    "Intraday Observations"
-                    if selected_period in ("1d", "5d")
-                    else "Daily Observations"
-                ),
-                str(statistics["trading_days"]),
-            )
-
-        with risk3:
-
-            st.metric(
-                "Selected Period",
-                selected_period,
-            )
-
-        st.divider()
-
-        # --------------------------------------------------------
-        # SPY PERFORMANCE COMPARISON
-        # --------------------------------------------------------
-
-
-    with performance_tab:
-        st.subheader("Performance vs S&P 500 ETF (SPY)")
-
-        st.caption(
-            "Both series are rebased to 100 using their "
-            "first matching trading date."
-        )
-
-        try:
-
-            if ticker == "SPY":
-
-                st.info(
-                    "SPY is already the selected asset. "
-                    "Choose another ticker to compare it "
-                    "against the SPY benchmark."
-                )
-
-            else:
-
-                with st.spinner(
-                    "Loading SPY benchmark data..."
-                ):
-
-                    benchmark_history = load_stock_history(
-                        "SPY",
-                        selected_period,
-                    )
-
-                (
-                    comparison_figure,
-                    stock_return,
-                    benchmark_return,
-                ) = make_comparison_chart(
-                    stock_history=history,
-                    benchmark_history=benchmark_history,
-                    ticker=ticker,
-                )
-
-                st.plotly_chart(
-                    comparison_figure,
-                    use_container_width=True,
-                )
-
-                comparison1, comparison2, comparison3 = (
-                    st.columns(3)
-                )
-
-                with comparison1:
-
-                    st.metric(
-                        f"{ticker} Return",
-                        f"{stock_return:+.2f}%",
-                    )
-
-                with comparison2:
-
-                    st.metric(
-                        "SPY Return",
-                        f"{benchmark_return:+.2f}%",
-                    )
-
-                with comparison3:
-
-                    st.metric(
-                        "Relative Performance",
-                        f"{stock_return - benchmark_return:+.2f} pp",
-                    )
-
-        except (ValueError, RuntimeError) as exc:
-
-            st.warning(
-                f"Benchmark comparison unavailable: {exc}"
-            )
-
-        # --------------------------------------------------------
-        # HISTORICAL DATA TABLE
-        # --------------------------------------------------------
-
-        st.divider()
-
-
-    with data_tab:
-        st.subheader("Historical Market Data")
-
-        is_intraday = selected_period in ("1d", "5d")
-
-        st.caption(
-            (
-                "Adjusted historical intraday prices. "
-                "Timestamps are shown in UTC. "
-                "The latest observation may be incomplete."
-            )
-            if is_intraday
-            else (
-                "Adjusted historical daily prices. "
-                "The latest observation may be incomplete."
-            )
-        )
-
-        display_history = history.copy()
-
-        timestamps = pd.to_datetime(
-            display_history["Date"],
-            utc=True,
-        )
-
-        display_history["Date"] = timestamps.dt.strftime(
-            "%Y-%m-%dT%H:%M:%S%z"
-            if is_intraday
-            else "%Y-%m-%d"
-        )
-
-        st.dataframe(
-            display_history.sort_values(
-                "Date",
-                ascending=False,
-            ),
-            hide_index=True,
-            use_container_width=True,
-        )
-
-        # --------------------------------------------------------
-        # DOWNLOAD DATA
-        # --------------------------------------------------------
-
-        st.download_button(
-            label="Download Historical Data (CSV)",
-            data=display_history.to_csv(
-                index=False
-            ).encode("utf-8"),
-            file_name=(
-                f"{ticker}_{selected_period}_history.csv"
-            ),
-            mime="text/csv",
-        )
-
-        st.warning(
-            "Historical performance does not predict future "
-            "returns. Yahoo Finance data may be delayed, "
-            "revised, or incomplete. Adjusted prices are "
-            "not guaranteed executable trading prices."
-        )
-
-
-
-# ============================================================
-# OPTIONS LAB
-# ============================================================
 
 elif page == "💰 Options Lab":
     from dashboard.options_workspace import render_options_workspace
@@ -1492,145 +364,8 @@ elif page == "📊 Greeks Analysis":
 
 
 elif page == "📈 Scenario Explorer":
-
-    st.title(":primary[:material/query_stats:] Scenario Explorer")
-
-    st.caption(
-        "Explore theoretical option prices "
-        "under hypothetical stock price movements."
-    )
-
-    option_type = st.selectbox(
-        "Option Type",
-        ["Call", "Put"],
-    )
-
-    movement_range = st.slider(
-        "Stock Price Movement Range (%)",
-        min_value=5,
-        max_value=80,
-        value=30,
-        step=5,
-    )
-
-    price_changes = np.linspace(
-        -movement_range,
-        movement_range,
-        101,
-    )
-
-    simulated_prices = []
-    option_values = []
-
-    for change in price_changes:
-
-        shocked_price = stock_price * (
-            1.0 + change / 100.0
-        )
-
-        simulated_engine = create_engine(
-            stock_price=shocked_price,
-            strike_price=strike_price,
-            days=days,
-            interest_rate=interest_rate,
-            volatility=volatility,
-            dividend_yield=dividend_yield,
-        )
-
-        simulated_prices.append(
-            shocked_price
-        )
-
-        if option_type == "Call":
-
-            option_values.append(
-                simulated_engine.call_price()
-            )
-
-        else:
-
-            option_values.append(
-                simulated_engine.put_price()
-            )
-
-    st.plotly_chart(
-        make_chart(
-            simulated_prices,
-            option_values,
-            f"{option_type} Price vs Stock Price",
-            "Simulated Stock Price ($)",
-            "Theoretical Option Price ($)",
-            "#22c55e",
-        ),
-        use_container_width=True,
-    )
-
-    st.subheader("Selected Market Scenarios")
-
-    scenario_rows = []
-
-    for change in [
-        -20,
-        -10,
-        -5,
-        0,
-        5,
-        10,
-        20,
-    ]:
-
-        shocked_price = stock_price * (
-            1.0 + change / 100.0
-        )
-
-        simulated_engine = create_engine(
-            stock_price=shocked_price,
-            strike_price=strike_price,
-            days=days,
-            interest_rate=interest_rate,
-            volatility=volatility,
-            dividend_yield=dividend_yield,
-        )
-
-        if option_type == "Call":
-
-            option_value = (
-                simulated_engine.call_price()
-            )
-
-        else:
-
-            option_value = (
-                simulated_engine.put_price()
-            )
-
-        scenario_rows.append(
-            {
-                "Stock Movement": f"{change:+d}%",
-                "Stock Price ($)": round(
-                    shocked_price,
-                    2,
-                ),
-                "Option Price ($)": round(
-                    option_value,
-                    4,
-                ),
-            }
-        )
-
-    st.dataframe(
-        pd.DataFrame(
-            scenario_rows
-        ),
-        hide_index=True,
-        use_container_width=True,
-    )
-
-    st.info(
-        "These scenarios change only the stock price. "
-        "Volatility, interest rates, dividends, and "
-        "time to expiration remain unchanged."
-    )
+    from dashboard.scenario_workspace import render_scenario_workspace
+    render_scenario_workspace()
 
 
 # ============================================================
@@ -1639,7 +374,8 @@ elif page == "📈 Scenario Explorer":
 
 elif page == "🔍 Market Scanner":
 
-    render_market_scanner()
+    st.session_state["_navigation_request"] = "💎 Quant Discovery"
+    st.rerun()
 
 
 elif page == "💎 Quant Discovery":
@@ -1653,30 +389,16 @@ elif page == "💎 Quant Discovery":
 
     runpy.run_path(str(discovery_page), run_name="__main__")
 
-elif page == "💼 Portfolio Manager":
+elif page == "💼 Portfolio Manager" or page == "🧠 Forecast Intelligence":
 
-    render_portfolio_manager()
-
-
-elif page == "🧠 Forecast Intelligence":
-
-    render_forecast_intelligence()
+    from dashboard.demo_showcase import render_demo_research_page
+    render_demo_research_page(page)
 
 
 elif page == "🧠 Strategy Research":
+    from dashboard.strategy_research import render_strategy_research
 
-    st.title(":primary[:material/science:] Strategy Research")
-
-    st.info(
-        "Coming soon: Historical backtesting, "
-        "statistical research, and quantitative models."
-    )
-
-    st.write(
-        "We will evaluate strategies using "
-        "out-of-sample testing and realistic "
-        "transaction-cost assumptions."
-    )
+    render_strategy_research()
 
 
 # ============================================================

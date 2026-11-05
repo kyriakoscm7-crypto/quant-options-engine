@@ -1,6 +1,3 @@
-from unittest.mock import patch
-
-import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
@@ -162,71 +159,27 @@ def test_invalid_market_price():
     assert response.status_code == 422
 
 
-    # TEST 9:
-# Verify the market-data API returns correctly formatted results.
-def test_market_data_endpoint():
+@pytest.mark.parametrize("ticker", ["SPY", "AAPL", "INVALID!"])
+@pytest.mark.parametrize("legacy_flag", ["", "true"])
+def test_legacy_market_data_endpoint_never_contacts_provider(ticker, legacy_flag, monkeypatch):
+    monkeypatch.setenv("QI_MARKET_DATA_RIGHTS_CONFIRMED", legacy_flag)
+    import app.market_data.yahoo_client as yahoo
 
-    # Create predictable market data without contacting Yahoo Finance.
-    mock_data = pd.DataFrame([
-        {
-            "Ticker": "SPY",
-            "Expiration": "2026-10-19",
-            "Strike": 780.0,
-            "Bid": 5.0,
-            "Ask": 5.2,
-            "MidPrice": 5.1,
-            "ImpliedVolatility": 20.5,
-            "TimeToExpiration": 0.019
-        }
-    ])
+    def fail(*args, **kwargs):
+        raise AssertionError("Disabled public endpoint contacted Yahoo")
 
-    # Replace the real Yahoo Finance function during this test.
-    with patch(
-        "app.api.main.fetch_option_chain",
-        return_value=mock_data
-    ):
-
-        response = client.get(
-            "/api/v1/market/options/SPY"
-        )
-
-    assert response.status_code == 200
-
-    data = response.json()
-
-    assert data["ticker"] == "SPY"
-    assert data["count"] == 1
-    assert len(data["options"]) == 1
-    assert data["options"][0]["Strike"] == 780.0
-
-
-# TEST 10:
-# Verify invalid ticker symbols are rejected.
-def test_invalid_ticker():
-
+    monkeypatch.setattr(yahoo, "fetch_option_chain", fail)
     response = client.get(
-        "/api/v1/market/options/INVALID!"
+        f"/api/v1/market/options/{ticker}",
+        params={"risk_free_rate": 0.045, "minimum_days_to_expiry": 7},
     )
+    assert response.status_code == 403
+    assert "distribution is disabled" in response.json()["detail"]
+    assert "options" not in response.json()
 
-    assert response.status_code == 422
 
-
-# TEST 11:
-# Verify provider failures return HTTP 503.
-def test_market_data_failure():
-
-    # Simulate Yahoo Finance becoming unavailable.
-    with patch(
-        "app.api.main.fetch_option_chain",
-        side_effect=RuntimeError("Provider unavailable")
-    ):
-
-        response = client.get(
-            "/api/v1/market/options/SPY"
-        )
-
-    assert response.status_code == 503
-
-    assert response.json()["detail"] == (
-        "Market data is temporarily unavailable."
-    )
+def test_openapi_marks_market_data_route_as_disabled():
+    schema = client.get("/openapi.json").json()
+    operation = schema["paths"]["/api/v1/market/options/{ticker}"]["get"]
+    assert operation["deprecated"] is True
+    assert "403" in operation["responses"]

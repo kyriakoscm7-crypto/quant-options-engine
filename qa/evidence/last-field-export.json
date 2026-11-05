@@ -1,0 +1,19 @@
+{
+  "format": "Quant Intelligence research notebook v2",
+  "revision": 1,
+  "export_date": "2026-11-04",
+  "provenance": "User-entered public-company research only; no provider data.",
+  "records": [
+    {
+      "Listing": "NASDAQ:AAPL",
+      "Status": "To investigate",
+      "Source URL": "",
+      "Source as of": "",
+      "Research question": "QA public-company research — α",
+      "Thesis & valuation": "",
+      "Evidence & source links": "",
+      "Risks & counterevidence": "",
+      "Next review trigger": "FINAL FIELD — review next public filing ✓"
+    }
+  ]
+}

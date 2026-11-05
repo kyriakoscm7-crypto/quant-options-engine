@@ -177,7 +177,7 @@ def price_options_vectorized(
         sqrt_time = np.sqrt(time)
 
         d1 = (
-            np.log(stock / strike)
+            (np.log(stock) - np.log(strike))
             + (
                 rate
                 - dividend
@@ -438,7 +438,7 @@ def greeks_options_vectorized(
 
         # Standard Black-Scholes-Merton d1.
         d1 = (
-            np.log(stock / strike)
+            (np.log(stock) - np.log(strike))
             + (
                 rate
                 - dividend

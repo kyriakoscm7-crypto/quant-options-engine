@@ -1,10 +1,12 @@
 """News retrieval for Quant Intelligence."""
 
-import xml.etree.ElementTree as ET
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 
 import requests
+from defusedxml import ElementTree as ET
+
+from app.intelligence.news_reliability import NewsRateLimited, retry_after_seconds
 
 
 def fetch_company_news(
@@ -40,11 +42,23 @@ def fetch_company_news(
             "User-Agent": "Mozilla/5.0 QuantIntelligence/1.0",
         },
         timeout=15,
+        stream=True,
     )
 
-    response.raise_for_status()
-
-    root = ET.fromstring(response.content)
+    chunks = []
+    total = 0
+    try:
+        if response.status_code == 429:
+            raise NewsRateLimited("Google News is rate-limited", retry_after_seconds(response))
+        response.raise_for_status()
+        for chunk in response.iter_content(chunk_size=65536):
+            total += len(chunk)
+            if total > 1_000_000:
+                raise ValueError("RSS response exceeds 1 MB limit")
+            chunks.append(chunk)
+    finally:
+        response.close()
+    root = ET.fromstring(b"".join(chunks), forbid_dtd=True, forbid_entities=True, forbid_external=True)
 
     results = []
     seen = set()
