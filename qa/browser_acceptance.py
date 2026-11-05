@@ -107,9 +107,14 @@ def run(base, output, channel):
             responsive.goto(base + "/?qi_go=research")
             expect(responsive.get_by_role("heading", name="Company overview", exact=True)).to_be_visible(timeout=30000)
             expect(responsive.locator("iframe")).to_have_count(0)
+            # A fresh session defaults to SPY and has no shortlisted record.
+            # Existing-company editing is verified in the shared notebook flow above.
+            expect(responsive.get_by_text("Selected listing · AMEX:SPY", exact=True)).to_be_visible()
             expect(
                 responsive.get_by_role("textbox", name="Research question", exact=True)
-            ).to_be_visible()
+            ).to_have_count(0)
+            expect(responsive.get_by_role("button", name="Model manual assumptions in Options Lab", exact=True)).to_be_visible()
+            expect(responsive.locator('[data-testid="stException"]')).to_have_count(0)
             responsive.wait_for_timeout(500)
             responsive.screenshot(
                 path=str(output / f"research-{width}.png"), full_page=True

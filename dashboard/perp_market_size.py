@@ -1,6 +1,7 @@
 """Market-size research using the attributed PerpEquities public API."""
 
 import math
+import os
 from datetime import UTC, datetime
 
 import requests
@@ -20,8 +21,20 @@ def valid_cap(value):
     )
 
 
-@st.cache_data(ttl=600, show_spinner=False)
+def perpequities_enabled():
+    """Opt in only after data-use rights and hosting eligibility are approved."""
+    return os.environ.get("QI_PERPEQUITIES_ENABLED", "").strip().lower() == "true"
+
+
 def market_universe():
+    """Enforce the gate before consulting even a previously cached snapshot."""
+    if not perpequities_enabled():
+        raise ValueError("PerpEquities integration is disabled.")
+    return _market_universe()
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def _market_universe():
     """Fetch one bounded, cached snapshot of covered equities."""
     response = requests.get(
         API_URL,
@@ -109,6 +122,9 @@ def calculate_standing(symbol, snapshot):
 
 def render_perp_market_size(symbol):
     """Present attributed figures without claiming a global ranking."""
+    if not perpequities_enabled():
+        return
+
     if symbol in {"AMEX:SPY", "SP:SPX"}:
         return
 
