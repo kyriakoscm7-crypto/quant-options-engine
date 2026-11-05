@@ -25,10 +25,27 @@ def run(base, output, channel):
         def field(name):
             return page.get_by_role("textbox", name=name, exact=True)
 
+        def choose_view(target, view):
+            app = target.locator('[data-testid="stApp"]')
+            expect(app).to_have_attribute(
+                "data-test-script-state", "notRunning", timeout=30000
+            )
+            control = target.get_by_role("combobox", name="Research view", exact=True)
+            # Finish mobile scroll/focus before opening the popup: scrolling
+            # an offscreen combobox can close a newly opened React Aria list.
+            control.scroll_into_view_if_needed()
+            target.wait_for_timeout(300)
+            control.locator("..").get_by_role("button", name="Open", exact=True).click()
+            expect(control).to_have_attribute("aria-expanded", "true")
+            target.get_by_role("option", name=view, exact=True).click()
+            expect(control).to_have_value(view)
+            target.wait_for_timeout(100)
+            expect(app).to_have_attribute(
+                "data-test-script-state", "notRunning", timeout=30000
+            )
+
         def select_view(view):
-            page.get_by_role("combobox", name="Research view", exact=True).press("ArrowDown")
-            page.get_by_role("option", name=view, exact=True).click()
-            page.wait_for_timeout(700)
+            choose_view(page, view)
 
         page.goto(base)
         expect(button("Open Discovery")).to_be_visible(timeout=30000)
@@ -94,7 +111,9 @@ def run(base, output, channel):
         results["model_navigation"] = True
         button("Dashboard").click()
         button("Open Stock Explorer").click()
-        page.get_by_text("Allow automatic TradingView panels this session", exact=True).click()
+        page.get_by_text(
+            "Allow automatic TradingView panels this session", exact=True
+        ).click()
         expect(page.locator("iframe")).to_have_count(1)
         page.wait_for_timeout(700)
         for view in ["Overview", "Financials", "Company", "Technicals", "News"]:
@@ -105,16 +124,25 @@ def run(base, output, channel):
         expect(field("Next review trigger")).to_have_value(trigger)
         results["lazy_panels"] = {"maximum_mounted_widgets": 1, "analysis_widgets": 0}
         for width in [390, 400, 768, 1440]:
-            responsive_context = browser.new_context(viewport={"width": width, "height": 1000})
+            responsive_context = browser.new_context(
+                viewport={"width": width, "height": 1000}
+            )
             responsive = responsive_context.new_page()
             responsive.goto(base + "/?qi_go=research")
-            view_control = responsive.get_by_role("combobox", name="Research view", exact=True)
-            view_control.press("ArrowDown")
-            responsive.get_by_role("option", name="My analysis", exact=True).click()
-            expect(responsive.get_by_role("textbox", name="Research question", exact=True)).to_be_visible()
+            expect(
+                responsive.get_by_role("combobox", name="Research view", exact=True)
+            ).to_be_visible(timeout=30000)
+            choose_view(responsive, "My analysis")
+            expect(
+                responsive.get_by_role("textbox", name="Research question", exact=True)
+            ).to_be_visible()
             responsive.wait_for_timeout(500)
-            responsive.screenshot(path=str(output / f"research-{width}.png"), full_page=True)
-            dimensions = responsive.evaluate("({width:innerWidth,scroll:document.documentElement.scrollWidth})")
+            responsive.screenshot(
+                path=str(output / f"research-{width}.png"), full_page=True
+            )
+            dimensions = responsive.evaluate(
+                "({width:innerWidth,scroll:document.documentElement.scrollWidth})"
+            )
             assert dimensions["scroll"] <= width + 1, dimensions
             responsive_context.close()
         results["responsive_widths"] = [390, 400, 768, 1440]
