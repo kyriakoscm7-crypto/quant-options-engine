@@ -303,6 +303,16 @@ def render_stock_explorer() -> None:
         )
 
 
+    if symbol in st.session_state.get("qi_discovery_notebook", {}):
+        from dashboard.discovery_notebook import render_record_editor
+
+        st.markdown("### Shared research notebook")
+        st.caption(
+            "Edit your existing source-linked research record. "
+            "Save your changes before downloading the updated export."
+        )
+        render_record_editor(symbol)
+
     st.markdown("## Continue your investigation")
     st.caption(
         "Build and export your source-linked research record "
