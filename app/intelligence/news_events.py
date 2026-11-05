@@ -11,7 +11,11 @@ import requests
 from app.intelligence.company_news_relevance import classify_headline
 from app.intelligence.gdelt_news import fetch_gdelt_news
 from app.intelligence.news_engine import fetch_company_news
-from app.intelligence.news_reliability import NewsRateLimited, NewsReliability
+from app.intelligence.news_reliability import (
+    NewsRateLimited,
+    NewsReliability,
+    retry_after_seconds,
+)
 from app.intelligence.sec_company_directory import _declared_user_agent
 from app.intelligence.sec_filings import filings_near_event
 
@@ -60,7 +64,7 @@ def fetch_submissions(company):
     )
     try:
         if response.status_code == 429:
-            raise NewsRateLimited("SEC rate limit")
+            raise NewsRateLimited("SEC rate limit", retry_after_seconds(response))
         response.raise_for_status()
         chunks, size = [], 0
         for chunk in response.iter_content(65536):
@@ -130,6 +134,7 @@ class NewsEventsService:
                 relevance = classify_headline(title, company.name)
                 articles.append({"title": title, "url": canonical, "published": published.astimezone(UTC).isoformat(),
                                  "publisher": str(row.get("publisher") or row.get("publisher_domain") or url.hostname),
+                                 "timestamp_kind": row.get("timestamp_kind", "published"),
                                  "source": provider.name, "relevance": relevance.status, "reason": relevance.reason})
         # Cache raw recent submissions independently of the chosen event window.
         sec = self.cache.fetch("SEC", company.cik, lambda: [self.filings_loader(company)])

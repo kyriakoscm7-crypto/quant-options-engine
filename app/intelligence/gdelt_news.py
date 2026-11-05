@@ -7,7 +7,7 @@ from urllib.parse import urlsplit
 
 import requests
 
-from app.intelligence.news_reliability import NewsRateLimited
+from app.intelligence.news_reliability import NewsRateLimited, retry_after_seconds
 
 GDELT_URL = "https://api.gdeltproject.org/api/v2/doc/doc"
 MAX_BYTES = 2_000_000
@@ -87,6 +87,7 @@ def parse_articles(payload: dict, days: int, now=None) -> list[dict]:
             "url": url,
             "publisher_domain": urlsplit(url).hostname,
             "published": published.isoformat(),
+            "timestamp_kind": "first_seen",
             "language": str(row.get("language") or "")[:40],
             "source": "GDELT Project",
             "company_match": "unverified",
@@ -126,7 +127,8 @@ def fetch_gdelt_news(company_name: str, days: int = 7, limit: int = 30):
         if response.status_code == 429:
             raise NewsRateLimited(
                 "GDELT is temporarily rate-limiting news requests. "
-                "Use cached results or another authorized provider."
+                "Use cached results or another authorized provider.",
+                retry_after_seconds(response),
             )
 
         response.raise_for_status()

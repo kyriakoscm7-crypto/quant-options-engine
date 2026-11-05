@@ -6,6 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from app.intelligence.company_registry import CompanyRegistry
+from app.intelligence.news_reliability import NewsRateLimited
 from app.intelligence.sec_company_directory import fetch_sec_company_directory
 
 
@@ -36,6 +37,7 @@ class CompanyDirectoryService:
         self._lock = threading.RLock()
         self._registry = None
         self._loaded_at = None
+        self._retry_at = 0
 
     def get(self) -> DirectorySnapshot:
         """Return live, cached, stale or unavailable directory data."""
@@ -49,6 +51,9 @@ class CompanyDirectoryService:
                         self._registry, "cached", int(age)
                     )
 
+            if now < self._retry_at:
+                return self._fallback(now)
+
             try:
                 records = self.fetcher()
                 registry = CompanyRegistry(records)
@@ -56,20 +61,22 @@ class CompanyDirectoryService:
                 if not registry.companies:
                     raise ValueError("SEC company directory is empty.")
 
-            except Exception:
-                if self._registry is not None:
-                    age = max(0, self.clock() - self._loaded_at)
-                    if age < self.max_stale:
-                        return DirectorySnapshot(
-                            self._registry, "stale", int(age)
-                        )
-
-                return DirectorySnapshot(None, "unavailable", None)
+            except Exception as error:
+                delay = max(300, error.retry_after) if isinstance(error, NewsRateLimited) else 30
+                self._retry_at = self.clock() + delay
+                return self._fallback(self.clock())
 
             self._registry = registry
             self._loaded_at = self.clock()
 
             return DirectorySnapshot(self._registry, "live", 0)
+
+    def _fallback(self, now):
+        if self._registry is not None:
+            age = max(0, now - self._loaded_at)
+            if age < self.max_stale:
+                return DirectorySnapshot(self._registry, "stale", int(age))
+        return DirectorySnapshot(None, "unavailable", None)
 
     def search(self, query: str, limit: int = 20):
         """Search only when a usable directory is available."""

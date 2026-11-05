@@ -134,7 +134,7 @@ def render_external_panel_consent(key: str = "qi_explorer_consent") -> bool:
         return True
     with st.container(border=True):
         st.markdown("### External research panels")
-        st.write("Optional TradingView displays load only for your selected research view. TradingView receives your IP address, symbol, widget type and embedding page URL. Your notes are not sent to TradingView.")
+        st.write("Optional TradingView displays load for this workspace after you allow them. TradingView receives your IP address, symbol, widget type and embedding page URL. Your notes are not sent to TradingView.")
         with st.expander("Privacy & display details"):
             st.caption("TradingView may process device and usage analytics, including third-party providers, under its privacy policy. Private sign-in does not replace this choice. Display data is never read into our models or exports.")
             st.markdown("[TradingView privacy policy](https://www.tradingview.com/privacy-policy/)")
@@ -281,6 +281,7 @@ def render_stock_explorer() -> None:
         "in Opportunity Discovery, or explore a theoretical "
         "options scenario using your own assumptions."
     )
+    _render_notes(symbol)
     st.button("Model manual assumptions in Options Lab", on_click=_open_options_lab, args=(symbol,), key="qi_stock_risk_lab")
     if enabled:
         st.caption("Missing panel? Availability depends on the symbol, provider and browser. Missing data is never replaced with fictional values.")

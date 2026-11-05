@@ -1,3 +1,5 @@
+> Follow-up: [November 5 release-readiness audit](RELEASE_READINESS.md) supersedes the outstanding-check status below. Original implementation evidence is retained.
+
 # News & Events Intelligence review
 
 Implemented on `feature/news-events-intelligence`, based on feature branch commit

@@ -1,0 +1,62 @@
+[
+  {
+    "width": 390,
+    "scenario": "Available",
+    "no_overflow": true,
+    "changed_company_invalidates_report": true
+  },
+  {
+    "width": 390,
+    "scenario": "Stale",
+    "no_overflow": true,
+    "changed_company_invalidates_report": true
+  },
+  {
+    "width": 390,
+    "scenario": "Unavailable",
+    "no_overflow": true,
+    "changed_company_invalidates_report": true
+  },
+  {
+    "width": 390,
+    "scenario": "Empty",
+    "no_overflow": true,
+    "changed_company_invalidates_report": true
+  },
+  {
+    "width": 390,
+    "scenario": "Disabled",
+    "no_overflow": true,
+    "changed_company_invalidates_report": true
+  },
+  {
+    "width": 1440,
+    "scenario": "Available",
+    "no_overflow": true,
+    "changed_company_invalidates_report": true
+  },
+  {
+    "width": 1440,
+    "scenario": "Stale",
+    "no_overflow": true,
+    "changed_company_invalidates_report": true
+  },
+  {
+    "width": 1440,
+    "scenario": "Unavailable",
+    "no_overflow": true,
+    "changed_company_invalidates_report": true
+  },
+  {
+    "width": 1440,
+    "scenario": "Empty",
+    "no_overflow": true,
+    "changed_company_invalidates_report": true
+  },
+  {
+    "width": 1440,
+    "scenario": "Disabled",
+    "no_overflow": true,
+    "changed_company_invalidates_report": true
+  }
+]

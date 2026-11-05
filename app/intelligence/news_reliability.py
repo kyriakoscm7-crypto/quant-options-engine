@@ -6,10 +6,28 @@ import time
 from collections import OrderedDict
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 
 
 class NewsRateLimited(RuntimeError):
     """A provider has explicitly rejected the request due to rate limiting."""
+
+    def __init__(self, message, retry_after=0):
+        super().__init__(message)
+        self.retry_after = retry_after
+
+
+def retry_after_seconds(response):
+    """Honor both HTTP Retry-After formats without shortening provider waits."""
+    value = getattr(response, "headers", {}).get("Retry-After", "")
+    try:
+        return max(0, int(value))
+    except (TypeError, ValueError):
+        try:
+            return max(0, (parsedate_to_datetime(value) - datetime.now(UTC)).total_seconds())
+        except (TypeError, ValueError, OverflowError):
+            return 0
 
 
 @dataclass(frozen=True)
@@ -84,8 +102,8 @@ class NewsReliability:
         provider = provider.strip().lower()
         key = (provider, cache_key.strip())
 
-        # Equal queries always map to the same lock stripe.
-        lock_index = hash(key) % len(self._request_locks)
+        # Serialize each provider so concurrent queries observe its cooldown.
+        lock_index = hash(provider) % len(self._request_locks)
 
         with self._request_locks[lock_index]:
             with self._lock:
@@ -126,12 +144,12 @@ class NewsReliability:
                 if not all(isinstance(row, dict) for row in articles):
                     raise ValueError("News provider returned invalid articles.")
 
-            except NewsRateLimited:
+            except NewsRateLimited as error:
                 with self._lock:
                     now = self.clock()
                     self._cooldowns[provider] = max(
                         self._cooldowns.get(provider, 0),
-                        now + self.cooldown_seconds,
+                        now + max(self.cooldown_seconds, error.retry_after),
                     )
 
                 return self._fallback(

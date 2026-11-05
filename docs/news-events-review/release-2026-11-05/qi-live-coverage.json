@@ -1,0 +1,44 @@
+[
+  {
+    "cohort": "large",
+    "company": "Apple Inc.",
+    "queried_at": "2026-11-05T05:06:07.845303+00:00",
+    "status": "rate_limited",
+    "sample_size": null
+  },
+  {
+    "cohort": "large",
+    "company": "Microsoft Corp",
+    "queried_at": "2026-11-05T05:06:19.137718+00:00",
+    "status": "not_attempted_after_provider_failure",
+    "sample_size": null
+  },
+  {
+    "cohort": "small cohort candidate",
+    "company": "Celsius Holdings, Inc.",
+    "queried_at": "2026-11-05T05:06:19.137734+00:00",
+    "status": "not_attempted_after_provider_failure",
+    "sample_size": null
+  },
+  {
+    "cohort": "small cohort candidate",
+    "company": "Turtle Beach Corp",
+    "queried_at": "2026-11-05T05:06:19.137736+00:00",
+    "status": "not_attempted_after_provider_failure",
+    "sample_size": null
+  },
+  {
+    "cohort": "ambiguous",
+    "company": "Block, Inc.",
+    "queried_at": "2026-11-05T05:06:19.137738+00:00",
+    "status": "not_attempted_after_provider_failure",
+    "sample_size": null
+  },
+  {
+    "cohort": "ambiguous",
+    "company": "GAP INC",
+    "queried_at": "2026-11-05T05:06:19.137739+00:00",
+    "status": "not_attempted_after_provider_failure",
+    "sample_size": null
+  }
+]

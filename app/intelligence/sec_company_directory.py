@@ -6,6 +6,7 @@ import re
 import requests
 
 from app.intelligence.company_identity import resolve_sec_company
+from app.intelligence.news_reliability import NewsRateLimited, retry_after_seconds
 
 SEC_DIRECTORY_URL = "https://www.sec.gov/files/company_tickers.json"
 MAX_RESPONSE_BYTES = 3_000_000
@@ -37,6 +38,8 @@ def fetch_sec_company_directory() -> dict:
     )
 
     try:
+        if getattr(response, "status_code", None) == 429:
+            raise NewsRateLimited("SEC directory rate limit", retry_after_seconds(response))
         response.raise_for_status()
         chunks = []
         total = 0

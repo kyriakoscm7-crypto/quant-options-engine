@@ -1,6 +1,6 @@
 """Company discovery and source evidence in the shared research workspace."""
 
-from datetime import date
+from datetime import UTC, date, datetime
 
 import streamlit as st
 
@@ -39,8 +39,11 @@ def render_news_events():
         return
     company = st.selectbox("Confirm company and security", matches,
                            format_func=lambda c: f"{c.ticker} · {c.name} · CIK {c.cik}")
-    days = st.select_slider("Lookback in days", [1, 3, 7, 14, 30], value=7)
-    event = st.date_input("Filings through date", value=date.today(), max_value=date.today())
+    window_col, date_col = st.columns(2)
+    with window_col:
+        days = st.select_slider("Lookback in days", [1, 3, 7, 14, 30], value=7)
+    with date_col:
+        event = st.date_input("Filings through date", value=date.today(), max_value=date.today())
     if st.button("Build intelligence report", type="primary"):
         with st.spinner("Gathering source evidence…"):
             st.session_state["qi_news_report"] = service.build(company, days=days, event_date=event)
@@ -49,19 +52,35 @@ def render_news_events():
     if report is None or st.session_state.get("qi_news_report_key") != (company, days, event):
         return
     st.markdown(f"**{company.name} · {company.ticker}**")
-    st.caption(f"CIK {company.cik} · Retrieved {report.as_of} · SEC filing entities, not exchange verification")
+    built_at = datetime.fromisoformat(report.as_of).astimezone(UTC).strftime("%Y-%m-%d %H:%M UTC")
+    st.caption(f"CIK {company.cik} · Report built {built_at} · SEC filing entities, not exchange verification")
+    for diagnostic in report.diagnostics:
+        age = diagnostic["age_seconds"]
+        label = f"{diagnostic['source']}: {diagnostic['status']}"
+        if age is not None:
+            label += f" · fetched {age} seconds ago"
+        if diagnostic["status"] in ("stale", "unavailable"):
+            message = diagnostic["message"]
+            if diagnostic["source"] == "SEC":
+                message = message.replace("News provider", "SEC source").replace("cached news", "cached submissions")
+            st.warning(f"{label}. {message}")
+        else:
+            st.caption(label)
     a, b, c = st.columns(3)
     a.metric("Headline candidates", len(report.articles))
     b.metric("Official filings", len(report.filings))
     c.metric("Duplicates removed", report.duplicates)
     st.info("Coverage is incomplete. No results does not mean no events. Headline relevance is a heuristic, not factual verification; filings do not establish price causation or a confirmed earnings calendar.")
+    if any(item["source"] == "GDELT" and item["status"] != "disabled" for item in report.diagnostics):
+        st.markdown("Data from [The GDELT Project](https://www.gdeltproject.org/). Publisher content rights remain separate.")
     news, filings, sources = st.tabs(["Headlines", "Official filings", "Coverage & sources"])
     with news:
         st.caption("News uses the recent lookback from retrieval time. The date control applies only to filings.")
         for item in report.articles:
             with st.container(border=True):
                 st.text(item["title"])
-                st.caption(f"{item['publisher']} · {item['published']} · {item['source']}")
+                stamp = "First seen (publication time unknown)" if item.get("timestamp_kind") == "first_seen" else "Published"
+                st.caption(f"{item['publisher']} · {stamp}: {item['published']} · {item['source']}")
                 st.caption(f"{item['relevance']} · {item['reason']}")
                 st.link_button("Read source ↗", item["url"])
         if not report.articles:

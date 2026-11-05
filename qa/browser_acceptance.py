@@ -25,28 +25,6 @@ def run(base, output, channel):
         def field(name):
             return page.get_by_role("textbox", name=name, exact=True)
 
-        def choose_view(target, view):
-            app = target.locator('[data-testid="stApp"]')
-            expect(app).to_have_attribute(
-                "data-test-script-state", "notRunning", timeout=30000
-            )
-            control = target.get_by_role("combobox", name="Research view", exact=True)
-            # Finish mobile scroll/focus before opening the popup: scrolling
-            # an offscreen combobox can close a newly opened React Aria list.
-            control.scroll_into_view_if_needed()
-            target.wait_for_timeout(300)
-            control.locator("..").get_by_role("button", name="Open", exact=True).click()
-            expect(control).to_have_attribute("aria-expanded", "true")
-            target.get_by_role("option", name=view, exact=True).click()
-            expect(control).to_have_value(view)
-            target.wait_for_timeout(100)
-            expect(app).to_have_attribute(
-                "data-test-script-state", "notRunning", timeout=30000
-            )
-
-        def select_view(view):
-            choose_view(page, view)
-
         page.goto(base)
         expect(button("Open Discovery")).to_be_visible(timeout=30000)
         button("Open Discovery").click()
@@ -77,7 +55,6 @@ def run(base, output, channel):
             "last_field_matches": True,
         }
         button("Investigate shortlisted company").click()
-        select_view("My analysis")
         expect(field("Next review trigger")).to_have_value(trigger)
         field("Thesis & valuation").fill("QA thesis from Explorer")
         button("Save & prepare export").click()
@@ -104,7 +81,7 @@ def run(base, output, channel):
         button("Investigate these assumptions in Greeks").click()
         expect(spot).to_have_value("123.00")
         button("Dashboard").click()
-        button("Options Lab").click()
+        button("Open Options Lab").click()
         expect(spot).to_have_value("123.00")
         button("Stress these assumptions in Scenario Explorer").click()
         assert float(spot.input_value()) == 123
@@ -114,25 +91,22 @@ def run(base, output, channel):
         page.get_by_text(
             "Allow automatic TradingView panels this session", exact=True
         ).click()
-        expect(page.locator("iframe")).to_have_count(1)
-        page.wait_for_timeout(700)
-        for view in ["Overview", "Financials", "Company", "Technicals", "News"]:
-            select_view(view)
-            expect(page.locator("iframe")).to_have_count(1)
-        select_view("My analysis")
-        expect(page.locator("iframe")).to_have_count(0)
+        # The base branch deliberately replaced the view selector with an open
+        # layout. All six official panels require the shared explicit consent.
+        expect(page.locator('iframe[data-testid="stIFrame"]')).to_have_count(6)
+        for heading in ["Company overview", "Historical price chart", "Financial performance",
+                        "Inside the business", "Technical analysis", "Company news"]:
+            expect(page.get_by_role("heading", name=heading, exact=True)).to_be_visible()
         expect(field("Next review trigger")).to_have_value(trigger)
-        results["lazy_panels"] = {"maximum_mounted_widgets": 1, "analysis_widgets": 0}
+        results["consented_panels"] = {"mounted_widgets": 6, "shared_notes_preserved": True}
         for width in [390, 400, 768, 1440]:
             responsive_context = browser.new_context(
                 viewport={"width": width, "height": 1000}
             )
             responsive = responsive_context.new_page()
             responsive.goto(base + "/?qi_go=research")
-            expect(
-                responsive.get_by_role("combobox", name="Research view", exact=True)
-            ).to_be_visible(timeout=30000)
-            choose_view(responsive, "My analysis")
+            expect(responsive.get_by_role("heading", name="Company overview", exact=True)).to_be_visible(timeout=30000)
+            expect(responsive.locator("iframe")).to_have_count(0)
             expect(
                 responsive.get_by_role("textbox", name="Research question", exact=True)
             ).to_be_visible()

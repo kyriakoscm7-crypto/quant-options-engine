@@ -1,0 +1,50 @@
+{
+  "retrieved_at": "2026-11-05T05:06:38.151852+00:00",
+  "companies": [
+    {
+      "ticker": "AAPL",
+      "cik": "0000320193",
+      "name": "Apple Inc.",
+      "status": "identity_verified",
+      "response_cik": "0000320193",
+      "latest_filing_date": "2026-11-03"
+    },
+    {
+      "ticker": "MSFT",
+      "cik": "0000789019",
+      "name": "MICROSOFT CORP",
+      "status": "identity_verified",
+      "response_cik": "0000789019",
+      "latest_filing_date": "2026-11-04"
+    },
+    {
+      "ticker": "HEAR",
+      "status": "not_in_directory"
+    },
+    {
+      "ticker": "CELH",
+      "cik": "0001341766",
+      "name": "Celsius Holdings, Inc.",
+      "status": "identity_verified",
+      "response_cik": "0001341766",
+      "latest_filing_date": "2026-11-03"
+    },
+    {
+      "ticker": "XYZ",
+      "cik": "0001512673",
+      "name": "Block, Inc.",
+      "status": "identity_verified",
+      "response_cik": "0001512673",
+      "latest_filing_date": "2026-11-04"
+    },
+    {
+      "ticker": "GAP",
+      "cik": "0000039911",
+      "name": "GAP INC",
+      "status": "identity_verified",
+      "response_cik": "0000039911",
+      "latest_filing_date": "2026-11-03"
+    }
+  ],
+  "directory_records": 10409
+}
