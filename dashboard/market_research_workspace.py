@@ -81,6 +81,9 @@ def render_market_discovery(*, scanner: bool = False) -> None:
             "Some listings do not have SEC coverage."
         )
     render_discovery_notebook(symbol)
+    from dashboard.news_events_panel import render_news_events
+
+    render_news_events()
 
 
 def render_company_simulation_lab() -> None:
