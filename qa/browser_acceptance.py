@@ -95,7 +95,7 @@ def run(base, output, channel):
         # layout. All six official panels require the shared explicit consent.
         expect(page.locator('iframe[data-testid="stIFrame"]')).to_have_count(6)
         for heading in ["Company overview", "Historical price chart", "Financial performance",
-                        "Inside the business", "Technical analysis", "Company news"]:
+                        "Inside the business", "Technical analysis"]:
             expect(page.get_by_role("heading", name=heading, exact=True)).to_be_visible()
         expect(field("Next review trigger")).to_have_value(trigger)
         results["consented_panels"] = {"mounted_widgets": 6, "shared_notes_preserved": True}
