@@ -63,7 +63,7 @@ def test_main_public_routes_cannot_reenable_legacy_feeds(route, monkeypatch):
     app.run(timeout=45)
     assert not app.exception, [error.message for error in app.exception]
     if route == '🔎 Stock Explorer':
-        assert len(app.get('iframe')) == 1
+        assert len(app.get('iframe')) == 6
         assert not any('SYNTHETIC DEMO' in item.value for item in app.info)
     elif route == '🧪 Simulation Lab':
         assert any('HYPOTHETICAL MODEL' in item.value for item in app.info)
@@ -95,7 +95,7 @@ def test_compact_menu_opens_policies_and_can_disable_charts():
     assert len(app.get('iframe')) == 0
     app.toggle(key='qi_explorer_consent').set_value(True).run()
     assert not app.exception
-    assert len(app.get('iframe')) == 1
+    assert len(app.get('iframe')) == 6
     app.toggle(key='qi_external_charts').set_value(False).run()
     assert not app.exception
     assert len(app.get('iframe')) == 0
@@ -186,50 +186,82 @@ def test_real_stock_detail_widget_config(view):
         detail_embed_html('</script>', view)
 
 
+
 @pytest.mark.parametrize("enabled", [False, True])
-def test_restored_research_tabs_never_request_backend_data(enabled, monkeypatch):
+def test_open_research_dashboard_never_requests_backend_data(
+    enabled, monkeypatch
+):
     import requests
     from curl_cffi import requests as curl_requests
 
     def fail(*args, **kwargs):
-        raise AssertionError("Real-stock page attempted a backend data call")
+        raise AssertionError(
+            "Stock Explorer attempted a backend market-data request"
+        )
 
     monkeypatch.setattr(requests.Session, "request", fail)
     monkeypatch.setattr(curl_requests.Session, "request", fail)
-    source = "from dashboard.stock_explorer_widget import render_stock_explorer\nrender_stock_explorer()"
-    app = AppTest.from_string(source)
+
+    script = (
+        "from dashboard.stock_explorer_widget "
+        "import render_stock_explorer\n"
+        "render_stock_explorer()"
+    )
+
+    app = AppTest.from_string(script)
     app.session_state["qi_external_charts"] = enabled
-    app.session_state["qi_external_panels_notice_version"] = 2 if enabled else 0
+    app.session_state["qi_external_panels_notice_version"] = (
+        2 if enabled else 0
+    )
     app.run()
+
     assert not app.exception
-    assert app.selectbox(key='qi_stock_view').value == 'Chart'
-    assert len(app.get("iframe")) == (1 if enabled else 0)
+    assert all(
+        widget.key != "qi_stock_view"
+        for widget in app.selectbox
+    )
+
+    headings = [element.value for element in app.markdown]
+
+    for heading in (
+        "Company overview",
+        "Historical price chart",
+        "Financial performance",
+        "Inside the business",
+        "Technical analysis",
+        "Company news",
+    ):
+        assert any(heading in item for item in headings), heading
+
+    assert len(app.get("iframe")) == (6 if enabled else 0)
     assert len(app.metric) == 0
-    assert not any("FICTIONAL MODEL LAB" in caption.value for caption in app.caption)
-    # Preserve a download of user-authored notes, never historical prices.
     assert len(app.get("download_button")) == 0
-    app.selectbox(key="qi_stock_view").set_value("My analysis").run()
-    next(b for b in app.button if b.label == "Save & prepare export").click().run()
-    assert len(app.get("download_button")) == 1
-    assert len(app.get("iframe")) == 0
 
 
-def test_notes_survive_view_change_and_remain_per_symbol():
-    source = "from dashboard.stock_explorer_widget import render_stock_explorer\nrender_stock_explorer()"
-    app = AppTest.from_string(source)
-    app.run()
-    app.selectbox(key='qi_stock_view').set_value('My analysis').run()
-    app.text_area[0].set_value('My own thesis')
-    next(b for b in app.button if b.label == 'Save & prepare export').click().run()
-    app.selectbox(key='qi_stock_lookback').set_value('5Y').run()
-    app.selectbox(key='qi_stock_chart_type').set_value('Candlestick').run()
-    assert app.text_area[0].value == 'My own thesis'
-    app.selectbox[0].select('Microsoft · MSFT').run()
-    assert app.text_area[0].value == ''
-    app.selectbox[0].select('Apple · AAPL').run()
-    assert app.text_area[0].value == 'My own thesis'
+def test_open_dashboard_preserves_company_and_chart_controls():
+    script = (
+        "from dashboard.stock_explorer_widget "
+        "import render_stock_explorer\n"
+        "render_stock_explorer()"
+    )
+
+    app = AppTest.from_string(script).run()
+
     assert not app.exception
 
+    app.selectbox(key="qi_stock_lookback").select("5Y").run()
+    app.selectbox(key="qi_stock_chart_type").select("Candlestick").run()
+    app.selectbox(key="qi_stock_company").select("Microsoft · MSFT").run()
+
+    assert not app.exception
+    assert app.selectbox(key="qi_stock_lookback").value == "5Y"
+    assert app.selectbox(key="qi_stock_chart_type").value == "Candlestick"
+    assert app.selectbox(key="qi_stock_company").value == "Microsoft · MSFT"
+
+    assert all(
+        widget.key != "qi_stock_view"
+        for widget in app.selectbox
+    )
 
 @pytest.mark.parametrize("label,expected_range,expected_interval", [
     ("1D", "1D", "1"), ("1W", "5D", "15"), ("1M", "1M", "30"),
@@ -256,7 +288,7 @@ def test_session_opt_in_automatic_return_range_change_and_revoke():
     assert len(app.get("iframe")) == 0
     app.toggle(key="qi_explorer_consent").set_value(True).run()
     assert not app.exception
-    assert len(app.get("iframe")) == 1
+    assert len(app.get("iframe")) == 6
     assert not any(button.label == "Load real-stock chart" for button in app.button)
     app.selectbox(key="qi_stock_lookback").set_value("1D").run()
     app.selectbox[1].select("Microsoft · MSFT").run()
@@ -266,7 +298,7 @@ def test_session_opt_in_automatic_return_range_change_and_revoke():
     app.run()
     app.session_state["selected_page"] = "🔎 Stock Explorer"
     app.run()
-    assert len(app.get("iframe")) == 1
+    assert len(app.get("iframe")) == 6
     app.toggle(key="qi_external_charts").set_value(False).run()
     assert len(app.get("iframe")) == 0
     assert app.toggle(key="qi_explorer_consent").value is False

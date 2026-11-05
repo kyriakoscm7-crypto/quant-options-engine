@@ -134,7 +134,7 @@ def test_m02_model_survives_absent_widgets_and_scenario_navigation():
         ("discover", "💎 Quant Discovery"),
         ("learn", "📚 Learn"),
         ("stock", "🔎 Stock Explorer"),
-        ("portfolio", "💼 Portfolio Manager"),
+        ("analyze", "💰 Options Lab"),
     ],
 )
 def test_home_cards_use_session_navigation(key, route):

@@ -175,20 +175,112 @@ def render_stock_explorer() -> None:
     st.caption("Market information by TradingView · May be delayed or unavailable · Not investment advice")
     symbol_url = "https://www.tradingview.com/symbols/" + symbol.replace(":", "-") + "/"
     enabled = render_external_panel_consent()
-    view = st.selectbox("Research view", ["Chart", "Overview", "Financials", "Company", "Technicals", "News", "History & availability", "My analysis"], key="qi_stock_view")
-    # Conditional rendering mounts at most one official external widget.
-    if view == "Chart":
-        st.caption(LOOKBACKS[lookback][2] + " requested · Coverage depends on the provider.")
-        if enabled:
-            components.html(chart_embed_html(symbol, lookback, chart_type), height=640, scrolling=False)
-    elif view in DETAIL_WIDGETS:
-        _render_panel(symbol, view, enabled)
-        if view == "Technicals":
-            st.caption("Provider technical indicators are not app scores or probabilities. No display values enter models.")
-    elif view == "My analysis":
-        _render_notes(symbol)
+
+
+    st.markdown("## Company overview")
+    st.caption(
+        "The company at a glance. Prices and financial figures "
+        "are supplied by TradingView and may be delayed."
+    )
+    _render_panel(symbol, "Overview", enabled)
+
+    st.markdown("## Historical price chart")
+    st.caption(
+        "Explore how prices changed over your selected period. "
+        + LOOKBACKS[lookback][2]
+        + " requested; availability depends on TradingView."
+    )
+    if enabled:
+        components.html(
+            chart_embed_html(symbol, lookback, chart_type),
+            height=640,
+            scrolling=False,
+        )
     else:
-        st.write("Display-only integration: no raw history export or app-derived historical metrics. Coverage and delays vary by listing.")
+        st.info("Enable TradingView panels to see historical prices.")
+
+    st.markdown("## Financial performance")
+    st.caption(
+        "Explore revenue, earnings and financial statements. "
+        "Check the reporting dates, units and currency."
+    )
+    _render_panel(symbol, "Financials", enabled)
+
+    st.markdown("## Inside the business")
+    st.caption(
+        "Understand the business model, products and industry "
+        "behind the stock symbol."
+    )
+    _render_panel(symbol, "Company", enabled)
+
+
+    st.markdown("## Technical analysis")
+    st.caption(
+        "A snapshot of price trends and momentum, calculated "
+        "by TradingView using technical indicators."
+    )
+
+    a, b, c = st.columns(3)
+
+    with a, st.container(border=True):
+        st.markdown("**What is measured?**")
+        st.write(
+            "Moving averages measure price trends. "
+            "Oscillators help measure momentum and "
+            "potentially stretched conditions."
+        )
+
+    with b, st.container(border=True):
+        st.markdown("**What do the numbers mean?**")
+        st.write(
+            "Sell, Neutral and Buy count indicator signals. "
+            "For example, 17 Buy and 1 Sell means more "
+            "indicators currently lean positive. "
+            "They are not analyst votes."
+        )
+
+    with c, st.container(border=True):
+        st.markdown("**Why select a timeframe?**")
+        st.write(
+            "Daily uses daily price bars; weekly uses weekly "
+            "bars. The same stock can show different "
+            "signals at different timeframes."
+        )
+
+    st.caption(
+        "A Strong Buy rating summarizes indicator conditions. "
+        "It does not calculate the probability of a price rise "
+        "or specify when to sell."
+    )
+
+    _render_panel(symbol, "Technicals", enabled)
+    st.caption(
+        "These are TradingView's technical ratings, "
+        "not Quant Intelligence recommendations."
+    )
+
+    st.markdown("## Company news")
+    st.caption(
+        "News is displayed by TradingView. Check each article's "
+        "publication date and original source before relying on it."
+    )
+    _render_panel(symbol, "News", enabled)
+    st.link_button(
+        "Browse full company news on TradingView",
+        symbol_url + "news/",
+    )
+    st.caption(
+        "The embedded feed may have limited coverage for some "
+        "listings. The full provider page may offer more stories."
+    )
+
+
+    st.markdown("## Continue your investigation")
+    st.caption(
+        "Build and export your source-linked research record "
+        "in Opportunity Discovery, or explore a theoretical "
+        "options scenario using your own assumptions."
+    )
     st.button("Model manual assumptions in Options Lab", on_click=_open_options_lab, args=(symbol,), key="qi_stock_risk_lab")
     if enabled:
         st.caption("Missing panel? Availability depends on the symbol, provider and browser. Missing data is never replaced with fictional values.")
