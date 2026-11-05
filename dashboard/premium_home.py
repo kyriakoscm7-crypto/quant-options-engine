@@ -531,11 +531,65 @@ a.qi-home-card-link:focus-visible {
     }
 }
 
+
+/* One synchronized animation for the entire QI network. */
+.qi-home-visual {
+    padding: 22px 12px !important;
+    overflow: visible !important;
+}
+
+.qi-home-visual::after {
+    content: none !important;
+    display: none !important;
+}
+
+.qi-home-visual .qi-network-rotator {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    transform-origin: 50% 50%;
+    animation: qi-full-network-orbit 210s linear infinite;
+}
+
+@keyframes qi-full-network-orbit {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Keep destination labels readable during the rotation. */
+.qi-home-visual .qi-network-name {
+    transform-origin: center;
+    animation: qi-upright-label 210s linear infinite;
+}
+
+@keyframes qi-upright-label {
+    from { rotate: 0deg; }
+    to { rotate: -360deg; }
+}
+
+/* Clickable elements rotate with their associated SVG nodes. */
+.qi-home-visual .qi-network-nav {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.qi-home-visual .qi-network-endpoint {
+    pointer-events: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .qi-home-visual .qi-network-rotator,
+    .qi-home-visual .qi-network-name {
+        animation: none !important;
+    }
+}
+
 </style>
 """
 
 
-QI_NETWORK_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360" role="img" aria-label="Quant Intelligence connected research network">\n  <defs>\n    <radialGradient id="qiAura"><stop offset="0" stop-color="#FF78B7" stop-opacity=".22"/><stop offset=".48" stop-color="#6884F2" stop-opacity=".07"/><stop offset="1" stop-color="#10182F" stop-opacity="0"/></radialGradient>\n    <linearGradient id="qiEdge" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#6B8BDB"/><stop offset=".53" stop-color="#FF78B7"/><stop offset="1" stop-color="#8BA9FF"/></linearGradient>\n    <linearGradient id="qiCore" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#273657"/><stop offset="1" stop-color="#151F39"/></linearGradient>\n    <filter id="qiHalo" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="6"/></filter>\n  </defs>\n  <style>\n    .quiet { fill:none; stroke:#6C83AF; stroke-width:1; opacity:.35; }\n    .spin { transform-origin:240px 176px; animation:qiOrbit 120s linear infinite; }\n    \n    .spinBack { transform-origin:240px 176px; animation:qiOrbitBack 120s linear infinite; }\n    .edge { fill:none; stroke:url(#qiEdge); stroke-width:1.25; stroke-dasharray:3 9; opacity:.60; animation:qiFlow 18s linear infinite; }\n    .nodeOuter { fill:#192641; stroke:#536A95; stroke-width:1.1; }\n    .nodeInner { fill:#FF96C9; }\n    .nodeRing { fill:none; stroke:#FF78B7; stroke-width:1.15; opacity:.26; animation:qiBreath 4.3s ease-in-out infinite; }\n    .label { font-family:Arial,Helvetica,sans-serif; font-size:10px; font-weight:700; letter-spacing:1.65px; fill:#C4D1E8; }\n    .spark { fill:#FFD6EB; opacity:.93; }\n    .pulse1 { animation:qiSignalA 6s ease-in-out infinite; }\n    .pulse2 { animation:qiSignalB 7.5s ease-in-out infinite -2.2s; }\n    .pulse3 { animation:qiSignalC 8.5s ease-in-out infinite -4s; }\n    .pulse4 { animation:qiSignalD 7.1s ease-in-out infinite -1s; }\n    .coreGlow { animation:qiBreath 5s ease-in-out infinite; }\n    @keyframes qiOrbit { to { transform:rotate(360deg); } }\n    @keyframes qiOrbitBack { to { transform:rotate(-360deg); } }\n    @keyframes qiFlow { to {stroke-dashoffset:-144;} }\n    @keyframes qiBreath { 0%,100% {opacity:.24;} 50% {opacity:.72;} }\n    @keyframes qiSignalA {0% {transform:translate(240px,176px);opacity:0;} 14% {opacity:1;} 84% {opacity:1;} 100% {transform:translate(102px,85px);opacity:0;}}\n    @keyframes qiSignalB {0% {transform:translate(240px,176px);opacity:0;} 14% {opacity:1;} 84% {opacity:1;} 100% {transform:translate(376px,91px);opacity:0;}}\n    @keyframes qiSignalC {0% {transform:translate(240px,176px);opacity:0;} 14% {opacity:1;} 84% {opacity:1;} 100% {transform:translate(118px,276px);opacity:0;}}\n    @keyframes qiSignalD {0% {transform:translate(240px,176px);opacity:0;} 14% {opacity:1;} 84% {opacity:1;} 100% {transform:translate(361px,277px);opacity:0;}}\n    @media (prefers-reduced-motion:reduce) { .spin,.spinBack,.edge,.nodeRing,.coreGlow,.pulse1,.pulse2,.pulse3,.pulse4 { animation:none!important; } .pulse1,.pulse2,.pulse3,.pulse4 {display:none;} }\n  </style>\n  <circle cx="240" cy="176" r="170" fill="url(#qiAura)"/>\n  <g class="spin"><circle class="quiet" cx="240" cy="176" r="122" stroke-dasharray="5 13"/><path class="quiet" stroke="#FF78B7" stroke-width="1.6" d="M240 54 A122 122 0 0 1 323 87"/></g>\n  <g class="spinBack"><circle class="quiet" cx="240" cy="176" r="89" stroke-dasharray="1.5 9"/><circle class="quiet" cx="240" cy="176" r="148" stroke-dasharray="1 17"/></g>\n  <ellipse class="quiet" cx="240" cy="176" rx="195" ry="74" transform="rotate(-26 240 176)"/>\n  <ellipse class="quiet" cx="240" cy="176" rx="195" ry="74" transform="rotate(30 240 176)" opacity=".65"/>\n  <g><path class="edge" d="M240 176 L102 85"/><path class="edge" d="M240 176 L376 91"/><path class="edge" d="M240 176 L118 276"/><path class="edge" d="M240 176 L361 277"/></g>\n  <circle class="spark pulse1" r="3.2" cx="0" cy="0"/><circle class="spark pulse2" r="3" cx="0" cy="0"/><circle class="spark pulse3" r="3.3" cx="0" cy="0"/><circle class="spark pulse4" r="3" cx="0" cy="0"/>\n  <circle cx="240" cy="176" r="64" fill="#FF78B7" fill-opacity=".10" class="coreGlow"/>\n  <circle cx="240" cy="176" r="45" fill="#FF78B7" fill-opacity=".13" filter="url(#qiHalo)"/>\n  <circle cx="240" cy="176" r="39" fill="url(#qiCore)" stroke="#FF91C4" stroke-width="1.7"/>\n  <circle cx="240" cy="176" r="33" fill="none" stroke="#FF78B7" stroke-opacity=".23"/>\n  <text x="240" y="182" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="23" font-weight="800" letter-spacing="-1.5" fill="#FFE4F0">QI</text>\n  <g><circle class="nodeRing" cx="102" cy="85" r="27"/><circle class="nodeOuter" cx="102" cy="85" r="17"/><circle class="nodeInner" cx="102" cy="85" r="4.5"/><circle cx="102" cy="85" r="10" fill="none" stroke="#FF78B7" stroke-opacity=".34"/><text class="label" x="102" y="51" text-anchor="middle">DISCOVER</text></g>\n  <g><circle class="nodeRing" cx="376" cy="91" r="27"/><circle class="nodeOuter" cx="376" cy="91" r="17"/><path d="M369 96 L375 90 L380 92 L384 85" fill="none" stroke="#FF96C9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><text class="label" x="376" y="57" text-anchor="middle">RESEARCH</text></g>\n  <g><circle class="nodeRing" cx="118" cy="276" r="27"/><circle class="nodeOuter" cx="118" cy="276" r="17"/><path d="M109 272 Q114 270 118 273 Q122 270 127 272 L127 282 Q122 280 118 283 Q114 280 109 282 Z" fill="none" stroke="#FF96C9" stroke-width="1.8" stroke-linejoin="round"/><path d="M118 273 V282" stroke="#FF96C9" stroke-width="1.4"/><text class="label" x="118" y="313" text-anchor="middle">LEARN</text></g>\n  <g><circle class="nodeRing" cx="361" cy="277" r="27"/><circle class="nodeOuter" cx="361" cy="277" r="17"/><path d="M353 282 V275 M359 282 V269 M365 282 V272 M371 282 V266" stroke="#FF96C9" stroke-width="2.3" stroke-linecap="round"/><text class="label" x="361" y="314" text-anchor="middle">ANALYZE</text></g>\n  <g fill="#8DA8FF" opacity=".7"><circle cx="179" cy="54" r="2"/><circle cx="310" cy="304" r="2.2"/><circle cx="55" cy="183" r="1.8"/><circle cx="425" cy="193" r="2"/></g>\n</svg>'
+QI_NETWORK_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360" role="img" aria-label="Quant Intelligence connected research network">\n  <defs>\n    <radialGradient id="qiAura"><stop offset="0" stop-color="#FF78B7" stop-opacity=".22"/><stop offset=".48" stop-color="#6884F2" stop-opacity=".07"/><stop offset="1" stop-color="#10182F" stop-opacity="0"/></radialGradient>\n    <linearGradient id="qiEdge" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#6B8BDB"/><stop offset=".53" stop-color="#FF78B7"/><stop offset="1" stop-color="#8BA9FF"/></linearGradient>\n    <linearGradient id="qiCore" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#273657"/><stop offset="1" stop-color="#151F39"/></linearGradient>\n    <filter id="qiHalo" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="6"/></filter>\n  </defs>\n  <style>\n    .quiet { fill:none; stroke:#6C83AF; stroke-width:1; opacity:.35; }\n    .spin { transform-origin:240px 176px; animation:qiOrbit 85s linear infinite; }\n    \n    .spinBack { transform-origin:240px 176px; animation:qiOrbitBack 110s linear infinite; }\n    .edge { fill:none; stroke:url(#qiEdge); stroke-width:1.25; stroke-dasharray:3 9; opacity:.60; animation:qiFlow 18s linear infinite; }\n    .nodeOuter { fill:#192641; stroke:#536A95; stroke-width:1.1; }\n    .nodeInner { fill:#FF96C9; }\n    .nodeRing { fill:none; stroke:#FF78B7; stroke-width:1.15; opacity:.26; animation:qiBreath 4.3s ease-in-out infinite; }\n    .label { font-family:Arial,Helvetica,sans-serif; font-size:10px; font-weight:700; letter-spacing:1.65px; fill:#C4D1E8; }\n    .spark { fill:#FFD6EB; opacity:.93; }\n    .pulse1 { animation:qiSignalA 6s ease-in-out infinite; }\n    .pulse2 { animation:qiSignalB 7.5s ease-in-out infinite -2.2s; }\n    .pulse3 { animation:qiSignalC 8.5s ease-in-out infinite -4s; }\n    .pulse4 { animation:qiSignalD 7.1s ease-in-out infinite -1s; }\n    .coreGlow { animation:qiBreath 5s ease-in-out infinite; }\n    .qi-core-upright, .qi-icon-upright { transform-box:view-box; animation:qiCounterOrbit 210s linear infinite; }\n    .qi-core-upright {transform-origin:240px 176px;}\n    .qi-icon-discover {transform-origin:102px 85px;}\n    .qi-icon-research {transform-origin:376px 91px;}\n    .qi-icon-learn {transform-origin:118px 276px;}\n    .qi-icon-analyze {transform-origin:361px 277px;}\n    @keyframes qiCounterOrbit { to {transform:rotate(-360deg);} }\n    @keyframes qiOrbit { to { transform:rotate(360deg); } }\n    @keyframes qiOrbitBack { to { transform:rotate(-360deg); } }\n    @keyframes qiFlow { to {stroke-dashoffset:-144;} }\n    @keyframes qiBreath { 0%,100% {opacity:.24;} 50% {opacity:.72;} }\n    @keyframes qiSignalA {0% {transform:translate(240px,176px);opacity:0;} 14% {opacity:1;} 84% {opacity:1;} 100% {transform:translate(102px,85px);opacity:0;}}\n    @keyframes qiSignalB {0% {transform:translate(240px,176px);opacity:0;} 14% {opacity:1;} 84% {opacity:1;} 100% {transform:translate(376px,91px);opacity:0;}}\n    @keyframes qiSignalC {0% {transform:translate(240px,176px);opacity:0;} 14% {opacity:1;} 84% {opacity:1;} 100% {transform:translate(118px,276px);opacity:0;}}\n    @keyframes qiSignalD {0% {transform:translate(240px,176px);opacity:0;} 14% {opacity:1;} 84% {opacity:1;} 100% {transform:translate(361px,277px);opacity:0;}}\n    @media (prefers-reduced-motion:reduce) { .qi-core-upright,.qi-icon-upright,.spin,.spinBack,.edge,.nodeRing,.coreGlow,.pulse1,.pulse2,.pulse3,.pulse4 { animation:none!important; } .pulse1,.pulse2,.pulse3,.pulse4 {display:none;} }\n  </style>\n  <circle cx="240" cy="176" r="170" fill="url(#qiAura)"/>\n  <g class="spin"><circle class="quiet" cx="240" cy="176" r="122" stroke-dasharray="5 13"/><path class="quiet" stroke="#FF78B7" stroke-width="1.6" d="M240 54 A122 122 0 0 1 323 87"/></g>\n  <g class="spinBack"><circle class="quiet" cx="240" cy="176" r="89" stroke-dasharray="1.5 9"/><circle class="quiet" cx="240" cy="176" r="148" stroke-dasharray="1 17"/></g>\n  <ellipse class="quiet" cx="240" cy="176" rx="195" ry="74" transform="rotate(-26 240 176)"/>\n  <ellipse class="quiet" cx="240" cy="176" rx="195" ry="74" transform="rotate(30 240 176)" opacity=".65"/>\n  <g><path class="edge" d="M240 176 L102 85"/><path class="edge" d="M240 176 L376 91"/><path class="edge" d="M240 176 L118 276"/><path class="edge" d="M240 176 L361 277"/></g>\n  <circle class="spark pulse1" r="3.2" cx="0" cy="0"/><circle class="spark pulse2" r="3" cx="0" cy="0"/><circle class="spark pulse3" r="3.3" cx="0" cy="0"/><circle class="spark pulse4" r="3" cx="0" cy="0"/>\n  <g class="qi-core-upright"><circle cx="240" cy="176" r="64" fill="#FF78B7" fill-opacity=".10" class="coreGlow"/>\n  <circle cx="240" cy="176" r="45" fill="#FF78B7" fill-opacity=".13" filter="url(#qiHalo)"/>\n  <circle cx="240" cy="176" r="39" fill="url(#qiCore)" stroke="#FF91C4" stroke-width="1.7"/>\n  <circle cx="240" cy="176" r="33" fill="none" stroke="#FF78B7" stroke-opacity=".23"/>\n  <text x="240" y="182" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="23" font-weight="800" letter-spacing="-1.5" fill="#FFE4F0">QI</text></g>\n  <g class="qi-icon-upright qi-icon-discover"><circle class="nodeRing" cx="102" cy="85" r="27"/><circle class="nodeOuter" cx="102" cy="85" r="17"/><circle class="nodeInner" cx="102" cy="85" r="4.5"/><circle cx="102" cy="85" r="10" fill="none" stroke="#FF78B7" stroke-opacity=".34"/><text class="label" x="102" y="51" text-anchor="middle">DISCOVER</text></g>\n  <g class="qi-icon-upright qi-icon-research"><circle class="nodeRing" cx="376" cy="91" r="27"/><circle class="nodeOuter" cx="376" cy="91" r="17"/><path d="M369 96 L375 90 L380 92 L384 85" fill="none" stroke="#FF96C9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><text class="label" x="376" y="57" text-anchor="middle">RESEARCH</text></g>\n  <g class="qi-icon-upright qi-icon-learn"><circle class="nodeRing" cx="118" cy="276" r="27"/><circle class="nodeOuter" cx="118" cy="276" r="17"/><path d="M109 272 Q114 270 118 273 Q122 270 127 272 L127 282 Q122 280 118 283 Q114 280 109 282 Z" fill="none" stroke="#FF96C9" stroke-width="1.8" stroke-linejoin="round"/><path d="M118 273 V282" stroke="#FF96C9" stroke-width="1.4"/><text class="label" x="118" y="313" text-anchor="middle">LEARN</text></g>\n  <g class="qi-icon-upright qi-icon-analyze"><circle class="nodeRing" cx="361" cy="277" r="27"/><circle class="nodeOuter" cx="361" cy="277" r="17"/><path d="M353 282 V275 M359 282 V269 M365 282 V272 M371 282 V266" stroke="#FF96C9" stroke-width="2.3" stroke-linecap="round"/><text class="label" x="361" y="314" text-anchor="middle">ANALYZE</text></g>\n  <g fill="#8DA8FF" opacity=".7"><circle cx="179" cy="54" r="2"/><circle cx="310" cy="304" r="2.2"/><circle cx="55" cy="183" r="1.8"/><circle cx="425" cy="193" r="2"/></g>\n</svg>'
 
 for _qi_static_node_label in ("DISCOVER", "RESEARCH", "LEARN", "ANALYZE"):
     QI_NETWORK_SVG = _qi_re.sub(
@@ -562,6 +616,7 @@ _HERO = """
     </div>
   </div>
   <div class="qi-home-visual" role="group" aria-label="Animated network connecting Quant Intelligence research, discovery, learning and analysis. Decorative illustration, not market data.">
+    <div class="qi-network-rotator">
     <img class="qi-network-illustration" src="__QI_NETWORK_IMAGE__" alt="" aria-hidden="true" draggable="false">
     <nav class="qi-network-nav" aria-label="Quant Intelligence navigation">
   <a class="qi-network-endpoint qi-node-discover"
@@ -585,6 +640,7 @@ _HERO = """
     <span class="qi-network-name">ANALYZE</span>
   </a>
 </nav>
+    </div>
   </div>
 </div>
 """

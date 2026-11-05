@@ -76,71 +76,217 @@ def render_workspace_settings() -> None:
             help="Settings",
             use_container_width=False,
         ):
-            st.markdown("**Workspace preferences**")
-            st.caption(
-                "Settings are local to this browser session. Access is "
-                "controlled by the Streamlit hosting dashboard, not this menu."
+
+            st.markdown(
+                '<div class="qi-settings-title">Workspace settings</div>'
+                '<div class="qi-settings-subtitle">'
+                'Customize your research environment'
+                '</div>',
+                unsafe_allow_html=True,
             )
-            preferences, workspace = st.tabs(["Preferences", "About & legal"])
+
+            preferences, workspace = st.tabs(
+                ["Preferences", "About & legal"]
+            )
+
             with preferences:
+                st.markdown("**Appearance**")
+
                 st.selectbox(
                     "Display density",
                     ["Comfortable", "Compact"],
                     key="qi_display_density",
-                    help="Reduce unused space without changing charts or calculations.",
+                    help="Adjust workspace spacing.",
                 )
+
                 st.toggle(
                     "Show research guidance",
                     key="qi_show_research_notes",
-                    help="Show concise context beside research and simulation tools.",
+                    help="Show contextual explanations beside research tools.",
                 )
+
                 st.toggle(
                     "Reduce animations",
                     key="qi_reduce_motion",
-                    help="Minimize decorative movement for comfort and accessibility.",
+                    help="Minimize decorative motion.",
                 )
+
+                st.divider()
+                st.markdown("**External market displays**")
+
                 st.toggle(
                     "Automatically load TradingView panels",
                     key="qi_external_charts",
                     on_change=record_external_panel_choice,
-                    help="Opt in for this session. Charts, screeners and research panels then load across research pages, only for the selected view.",
+                    help="Allow provider-hosted panels during this session.",
                 )
+
                 st.caption(
-                    "TradingView receives connection metadata including IP "
-                    "address, embedding URL and selected symbol when loaded. "
-                    "Device and usage analytics may also be processed under its privacy policy. Disabling removes panels and prevents future app loads; it cannot undo past requests."
+                    "When enabled, TradingView receives connection "
+                    "information such as your IP address and selected "
+                    "symbol. Turning this off prevents future panel loads "
+                    "but cannot undo previous requests."
                 )
-                st.markdown("[TradingView privacy policy](https://www.tradingview.com/privacy-policy/)")
+
+                st.markdown(
+                    "[TradingView privacy policy]"
+                    "(https://www.tradingview.com/privacy-policy/)"
+                )
+
+                st.divider()
+
                 st.button(
                     "Reset preferences",
                     key="qi_reset_workspace_preferences",
                     use_container_width=True,
                     on_click=reset_workspace_preferences,
                 )
+
+                st.caption(
+                    "Preferences apply to this session. "
+                    "They do not change account access."
+                )
+
             with workspace:
-                from dashboard.build_info import build_info
-                st.json(build_info())
-                st.caption("Runtime package versions above are nonsecret. Host deployment, retention and API protection still require operator verification.")
-                st.markdown("**Independent quantitative research**")
-                st.caption(
-                    "Access is invitation-only if the hosting dashboard "
-                    "is configured privately. To add or remove viewers, "
-                    "use Streamlit Community Cloud's Sharing settings. "
-                    "This menu cannot manage accounts or revoke access."
+                st.markdown(
+                    '<div class="qi-settings-about">'
+                    '<div class="qi-settings-about-name">'
+                    'Quant Intelligence</div>'
+                    '<div class="qi-settings-about-description">'
+                    'Research, quantitative analysis and financial education'
+                    '</div></div>',
+                    unsafe_allow_html=True,
                 )
-                st.caption(
-                    "Real stocks: provider-hosted TradingView charts, screeners, financials, technicals and news. "
-                    "Independent models: clearly labeled hypothetical "
-                    "calculations and synthetic simulations."
+
+                st.markdown(
+                    '<div class="qi-settings-info-grid">'
+                    '<div class="qi-settings-info-card">'
+                    '<span>MARKET DISPLAYS</span>'
+                    '<strong>TradingView</strong>'
+                    '<small>Provider-hosted information</small>'
+                    '</div>'
+                    '<div class="qi-settings-info-card">'
+                    '<span>QUANTITATIVE MODELS</span>'
+                    '<strong>Independent</strong>'
+                    '<small>Hypothetical calculations</small>'
+                    '</div></div>',
+                    unsafe_allow_html=True,
                 )
+
+                st.markdown("**Privacy & access**")
+                st.caption(
+                    "Viewer access is controlled through Streamlit "
+                    "Community Cloud sharing settings, not this menu. "
+                    "The application is accessible only to the accounts "
+                    "permitted by its current hosting configuration."
+                )
+
                 if st.button(
                     "Legal, privacy & methodology",
                     key="qi_open_legal_settings",
                     use_container_width=True,
                 ):
-                    st.session_state["_navigation_request"] = "📄 Legal & Privacy"
+                    st.session_state["_navigation_request"] = (
+                        "📄 Legal & Privacy"
+                    )
                     st.rerun()
 
+                with st.expander(
+                    "Advanced diagnostics", expanded=False
+                ):
+                    from dashboard.build_info import build_info
+
+                    info = build_info()
+                    st.caption(
+                        "Source revision: "
+                        + str(info.get("source_sha", "unknown"))[:12]
+                    )
+
+                    st.json(info)
+
+                    st.caption(
+                        "These details describe the running software. "
+                        "They are not independent deployment "
+                        "verification or evidence of provider permissions."
+                    )
+
+
+    st.markdown(
+        """
+        <style>
+        .qi-settings-title {
+            font-size: 1.35rem;
+            font-weight: 800;
+            letter-spacing: -0.035em;
+            color: #FFFFFF;
+            margin: 0 0 4px;
+        }
+        .qi-settings-subtitle {
+            color: #A9B8D2;
+            font-size: 0.84rem;
+            margin-bottom: 16px;
+        }
+        .qi-settings-about {
+            padding: 19px;
+            margin: 8px 0 16px;
+            border: 1px solid #344766;
+            border-radius: 15px;
+            background: linear-gradient(
+                125deg, #192741, #11192D
+            );
+        }
+        .qi-settings-about-name {
+            color: #FFFFFF;
+            font-size: 1.28rem;
+            font-weight: 800;
+            letter-spacing: -0.035em;
+        }
+        .qi-settings-about-description {
+            color: #BCCAE0;
+            font-size: 0.82rem;
+            line-height: 1.6;
+            margin-top: 5px;
+        }
+        .qi-settings-info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .qi-settings-info-card {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding: 15px;
+            border: 1px solid #30405D;
+            border-radius: 13px;
+            background: #141F35;
+            min-width: 0;
+        }
+        .qi-settings-info-card span {
+            color: #FF91C6;
+            font-size: 0.62rem;
+            font-weight: 750;
+            letter-spacing: 0.07em;
+        }
+        .qi-settings-info-card strong {
+            color: #FFFFFF;
+            font-size: 1rem;
+        }
+        .qi-settings-info-card small {
+            color: #9FACBF;
+            font-size: 0.72rem;
+            line-height: 1.45;
+        }
+        @media (max-width: 500px) {
+            .qi-settings-info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
     # Applied after preference widgets so a change is visible immediately.
     if st.session_state.get("qi_display_density") == "Compact":
