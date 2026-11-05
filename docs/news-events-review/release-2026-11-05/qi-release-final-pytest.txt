@@ -1,0 +1,225 @@
+........................................................................ [  3%]
+........................................................................ [  6%]
+........................................................................ [ 10%]
+........................................................................ [ 13%]
+........................................................................ [ 17%]
+........................................................................ [ 20%]
+........................................................................ [ 24%]
+........................................................................ [ 27%]
+........................................................................ [ 31%]
+........................................................................ [ 34%]
+........................................................................ [ 38%]
+........................................................................ [ 41%]
+........................................................................ [ 45%]
+........................................................................ [ 48%]
+........................................................................ [ 52%]
+........................................................................ [ 55%]
+........................................................................ [ 59%]
+........................................................................ [ 62%]
+........................................................................ [ 65%]
+........................................................................ [ 69%]
+........................................................................ [ 72%]
+........................................................................ [ 76%]
+........................................................................ [ 79%]
+........................................................................ [ 83%]
+........................................................................ [ 86%]
+........................................................................ [ 90%]
+........................................................................ [ 93%]
+........................................................................ [ 97%]
+..........................................................               [100%]
+=============================== warnings summary ===============================
+../repo/.venv/lib/python3.11/site-packages/fastapi/testclient.py:1
+  /Users/Kyriakos/Documents/ChatGPT/Quant Intellegence App/repo/.venv/lib/python3.11/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+../repo/.venv/lib/python3.11/site-packages/pandas/core/series.py:848
+../repo/.venv/lib/python3.11/site-packages/pandas/core/series.py:848
+../repo/.venv/lib/python3.11/site-packages/pandas/core/series.py:848
+../repo/.venv/lib/python3.11/site-packages/pandas/core/series.py:848
+  /Users/Kyriakos/Documents/ChatGPT/Quant Intellegence App/repo/.venv/lib/python3.11/site-packages/pandas/core/series.py:848: Pandas4Warning: Series.values returning an ndarray that drops timezone information for DatetimeTZDtype is deprecated. In a future version, this will return the underlying DatetimeArray instead. Use 'Series.dt.tz_convert(None).to_numpy()' to get a NumPy array of UTC values, or 'Series.array' to get the ExtensionArray.
+  See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#whatsnew-310-deprecations-values for more details.
+    warnings.warn(
+
+tests/test_api_safety.py::test_nonfinite_calculation_cannot_be_reported_as_valid_price
+  /Users/Kyriakos/Documents/ChatGPT/Quant Intellegence App/news-events/app/pricing/vectorized_black_scholes.py:179: RuntimeWarning: overflow encountered in divide
+    d1 = (
+
+tests/test_api_safety.py::test_nonfinite_calculation_cannot_be_reported_as_valid_price
+  /Users/Kyriakos/Documents/ChatGPT/Quant Intellegence App/news-events/app/pricing/vectorized_black_scholes.py:195: RuntimeWarning: overflow encountered in exp
+    strike * np.exp(-rate * time)
+
+tests/test_api_safety.py::test_nonfinite_calculation_cannot_be_reported_as_valid_price
+  /Users/Kyriakos/Documents/ChatGPT/Quant Intellegence App/news-events/app/pricing/vectorized_black_scholes.py:200: RuntimeWarning: invalid value encountered in multiply
+    - discounted_strike * norm.cdf(d2)
+
+tests/test_market_scanner.py: 44 warnings
+tests/test_scanner_gap_integration.py: 6 warnings
+  /Users/Kyriakos/Documents/ChatGPT/Quant Intellegence App/news-events/app/market_data/market_scanner.py:235: Pandas4Warning: The inplace keyword in DataFrame.dropna is deprecated and will be removed in a future version (PDEP-8).
+  See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+    frame.dropna(
+
+tests/test_market_scanner.py: 44 warnings
+tests/test_scanner_gap_integration.py: 6 warnings
+  /Users/Kyriakos/Documents/ChatGPT/Quant Intellegence App/news-events/app/market_data/market_scanner.py:240: Pandas4Warning: The inplace keyword in DataFrame.drop is deprecated and will be removed in a future version (PDEP-8).
+  See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+    frame.drop(
+
+tests/test_market_scanner.py: 44 warnings
+tests/test_scanner_gap_integration.py: 6 warnings
+  /Users/Kyriakos/Documents/ChatGPT/Quant Intellegence App/news-events/app/market_data/market_scanner.py:247: Pandas4Warning: The inplace keyword in DataFrame.sort_values is deprecated and will be removed in a future version (PDEP-8).
+  See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+    frame.sort_values(
+
+tests/test_market_scanner.py: 44 warnings
+tests/test_scanner_gap_integration.py: 6 warnings
+  /Users/Kyriakos/Documents/ChatGPT/Quant Intellegence App/news-events/app/market_data/market_scanner.py:252: Pandas4Warning: The inplace keyword in DataFrame.drop_duplicates is deprecated and will be removed in a future version (PDEP-8).
+  See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+    frame.drop_duplicates(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.11.17-final-0 _______________
+
+Name                                                Stmts   Miss  Cover
+-----------------------------------------------------------------------
+app/__init__.py                                         0      0   100%
+app/api/__init__.py                                     0      0   100%
+app/api/main.py                                       167      0   100%
+app/api/safety.py                                      77      3    96%
+app/backtesting/__init__.py                             0      0   100%
+app/backtesting/alternative_rankings.py                38      4    89%
+app/backtesting/attribution.py                         64     11    83%
+app/backtesting/benchmark.py                           28      7    75%
+app/backtesting/concentration.py                       27      6    78%
+app/backtesting/discovery_backtest.py                 133     17    87%
+app/backtesting/historical_data.py                     51     51     0%
+app/backtesting/historical_predictions.py              35     10    71%
+app/backtesting/ledger_integrity.py                    91     18    80%
+app/backtesting/performance.py                         27      4    85%
+app/backtesting/point_in_time.py                       33      5    85%
+app/backtesting/portfolio_audit.py                     46      9    80%
+app/backtesting/prediction_accuracy.py                 38      4    89%
+app/backtesting/price_audit.py                         26      2    92%
+app/backtesting/robustness.py                          49      7    86%
+app/backtesting/universe_audit.py                      19      1    95%
+app/discovery/database.py                              86     60    30%
+app/discovery/ranking_pipeline.py                     111     59    47%
+app/education/__init__.py                               0      0   100%
+app/education/account_comparison.py                    37      1    97%
+app/education/catalog.py                                3      0   100%
+app/education/diversification_models.py                21      4    81%
+app/education/etf_models.py                            35      4    89%
+app/education/financial_models.py                      60      6    90%
+app/education/inflation_models.py                      35      4    89%
+app/education/market_expectations.py                   15      1    93%
+app/forecasting/aligned_predictions.py                 36      4    89%
+app/forecasting/calibration.py                         55      0   100%
+app/forecasting/calibration_diagnostics.py             68      0   100%
+app/forecasting/calibration_research.py                24      0   100%
+app/forecasting/chronological_selection.py             61      3    95%
+app/forecasting/feature_experiments.py                 57      2    96%
+app/forecasting/historical_benchmark.py                19      3    84%
+app/forecasting/logistic_forecast.py                   54      4    93%
+app/forecasting/market_features.py                     50      8    84%
+app/forecasting/ml_walk_forward.py                     44      4    91%
+app/forecasting/model_comparison.py                    34      0   100%
+app/forecasting/probability_baseline.py                41      3    93%
+app/forecasting/probability_benchmarks.py              54      9    83%
+app/forecasting/probability_shrinkage.py               27      0   100%
+app/forecasting/regularization_benchmarks.py           41      0   100%
+app/forecasting/regularization_candidates.py           50      4    92%
+app/forecasting/regularization_selection.py            56      5    91%
+app/forecasting/reliability_report.py                  61      5    92%
+app/forecasting/research_data.py                       61     18    70%
+app/forecasting/research_evaluation.py                 31      0   100%
+app/forecasting/research_reliability.py                32      3    91%
+app/forecasting/research_runner.py                     75      3    96%
+app/forecasting/research_splits.py                     46      1    98%
+app/forecasting/research_universe.py                   22     12    45%
+app/forecasting/shrinkage_ensemble.py                  35      1    97%
+app/forecasting/statistical_reliability.py             54      7    87%
+app/forecasting/three_model_comparison.py              56      3    95%
+app/forecasting/uncertainty_aware.py                   45      3    93%
+app/forecasting/walk_forward.py                        56      3    95%
+app/intelligence/catalyst_engine.py                    21      0   100%
+app/intelligence/company_directory_service.py          56      1    98%
+app/intelligence/company_identity.py                   38      3    92%
+app/intelligence/company_intelligence_pipeline.py      58      8    86%
+app/intelligence/company_news_relevance.py             38      2    95%
+app/intelligence/company_registry.py                   76      9    88%
+app/intelligence/event_news.py                         29      3    90%
+app/intelligence/explorer_lab.py                       19      1    95%
+app/intelligence/gdelt_news.py                         74      8    89%
+app/intelligence/news_engine.py                        55     30    45%
+app/intelligence/news_events.py                        98     10    90%
+app/intelligence/news_reliability.py                  105      6    94%
+app/intelligence/news_service.py                       24      0   100%
+app/intelligence/recommendation_engine.py              72      6    92%
+app/intelligence/risk_engine.py                        52      4    92%
+app/intelligence/sec_company_directory.py              33      2    94%
+app/intelligence/sec_filings.py                        87     13    85%
+app/market_data/__init__.py                             0      0   100%
+app/market_data/activity_flags.py                      18      0   100%
+app/market_data/gap_intelligence.py                    66      3    95%
+app/market_data/market_scanner.py                     116      0   100%
+app/market_data/market_sessions.py                     36      0   100%
+app/market_data/market_signal_labels.py                16      0   100%
+app/market_data/multi_expiration.py                    63      6    90%
+app/market_data/stock_history.py                       73      3    96%
+app/market_data/stock_ranking.py                       81      1    99%
+app/market_data/yahoo_client.py                       114      6    95%
+app/portfolio/__init__.py                               0      0   100%
+app/portfolio/portfolio_analytics.py                  220     25    89%
+app/portfolio/portfolio_manager.py                     91      1    99%
+app/pricing/__init__.py                                 0      0   100%
+app/pricing/black_scholes.py                           76      7    91%
+app/pricing/greeks_workspace.py                        22      1    95%
+app/pricing/implied_volatility.py                      58     13    78%
+app/pricing/options_workspace.py                       32      6    81%
+app/pricing/portfolio.py                              104      0   100%
+app/pricing/scenario_analysis.py                       94      2    98%
+app/pricing/vectorized_black_scholes.py               102      0   100%
+app/visualization/__init__.py                           0      0   100%
+app/visualization/volatility_smile.py                  19      4    79%
+app/visualization/volatility_surface_3d.py             43     16    63%
+dashboard/build_info.py                                18      2    89%
+dashboard/company_catalyst_panel.py                    56     56     0%
+dashboard/demo_showcase.py                            213     41    81%
+dashboard/discovery_notebook.py                       139     12    91%
+dashboard/diversification_lesson.py                    51     47     8%
+dashboard/etf_lesson.py                               101     98     3%
+dashboard/financial_labs.py                            41     31    24%
+dashboard/forecast_intelligence_page.py                83     68    18%
+dashboard/greeks_workspace.py                          66      0   100%
+dashboard/home_analytics.py                            28     28     0%
+dashboard/inflation_lesson.py                         102     99     3%
+dashboard/learn_live.py                                15     15     0%
+dashboard/learn_page.py                               136     84    38%
+dashboard/legal_pages.py                               18      0   100%
+dashboard/main.py                                     118     23    81%
+dashboard/market_activity_panel.py                     52     52     0%
+dashboard/market_event_investigator.py                101    101     0%
+dashboard/market_expectations_lesson.py                52     49     6%
+dashboard/market_research_workspace.py                 63      5    92%
+dashboard/market_scanner_page.py                      153    136    11%
+dashboard/model_handoff.py                             19      0   100%
+dashboard/navigation_ux.py                              9      0   100%
+dashboard/news_events_panel.py                         89     16    82%
+dashboard/options_workspace.py                         89      0   100%
+dashboard/pages/2_Quant_Discovery.py                    9      1    89%
+dashboard/paycheque_lesson.py                          72     70     3%
+dashboard/portfolio_page.py                           155    136    12%
+dashboard/portfolio_risk_lab.py                       100     12    88%
+dashboard/premium_home.py                              35      2    94%
+dashboard/public_safety.py                              6      0   100%
+dashboard/rrsp_lesson.py                               85     82     4%
+dashboard/scenario_workspace.py                        37      2    95%
+dashboard/sec_filing_panel.py                          60     60     0%
+dashboard/stock_explorer_widget.py                    127      1    99%
+dashboard/stock_research_lab.py                        58      0   100%
+dashboard/strategy_research.py                         76      3    96%
+dashboard/visual_icons.py                              11      2    82%
+dashboard/workspace_settings.py                        61      0   100%
+-----------------------------------------------------------------------
+TOTAL                                                7780   1940    75%
+2074 passed, 208 warnings in 46.19s
