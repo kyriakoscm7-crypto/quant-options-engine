@@ -1,4 +1,4 @@
-"""Compatibility entry for the display-only research workspace.
+"""Compatibility entry for the evidence-based Discover workspace.
 
 Historical database/ranking UI remains in Git history, never in hosted routing.
 """

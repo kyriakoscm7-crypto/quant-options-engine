@@ -3,7 +3,9 @@
 import re
 from datetime import date
 
-import requests
+import requests  # noqa: F401 - shared HTTP transport patched by offline tests
+
+from app.intelligence.sec_access import sec_get
 
 TICKERS_URL = "https://www.sec.gov/files/company_tickers.json"
 SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK{cik:010d}.json"
@@ -167,7 +169,7 @@ def fetch_sec_filings(
         "Accept": "application/json",
     }
 
-    ticker_response = requests.get(
+    ticker_response = sec_get(
         TICKERS_URL,
         headers=headers,
         timeout=15,
@@ -183,7 +185,7 @@ def fetch_sec_filings(
 
     cik, company_name = company
 
-    submissions_response = requests.get(
+    submissions_response = sec_get(
         SUBMISSIONS_URL.format(cik=cik),
         headers=headers,
         timeout=15,

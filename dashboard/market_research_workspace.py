@@ -1,6 +1,7 @@
 """Real-company provider displays and independent, assumption-driven experiments.
 
-No provider data is fetched by Python, extracted from widgets or passed to models.
+Discover can retrieve structured SEC company evidence through its bounded gateway.
+Market widgets stay display-only; no widget data enters calculations or models.
 """
 
 import json
@@ -56,14 +57,22 @@ def _open_company(symbol: str) -> None:
 
 
 def render_market_discovery(*, scanner: bool = False) -> None:
-    st.title(":primary[:material/diamond:] Opportunity Discovery")
+    if not scanner:
+        from dashboard.discover_intelligence import render_intelligence
+
+        st.title(":primary[:material/diamond:] Discover")
+        render_intelligence()
+        st.divider()
+    else:
+        st.title(":primary[:material/diamond:] Opportunity Discovery")
     st.caption("SCAN → INVESTIGATE → REVIEW · REAL COMPANIES · YOUR RESEARCH")
     mode = st.radio("Research stage", ["Scan", "Investigate"], horizontal=True,
                     index=0, key="qi_discovery_stage")
     if mode == "Scan":
         st.write("Find candidates with the provider's filters and sorting, then enter an exact listing below to investigate. Provider selections stay inside its panel.")
-        if render_external_panel_consent("qi_discovery_consent"):
-            components.html(screener_embed_html(), height=760, scrolling=False)
+        with st.expander("Explore the market screener", expanded=scanner):
+            if render_external_panel_consent("qi_discovery_consent"):
+                components.html(screener_embed_html(), height=760, scrolling=False)
         st.caption("TradingView supplies the screening and ratings inside its official display. These are not Quant Intelligence recommendations or validated forecasts. Data can be delayed or unavailable; the app cannot read or export results.")
         st.link_button("Open full stock screener on TradingView ↗", "https://www.tradingview.com/screener/")
     else:

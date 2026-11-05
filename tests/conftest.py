@@ -14,3 +14,11 @@ def fresh_api_budget():
         if hasattr(layer, "request_times"):
             layer.request_times.clear()
         layer = getattr(layer, "app", None)
+
+
+@pytest.fixture(autouse=True)
+def isolated_sec_budget(tmp_path, monkeypatch):
+    """Offline provider tests must not share operator cooldown state."""
+    from app.intelligence import sec_access
+
+    monkeypatch.setattr(sec_access, "BUDGET_PATH", str(tmp_path / "sec-budget.json"))

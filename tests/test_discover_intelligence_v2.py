@@ -1,0 +1,343 @@
+"""Offline Discover admission, normalization, orchestration and UX checks."""
+import json
+from datetime import UTC, date, datetime, timedelta
+
+import pytest
+from streamlit.testing.v1 import AppTest
+
+from app.intelligence.discover_evidence import (
+    Evidence,
+    SourceGrant,
+    corroborate,
+    earnings_label,
+)
+from app.intelligence.discover_financials import financial_health
+from app.intelligence.discover_sec import SecGateway
+from app.intelligence.discover_service import company_deep_dive
+
+CIK = "0000320193"
+NOW = datetime(2026, 11, 5, 15, tzinfo=UTC)
+ACC = "0000320193-26-000001"
+
+
+def facts():
+    values = {"Assets": 200, "Liabilities": 100, "AssetsCurrent": 80,
+              "LiabilitiesCurrent": 40, "Revenues": 100,
+              "NetIncomeLoss": 20, "NetCashProvidedByUsedInOperatingActivities": 30}
+    data = {}
+    for tag, value in values.items():
+        row = {"val": value, "end": "2026-09-30", "filed": "2026-11-01", "form": "10-K", "accn": ACC}
+        if tag in {"Revenues", "NetIncomeLoss", "NetCashProvidedByUsedInOperatingActivities"}:
+            row["start"] = "2025-10-01"
+        data[tag] = {"units": {"USD": [row]}}
+    return {"cik": 320193, "facts": {"us-gaap": data}}
+
+
+def row(payload, tag):
+    return payload["facts"]["us-gaap"][tag]["units"]["USD"][0]
+
+
+def test_annual_ratios_and_provenance():
+    result = financial_health(facts(), CIK, today=NOW.date())
+    assert result["ratios"] == {"Current ratio": 2, "Liabilities / assets": .5,
+                                "Net margin": .2, "Operating cash / revenue": .3}
+    assert result["status"] == "single source"
+    assert result["observations"]["revenue"]["accession"] == ACC
+    assert result["observations"]["revenue"]["unit"] == "USD"
+
+
+@pytest.mark.parametrize("patch", [{"val": float("nan")}, {"val": True}, {"start": "2026-07-01"},
+                                  {"form": "10-Q"}, {"filed": "2027-01-01"}, {"accn": "../evil"}])
+def test_bad_duration_facts_never_enter_ratios(patch):
+    payload = facts()
+    row(payload, "Revenues").update(patch)
+    result = financial_health(payload, CIK, today=NOW.date())
+    assert "Net margin" not in result["ratios"]
+    assert "revenue" not in result["observations"]
+
+
+def test_no_currency_or_accession_or_period_mixing():
+    payload = facts()
+    row(payload, "AssetsCurrent")["accn"] = "0000320193-26-000002"
+    row(payload, "Revenues")["end"] = "2025-09-30"
+    payload["facts"]["us-gaap"]["Assets"]["units"]["EUR"] = payload["facts"]["us-gaap"]["Assets"]["units"].pop("USD")
+    result = financial_health(payload, CIK, today=NOW.date())
+    assert not result["ratios"]
+
+
+def test_conflict_and_restatement():
+    payload = facts()
+    rows = payload["facts"]["us-gaap"]["Revenues"]["units"]["USD"]
+    rows.append({**rows[0], "val": 110})
+    result = financial_health(payload, CIK, today=NOW.date())
+    assert "revenue" not in result["observations"]
+    rows[1].update(filed="2026-11-04", form="10-K/A", accn="0000320193-26-000002")
+    result = financial_health(payload, CIK, today=NOW.date())
+    assert result["observations"]["revenue"]["value"] == 110
+    assert "Net margin" not in result["ratios"]
+    assert any("revised" in x for x in result["issues"])
+
+
+def test_zero_denominator_missing_and_identity():
+    payload = facts()
+    row(payload, "LiabilitiesCurrent")["val"] = 0
+    assert "Current ratio" not in financial_health(payload, CIK, today=NOW.date())["ratios"]
+    with pytest.raises(ValueError, match="CIK"):
+        financial_health(payload, "0000000001")
+    assert financial_health({"cik": 320193}, CIK)["period"] is None
+
+
+class Response:
+    def __init__(self, data, status=200, headers=None):
+        self.data, self.status_code, self.headers = data, status, headers or {}
+        self.closed = False
+
+    def iter_content(self, chunk_size):
+        yield json.dumps(self.data).encode()
+
+    def close(self):
+        self.closed = True
+
+
+def gateway(get):
+    return SecGateway("Quant Intelligence research@operator.org", get=get, sleep=lambda delay: None)
+
+
+def test_gateway_cache_identity_and_request_guards():
+    calls = []
+    response = Response({"cik": 320193})
+
+    def get(url, **kwargs):
+        calls.append(url)
+        assert kwargs["allow_redirects"] is False
+        assert "research@operator.org" in kwargs["headers"]["User-Agent"]
+        return response
+
+    client = gateway(get)
+    first = client.fetch("companyfacts", CIK)
+    first["data"]["cik"] = 0
+    assert client.fetch("companyfacts", CIK)["data"]["cik"] == 320193
+    assert len(calls) == 1 and response.closed
+    for resource, cik in [("http://evil", CIK), ("submissions", "1"), ("directory", CIK)]:
+        with pytest.raises(ValueError):
+            client.fetch(resource, cik)
+
+
+@pytest.mark.parametrize("status", [403, 429])
+def test_gateway_cooldown_is_shared_across_resources(status):
+    calls = []
+
+    def get(*args, **kwargs):
+        calls.append(1)
+        return Response({}, status, {"Retry-After": "3600"})
+
+    client = gateway(get)
+    with pytest.raises(RuntimeError):
+        client.fetch("directory")
+    with pytest.raises(RuntimeError, match="cooldown"):
+        client.fetch("submissions", CIK)
+    assert len(calls) == 1
+
+
+def grant(provider="a", owner="owner-a"):
+    return SourceGrant(provider, owner, "fixture-contract-not-live", date(2027, 1, 1),
+                       frozenset({"earnings", "analyst_sentiment"}), True, True)
+
+
+def evidence(**kwargs):
+    return Evidence(**{"cik": CIK, "field": "earnings", "value": "2026-11-06", "provider": "a",
+                       "url": "https://provider.test/announcement", "as_of": NOW, **kwargs})
+
+
+def test_earnings_proximity_and_unannounced_time():
+    label = earnings_label(evidence(), now=NOW)
+    assert label.startswith("1d") and "time unannounced" in label and "estimated" in label
+    event = evidence(scheduled_at=datetime(2026, 11, 6, 1, tzinfo=UTC), value="2026-11-05", confirmed=True)
+    assert earnings_label(event, now=NOW).startswith("today")
+
+
+def test_earnings_dst_and_viewer_date_boundary():
+    event = evidence(value="2026-11-01", scheduled_at=datetime(2026, 11, 1, 7, tzinfo=UTC))
+    label = earnings_label(event, now=datetime(2026, 10, 31, 17, tzinfo=UTC))
+    assert "1d" in label and "02:00 EST" in label
+    assert earnings_label(event, now=NOW).startswith("past")
+
+
+def test_no_source_grant_no_data_even_with_key(monkeypatch):
+    monkeypatch.setenv("ANALYST_API_KEY", "not-a-real-key")
+    assert corroborate([evidence()], CIK, "earnings", now=NOW)["status"] == "unavailable"
+
+
+def test_corroboration_requires_independent_owner_and_surfaces_conflicts():
+    items = [evidence(), evidence(provider="b")]
+    grants = {"a": grant(), "b": grant("b", "owner-a")}
+    assert corroborate(items, CIK, "earnings", now=NOW, grants=grants)["status"] == "single source"
+    grants["b"] = grant("b", "owner-b")
+    assert corroborate(items, CIK, "earnings", now=NOW, grants=grants)["status"] == "corroborated"
+    items[1] = evidence(provider="b", value="2026-11-07")
+    assert corroborate(items, CIK, "earnings", now=NOW, grants=grants)["status"] == "conflict"
+
+
+@pytest.mark.parametrize("patch", [{"cik": "0000000001"}, {"url": "javascript:alert(1)"},
+                                  {"as_of": NOW - timedelta(days=3)}, {"as_of": NOW + timedelta(seconds=1)},
+                                  {"value": "bad"}, {"timezone": "bad/timezone"},
+                                  {"scheduled_at": datetime(2026, 11, 8, tzinfo=UTC)}])
+def test_rejects_unusable_earnings(patch):
+    result = corroborate([evidence(**patch)], CIK, "earnings", now=NOW, grants={"a": grant()})
+    assert result["status"] == "unavailable" and result["rejected"] == 1
+
+
+def test_analyst_labels_attributed_not_averaged():
+    item = evidence(field="analyst_sentiment", value="Neutral", sample_size=10)
+    result = corroborate([item], CIK, "analyst_sentiment", now=NOW, grants={"a": grant()})
+    assert result["evidence"][0].sample_size == 10
+    assert result["status"] == "single source"
+    assert corroborate([evidence(field="analyst_sentiment", value="Favorable")], CIK,
+                       "analyst_sentiment", now=NOW, grants={"a": grant()})["status"] == "unavailable"
+
+
+def test_company_brief_integration():
+    responses = [Response({"0": {"cik_str": 320193, "title": "Fixture issuer", "ticker": "AAPL"}}),
+                 Response({"cik": "0000320193", "filings": {"recent": {
+                     "accessionNumber": [ACC], "filingDate": ["2026-11-01"], "form": ["10-K"],
+                     "primaryDocument": ["annual.htm"]}}}), Response(facts())]
+    client = gateway(lambda *args, **kwargs: responses.pop(0))
+    result = company_deep_dive(client, "AAPL", now=NOW)
+    assert result["company"].cik == CIK
+    assert result["filings"][0]["form"] == "10-K"
+    assert result["health"]["ratios"]["Net margin"] == .2
+    assert result["earnings"]["status"] == result["analysts"]["status"] == "unavailable"
+    assert len(result["sources"]) == 3
+
+
+def test_page_unconfigured_no_network(monkeypatch):
+    monkeypatch.delenv("QI_SEC_USER_AGENT", raising=False)
+    app = AppTest.from_string("from dashboard.discover_intelligence import render_intelligence\nrender_intelligence()")
+    app.run()
+    assert not app.exception
+    assert "not connected" in app.info[0].value
+
+
+def test_sec_budget_cooldown_and_spacing(monkeypatch):
+    from app.intelligence import sec_access
+
+    now = [1000.0]
+    sleeps = []
+    monkeypatch.setattr(sec_access.time, "time", lambda: now[0])
+
+    def sleep(delay):
+        sleeps.append(delay)
+        now[0] += delay
+
+    monkeypatch.setattr(sec_access.time, "sleep", sleep)
+    monkeypatch.setattr(sec_access.requests, "get", lambda *a, **k: Response({}))
+    sec_access.sec_get("https://data.sec.gov/test")
+    sec_access.sec_get("https://data.sec.gov/test")
+    assert sleeps == [0, 1]
+    monkeypatch.setattr(sec_access.requests, "get", lambda *a, **k: Response({}, 429, {"Retry-After": "1200"}))
+    sec_access.sec_get("https://data.sec.gov/test")
+    with pytest.raises(RuntimeError, match="cooldown"):
+        sec_access.sec_get("https://www.sec.gov/test")
+
+
+def test_sec_budget_rejects_corrupt_state(monkeypatch):
+    from pathlib import Path
+
+    from app.intelligence import sec_access
+
+    Path(sec_access.BUDGET_PATH).write_text("corrupt")
+    with pytest.raises(RuntimeError, match="operator review"):
+        sec_access.sec_get("https://data.sec.gov/test")
+
+
+@pytest.mark.parametrize("bad", [None, [], "bad", {"Revenues": {"units": {"USD": [None, 1]}}}])
+def test_malformed_financial_concepts_are_missing(bad):
+    payload = {"cik": 320193, "facts": {"us-gaap": bad}}
+    result = financial_health(payload, CIK, today=NOW.date())
+    assert not result["ratios"] and result["issues"]
+
+
+def test_configured_brief_ui_uses_provenance_and_comparison(monkeypatch):
+    from dashboard import discover_intelligence as ui
+
+    monkeypatch.setenv("QI_SEC_USER_AGENT", "Quant Intelligence research@operator.org")
+    health = financial_health(facts(), CIK, today=NOW.date())
+    from app.intelligence.company_identity import CompanyIdentity
+
+    def brief(*args, **kwargs):
+        return {"company": CompanyIdentity("AAPL", "Fixture issuer", CIK), "health": health,
+                "filings": [], "sources": [], "issues": [],
+                "earnings": {"status": "unavailable", "evidence": []},
+                "analysts": {"status": "unavailable", "evidence": []}}
+
+    monkeypatch.setattr(ui, "company_deep_dive", brief)
+    app = AppTest.from_string("from dashboard.discover_intelligence import render_intelligence\nrender_intelligence()")
+    app.run()
+    app.text_input[0].set_value("AAPL, MSFT")
+    app.button[0].click().run()
+    assert not app.exception
+    assert any("Your comparison" in x.value for x in app.markdown)
+    assert any("Next investigation" in x.value for x in app.markdown)
+    assert any("Current ratio" == x.label for x in app.metric)
+
+
+def test_cash_profit_divergence_is_investigation_not_rating():
+    from app.intelligence.discover_financials import health_observations
+
+    payload = facts()
+    row(payload, "NetCashProvidedByUsedInOperatingActivities")["val"] = -20
+    result = financial_health(payload, CIK, today=NOW.date())
+    assert any("different directions" in text for text in health_observations(result))
+    row(payload, "NetCashProvidedByUsedInOperatingActivities")["accn"] = "0000320193-26-000002"
+    result = financial_health(payload, CIK, today=NOW.date())
+    assert not any("different directions" in text for text in health_observations(result))
+
+
+def test_host_budget_serializes_separate_processes(tmp_path):
+    import subprocess
+    import sys
+
+    path = str(tmp_path / "shared-budget.json")
+    script = f'''
+import time
+from types import SimpleNamespace
+from app.intelligence import sec_access
+sec_access.BUDGET_PATH = {path!r}
+def get(*args, **kwargs):
+    print(time.time(), flush=True)
+    return SimpleNamespace(status_code=200)
+sec_access.requests.get = get
+sec_access.sec_get("https://data.sec.gov/test")
+'''
+    children = [subprocess.Popen([sys.executable, "-c", script], stdout=subprocess.PIPE, text=True) for _ in range(2)]
+    starts = []
+    for child in children:
+        output, _ = child.communicate(timeout=15)
+        assert child.returncode == 0
+        starts.append(float(output.strip()))
+    assert abs(starts[1] - starts[0]) >= .95
+
+
+def test_expired_or_incomplete_license_rejected():
+    from dataclasses import replace
+
+    for source in [replace(grant(), expires=date(2026, 1, 1)), replace(grant(), derived=False),
+                   replace(grant(), display=False), replace(grant(), contract_reference="")]:
+        assert corroborate([evidence()], CIK, "earnings", now=NOW, grants={"a": source})["status"] == "unavailable"
+
+
+def test_cache_expiry_does_not_substitute_stale_facts():
+    now = [0]
+    calls = [Response({"cik": 320193}), RuntimeError("provider down")]
+
+    def get(*args, **kwargs):
+        response = calls.pop(0)
+        if isinstance(response, Exception):
+            raise response
+        return response
+
+    client = SecGateway("Quant Intelligence research@operator.org", get=get, clock=lambda: now[0], sleep=lambda x: None)
+    client.fetch("companyfacts", CIK)
+    now[0] = 3601
+    with pytest.raises(RuntimeError, match="provider down"):
+        client.fetch("companyfacts", CIK)
