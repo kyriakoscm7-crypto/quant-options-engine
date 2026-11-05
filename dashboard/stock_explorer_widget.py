@@ -104,17 +104,6 @@ rel="noopener nofollow" target="_blank"><span class="blue-text">Track all market
 </script></div></body></html>'''
 
 
-def _render_notes(symbol: str) -> None:
-    from dashboard.discovery_notebook import _add, render_record_editor
-    st.markdown(f"### Shared research · {symbol}")
-    st.caption("Session only. Public-company observations and fictional inputs only; no account records or sensitive personal financial information.")
-    _add(symbol)
-    if symbol in st.session_state.get("qi_discovery_notebook", {}):
-        render_record_editor(symbol)
-    else:
-        st.warning("50-record limit reached. Delete a record in Discovery to free a slot. Archives still count.")
-
-
 def _render_panel(symbol: str, view: str, enabled: bool) -> None:
     if enabled:
         components.html(detail_embed_html(symbol, view), height=DETAIL_WIDGETS[view][1] + 10, scrolling=False)
@@ -148,31 +137,49 @@ def render_external_panel_consent(key: str = "qi_explorer_consent") -> bool:
 def render_stock_explorer() -> None:
     st.title(":primary[:material/search:] Stock Explorer")
     st.caption("Research stock and ETF price history, company fundamentals and market context.")
-    # Preserve requests from existing navigation without guessing an exchange.
-    incoming = st.session_state.pop("_research_ticker_request", None)
-    if incoming:
-        incoming = str(incoming).strip().upper()
-        match = next((label for label, value in SYMBOLS.items()
-                      if incoming in (value, value.split(":", 1)[1])), None)
-        st.session_state["qi_stock_company"] = match or "Other exchange-qualified symbol"
-        if not match:
-            st.session_state["qi_custom_stock_symbol"] = incoming
-    company_col, period_col, chart_col = st.columns([2, 1, 1])
-    with company_col:
-        choice = st.selectbox("Find a company", [*SYMBOLS, "Other exchange-qualified symbol"],
-                              key="qi_stock_company")
-    with period_col:
-        lookback = st.selectbox("Historical period", list(LOOKBACKS), index=5, key="qi_stock_lookback")
-    with chart_col:
-        chart_type = st.selectbox("Chart type", ["Line", "Candlestick"], key="qi_stock_chart_type")
-    symbol = SYMBOLS.get(choice, "NASDAQ:AAPL")
-    if choice == "Other exchange-qualified symbol":
-        symbol = st.text_input("Exchange:symbol", "NASDAQ:AAPL", key="qi_custom_stock_symbol", max_chars=89,
-                               help="Use the exact exchange listing, for example NYSE:KO or TSX:SHOP. We never guess the exchange.").strip().upper()
-        if not re.fullmatch(r"[A-Z0-9_]{1,24}:[A-Z0-9_.-]{1,64}", symbol):
-            st.warning("Enter an exchange-qualified symbol such as NASDAQ:AAPL.")
-            return
+
+    from dashboard.stock_search import render_search, suggested_tickers
+
+    symbol = render_search()
+
+    if symbol is None:
+        query = st.session_state.get("qi_universal_stock_search", "")
+        suggestions = suggested_tickers(query)
+        if suggestions:
+            st.caption(
+                "Did you mean: " + ", ".join(suggestions) + "?"
+            )
+        return
+
+    with st.expander("Chart settings"):
+        period_col, type_col = st.columns(2)
+        with period_col:
+            lookback = st.selectbox(
+                "Historical period",
+                list(LOOKBACKS),
+                index=next(
+                    (
+                        i for i, key in enumerate(LOOKBACKS)
+                        if str(key).upper() in ("1W", "1WK", "1 WEEK")
+                    ),
+                    0,
+                ),
+                key="qi_stock_lookback",
+            )
+        with type_col:
+            chart_type = st.selectbox(
+                "Chart type",
+                ["Line", "Candlestick"],
+                key="qi_stock_chart_type",
+            )
+
     st.caption("Market information by TradingView · May be delayed or unavailable · Not investment advice")
+    if symbol == "AMEX:SPY":
+        st.caption(
+            "S&P 500 market overview · SPY ETF proxy · USD. "
+            "This tracks the index but is not the index itself."
+        )
+
     symbol_url = "https://www.tradingview.com/symbols/" + symbol.replace(":", "-") + "/"
     enabled = render_external_panel_consent()
 
@@ -199,20 +206,21 @@ def render_stock_explorer() -> None:
     else:
         st.info("Enable TradingView panels to see historical prices.")
 
-    st.markdown("## Financial performance")
-    st.caption(
-        "Explore revenue, earnings and financial statements. "
-        "Check the reporting dates, units and currency."
-    )
-    _render_panel(symbol, "Financials", enabled)
+    st.markdown("## Understanding the numbers")
 
-    st.markdown("## Inside the business")
-    st.caption(
-        "Understand the business model, products and industry "
-        "behind the stock symbol."
-    )
-    _render_panel(symbol, "Company", enabled)
+    from dashboard.perp_market_size import render_perp_market_size
 
+    render_perp_market_size(symbol)
+    from dashboard.company_briefing import render_company_briefing
+
+    if symbol == "AMEX:SPY":
+        st.caption(
+            "SPY is an ETF tracking the S&P 500, not an individual "
+            "company. Company financial analysis is available when "
+            "you select a company."
+        )
+    else:
+        render_company_briefing(symbol)
 
     st.markdown("## Technical analysis")
     st.caption(
@@ -259,21 +267,51 @@ def render_stock_explorer() -> None:
         "not Quant Intelligence recommendations."
     )
 
-    st.markdown("## Company news")
+    st.markdown("## Financial performance")
     st.caption(
-        "News is displayed by TradingView. Check each article's "
-        "publication date and original source before relying on it."
+        "Explore revenue, earnings and financial statements. "
+        "Check the reporting dates, units and currency."
     )
-    _render_panel(symbol, "News", enabled)
-    st.link_button(
-        "Browse full company news on TradingView",
-        symbol_url + "news/",
-    )
-    st.caption(
-        "The embedded feed may have limited coverage for some "
-        "listings. The full provider page may offer more stories."
-    )
+    if symbol == "AMEX:SPY":
+        st.info(
+            "SPY is an exchange-traded fund, not an operating company. "
+            "Revenue, earnings and corporate balance-sheet ratios "
+            "do not apply in the same way. Relevant fund measures "
+            "include net assets, expense ratio, holdings and "
+            "tracking performance."
+        )
+    else:
+        _render_panel(symbol, "Financials", enabled)
 
+    st.markdown("## Inside the business")
+    st.caption(
+        "Understand the business model, products and industry "
+        "behind the stock symbol."
+    )
+    _render_panel(symbol, "Company", enabled)
+
+
+    with st.expander("More headlines from TradingView"):
+        st.caption(
+            "Independent external news display. Check original "
+            "publication dates and publisher sources."
+        )
+        _render_panel(symbol, "News", enabled)
+        st.link_button(
+            "Browse all company news on TradingView",
+            symbol_url + "news/",
+        )
+
+
+    if symbol in st.session_state.get("qi_discovery_notebook", {}):
+        from dashboard.discovery_notebook import render_record_editor
+
+        st.markdown("### Shared research notebook")
+        st.caption(
+            "Edit your existing source-linked research record. "
+            "Save your changes before downloading the updated export."
+        )
+        render_record_editor(symbol)
 
     st.markdown("## Continue your investigation")
     st.caption(
@@ -281,7 +319,6 @@ def render_stock_explorer() -> None:
         "in Opportunity Discovery, or explore a theoretical "
         "options scenario using your own assumptions."
     )
-    _render_notes(symbol)
     st.button("Model manual assumptions in Options Lab", on_click=_open_options_lab, args=(symbol,), key="qi_stock_risk_lab")
     if enabled:
         st.caption("Missing panel? Availability depends on the symbol, provider and browser. Missing data is never replaced with fictional values.")

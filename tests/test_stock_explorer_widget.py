@@ -63,7 +63,7 @@ def test_main_public_routes_cannot_reenable_legacy_feeds(route, monkeypatch):
     app.run(timeout=45)
     assert not app.exception, [error.message for error in app.exception]
     if route == '🔎 Stock Explorer':
-        assert len(app.get('iframe')) == 6
+        assert len(app.get('iframe')) == 5
         assert not any('SYNTHETIC DEMO' in item.value for item in app.info)
     elif route == '🧪 Simulation Lab':
         assert any('HYPOTHETICAL MODEL' in item.value for item in app.info)
@@ -95,7 +95,7 @@ def test_compact_menu_opens_policies_and_can_disable_charts():
     assert len(app.get('iframe')) == 0
     app.toggle(key='qi_explorer_consent').set_value(True).run()
     assert not app.exception
-    assert len(app.get('iframe')) == 6
+    assert len(app.get('iframe')) == 5
     app.toggle(key='qi_external_charts').set_value(False).run()
     assert not app.exception
     assert len(app.get('iframe')) == 0
@@ -229,11 +229,11 @@ def test_open_research_dashboard_never_requests_backend_data(
         "Financial performance",
         "Inside the business",
         "Technical analysis",
-        "Company news",
+        "Understanding the numbers",
     ):
         assert any(heading in item for item in headings), heading
 
-    assert len(app.get("iframe")) == (6 if enabled else 0)
+    assert len(app.get("iframe")) == (5 if enabled else 0)
     assert len(app.metric) == 0
     assert len(app.get("download_button")) == 0
 
@@ -251,12 +251,13 @@ def test_open_dashboard_preserves_company_and_chart_controls():
 
     app.selectbox(key="qi_stock_lookback").select("5Y").run()
     app.selectbox(key="qi_stock_chart_type").select("Candlestick").run()
-    app.selectbox(key="qi_stock_company").select("Microsoft · MSFT").run()
+    app.session_state["_research_ticker_request"] = "MSFT"
+    app.run()
 
     assert not app.exception
     assert app.selectbox(key="qi_stock_lookback").value == "5Y"
     assert app.selectbox(key="qi_stock_chart_type").value == "Candlestick"
-    assert app.selectbox(key="qi_stock_company").value == "Microsoft · MSFT"
+    assert app.session_state["qi_active_stock_symbol"] == "NASDAQ:MSFT"
 
     assert all(
         widget.key != "qi_stock_view"
@@ -288,10 +289,11 @@ def test_session_opt_in_automatic_return_range_change_and_revoke():
     assert len(app.get("iframe")) == 0
     app.toggle(key="qi_explorer_consent").set_value(True).run()
     assert not app.exception
-    assert len(app.get("iframe")) == 6
+    assert len(app.get("iframe")) == 5
     assert not any(button.label == "Load real-stock chart" for button in app.button)
     app.selectbox(key="qi_stock_lookback").set_value("1D").run()
-    app.selectbox[1].select("Microsoft · MSFT").run()
+    app.session_state["_research_ticker_request"] = "MSFT"
+    app.run()
     assert not app.exception
     assert app.session_state["qi_stock_lookback"] == "1D"
     app.session_state["selected_page"] = "🏠 Overview"
@@ -317,17 +319,15 @@ def test_original_chart_types_use_official_display_styles(chart_type, style):
 
 
 @pytest.mark.parametrize("incoming,expected", [
-    ("MSFT", "Microsoft · MSFT"), ("AMEX:SPY", "S&P 500 ETF · SPY"),
-    ("NYSE:KO", "Other exchange-qualified symbol"),
+    ("MSFT", "NASDAQ:MSFT"), ("AMEX:SPY", "AMEX:SPY"),
+    ("NYSE:KO", "NYSE:KO"),
 ])
 def test_existing_navigation_keeps_company_requests_aligned(incoming, expected):
     app = AppTest.from_string("from dashboard.stock_explorer_widget import render_stock_explorer\nrender_stock_explorer()")
     app.session_state["_research_ticker_request"] = incoming
     app.run()
     assert not app.exception
-    assert app.selectbox(key="qi_stock_company").value == expected
-    if incoming == "NYSE:KO":
-        assert app.text_input(key="qi_custom_stock_symbol").value == incoming
+    assert app.session_state["qi_active_stock_symbol"] == expected
 
 
 def test_unknown_navigation_symbol_never_guesses_an_exchange():
@@ -345,7 +345,8 @@ def test_risk_shortcut_transfers_context_without_provider_values():
     app = AppTest.from_file(str(Path(__file__).parents[1] / "dashboard/main.py"))
     app.session_state["selected_page"] = "🔎 Stock Explorer"
     app.run(timeout=45)
-    app.selectbox(key="qi_stock_company").select("Microsoft · MSFT").run()
+    app.session_state["_research_ticker_request"] = "MSFT"
+    app.run()
     app.button(key="qi_stock_risk_lab").click().run()
     assert not app.exception
     assert app.session_state["selected_page"] == "💰 Options Lab"

@@ -1,2 +1,4 @@
 # Deploy the reviewed transitive lock. See docs/BUILD_AND_RELEASE.md.
 -r requirements.lock
+
+streamlit-searchbox==0.1.24

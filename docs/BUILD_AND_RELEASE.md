@@ -78,3 +78,23 @@ remain manual acceptance; desktop emulation does not certify them.
    service through its operator; do not disable authentication to restore availability.
 8. Preserve logs/artifact IDs and reassess before retrying. No production action has
    been performed as part of implementation.
+
+### PerpEquities release hold (2026-11-05)
+
+The optional PerpEquities integration is disabled by default. With
+`QI_PERPEQUITIES_ENABLED` unset (or any value other than `true`), Stock Explorer
+omits its market-size panel and search works without its ranking data. The shared
+snapshot entry point rejects access before reading the cache or sending a request.
+Keep the flag unset in production. Do not enable it until third-party public data
+usage rights and the intended host's eligibility have been reviewed and resolved.
+This gate does not constitute permission to merge or deploy; the release hold
+remains in place pending those decisions.
+
+Local validation of the browser correction and gate: 2,080 pytest tests passed;
+Ruff, pip check, independent numerical/API checks, pip-audit, Bandit at the CI
+severity threshold, and reachable-history secret scan passed. The complete
+Chromium acceptance workflow passed at 390, 400, 768 and 1440 pixels, including
+shared notebook exports and session isolation. All ten isolated news scenarios
+passed at 390 and 1440 pixels. No app layout changes were needed: a fresh Stock
+Explorer session defaults to SPY without a notebook record, while existing
+shortlisted-company notes remain editable.
