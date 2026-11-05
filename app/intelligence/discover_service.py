@@ -31,7 +31,8 @@ def company_deep_dive(gateway, ticker, *, providers=(), now=None):
             failures.append("An optional evidence provider is unavailable")
     return {"company": company, "health": health,
             "filings": normalized_filings(submissions["data"], company.cik, now.date()),
-            "sources": [directory, submissions] + ([facts] if facts else []),
+            "sources": [{"url": source["url"], "retrieved_at": source["retrieved_at"]}
+                        for source in [directory, submissions] + ([facts] if facts else [])],
             "earnings": corroborate(evidence, company.cik, "earnings", now=now),
             "analysts": corroborate(evidence, company.cik, "analyst_sentiment", now=now),
             "issues": failures}

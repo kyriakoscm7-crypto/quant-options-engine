@@ -208,6 +208,7 @@ def test_company_brief_integration():
     assert result["health"]["ratios"]["Net margin"] == .2
     assert result["earnings"]["status"] == result["analysts"]["status"] == "unavailable"
     assert len(result["sources"]) == 3
+    assert all(set(source) == {"url", "retrieved_at"} for source in result["sources"])
 
 
 def test_page_unconfigured_no_network(monkeypatch):
