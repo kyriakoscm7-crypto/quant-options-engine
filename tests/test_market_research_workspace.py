@@ -62,7 +62,7 @@ def test_discovery_company_handoff_uses_exact_listing():
     app.button(key='qi_discovery_open').click().run()
     assert not app.exception
     assert app.session_state['selected_page'] == '🔎 Stock Explorer'
-    assert app.selectbox(key='qi_stock_company').value == 'Microsoft · MSFT'
+    assert app.session_state['qi_active_stock_symbol'] == 'NASDAQ:MSFT'
 
 
 def test_reference_company_does_not_relabel_or_recalibrate_model_metrics():

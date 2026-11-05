@@ -1,0 +1,3 @@
+API health, auth denial, calculation and legacy 403 passed
+Production missing-token rejection passed
+Image ID: sha256:ccd1a400d4c9ea58d3c6685d2b92ce04553b154a22dbbb6ba58aa121d9587c69

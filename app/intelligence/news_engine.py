@@ -6,6 +6,8 @@ from email.utils import parsedate_to_datetime
 import requests
 from defusedxml import ElementTree as ET
 
+from app.intelligence.news_reliability import NewsRateLimited, retry_after_seconds
+
 
 def fetch_company_news(
     ticker: str,
@@ -43,11 +45,12 @@ def fetch_company_news(
         stream=True,
     )
 
-    response.raise_for_status()
-
     chunks = []
     total = 0
     try:
+        if response.status_code == 429:
+            raise NewsRateLimited("Google News is rate-limited", retry_after_seconds(response))
+        response.raise_for_status()
         for chunk in response.iter_content(chunk_size=65536):
             total += len(chunk)
             if total > 1_000_000:

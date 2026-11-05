@@ -82,6 +82,8 @@ def filings_near_event(
     forms = recent.get("form", [])
     documents = recent.get("primaryDocument", [])
     descriptions = recent.get("primaryDocDescription", [])
+    if not isinstance(descriptions, list):
+        descriptions = []
 
     if not all(
         isinstance(values, list)

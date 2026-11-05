@@ -31,9 +31,23 @@ DEFAULTS = {
 
 def initialize_workspace_preferences() -> None:
     """Prefer predictable session-only defaults, especially for external charts."""
+    import os
+
+    local_preview = (
+        os.environ.get("QI_LOCAL_AUTO_TRADINGVIEW") == "1"
+    )
+
     for key, default in DEFAULTS.items():
         if key not in st.session_state:
-            st.session_state[key] = default
+            if key == "qi_external_charts" and local_preview:
+                st.session_state[key] = True
+            elif (
+                key == "qi_external_panels_notice_version"
+                and local_preview
+            ):
+                st.session_state[key] = EXTERNAL_PANELS_NOTICE_VERSION
+            else:
+                st.session_state[key] = default
 
     # A prior chart-only choice must not silently become permission for automatic
     # screeners across additional research pages after a hot reload.
