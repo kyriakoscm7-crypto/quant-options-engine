@@ -63,7 +63,7 @@ def _render_provider_calendar(today, key):
                         st.caption(event.session + " · Source: EarningsAPI.com · Confirmation not independently verified")
                     with b:
                         if st.button("Research", key=f"ea_{day.isoformat()}_{event.symbol}", width="stretch"):
-                            open_research(event.symbol)
+                            open_stock_explorer(event.symbol)
     with st.expander("Data source and limitations"):
         st.write("EarningsAPI.com supplies the date and pre-market/after-market/unspecified category. It does not establish company confirmation, guarantee completeness, or supply an exact release time. The calendar is separate from SEC financial scores and is not investment advice. Provider results are displayed, not offered as a downloadable feed.")
         st.link_button("Provider documentation", "https://www.earningsapi.com/docs/calendar-earnings")
@@ -100,7 +100,7 @@ def render_earnings_week():
                         st.link_button("Official announcement", event["source"])
                     with b:
                         if st.button("Research", key=f"issuer_{day}_{event['symbol']}", width="stretch"):
-                            open_research(event["symbol"])
+                            open_stock_explorer(event["symbol"])
     st.caption("Issuer-announced dates and conference-call times can change. Call time does not necessarily equal financial-results release time.")
     with st.expander("Sources and other research options"):
         st.write("Curated facts come from original issuer announcements. This is not a complete market-wide calendar. The broader TradingView calendar opens separately; its data is not imported into our engine.")
@@ -109,6 +109,18 @@ def render_earnings_week():
     if st.button("Find stocks"):
         st.session_state["_navigation_request"] = "💎 Quant Discovery"
         st.rerun()
+
+
+def open_stock_explorer(symbol):
+    """Open Stock Explorer's existing verified ticker search flow."""
+    import re
+
+    if not isinstance(symbol, str) or not re.fullmatch(r"[A-Z][A-Z0-9.\\-]{0,14}", symbol):
+        st.warning("This listing symbol cannot be passed to Research.")
+        return
+    st.session_state["_research_ticker_request"] = symbol
+    st.session_state["_navigation_request"] = "🔎 Stock Explorer"
+    st.rerun()
 
 
 def open_research(symbol):
