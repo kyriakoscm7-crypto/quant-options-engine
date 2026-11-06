@@ -2,6 +2,7 @@
 from datetime import date, timedelta
 
 import httpx
+
 from app.intelligence.earnings_api_provider import (
     EarningsAPIService,
     normalize_day,
