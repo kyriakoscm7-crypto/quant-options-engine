@@ -1,6 +1,8 @@
 """Weekly provider calendar and existing SEC research entry point."""
 import os
-from datetime import timedelta
+from datetime import date, datetime, timedelta
+from itertools import groupby
+from zoneinfo import ZoneInfo
 
 import streamlit as st
 
@@ -12,7 +14,31 @@ def week_bounds(day, offset=0):
 
 def render_earnings_week():
     st.title("Earnings calendar")
-    st.write("See which US companies are reporting earnings and when.")
+    from app.intelligence.issuer_calendar import REVIEWED, select_events
+
+    st.write("Upcoming company-announced earnings releases and calls.")
+    st.caption(f"Curated coverage: seven companies · Manually checked {REVIEWED:%B %d, %Y} · Not a live or market-wide feed")
+    today = datetime.now(ZoneInfo("America/Toronto")).date()
+    if (today - REVIEWED).days > 7:
+        st.warning("This schedule needs a fresh source review. Dates may have changed; check the company announcement.")
+    window = st.selectbox("Show dates", ["Next 30 days", "This week", "Next week"])
+    query = st.text_input("Find a company or ticker", placeholder="Try TTD, Disney or Target", max_chars=100)
+    events = select_events(today, window, query)
+    st.caption("Dates use the issuer's announced event date. Times are US Eastern (ET). A call time is not the results-release time.")
+    if not events:
+        st.info("No matching events in this curated schedule. This does not mean no companies are reporting. Try another date range or the broader calendar below.")
+    for day, rows in groupby(events, key=lambda e: e["day"]):
+        st.subheader(date.fromisoformat(day).strftime("%A, %B %d, %Y"))
+        for event in rows:
+            with st.container(border=True):
+                st.markdown(f"**{event['company']} · {event['symbol']}**")
+                st.write(f"Results release: {event['release']}")
+                st.write(f"Earnings call / webcast: {event['call']}")
+                st.caption(f"Company-announced event · Checked {REVIEWED.isoformat()} · Schedule subject to change")
+                st.link_button("Company announcement ↗", event["source"])
+    with st.expander("Sources & coverage"):
+        st.write("Independently compiled factual dates and times from each linked company announcement or investor-relations events page. No analyst estimates, article text or vendor calendar data is copied. Call-only announcements do not establish a precise results-release time. This small editorial schedule is manually maintained, not automatically refreshed; entries are withheld after 30 days without review.")
+    st.subheader("Broader earnings coverage")
     st.link_button(
         "Open earnings calendar on TradingView ↗",
         "https://www.tradingview.com/earnings-calendar/?countries=us",

@@ -1,3 +1,5 @@
+> Current public calendar: independently researched issuer-announced schedule facts are shown in-app. See [issuer calendar](ISSUER_CALENDAR.md). Finnhub setup below remains disabled.
+
 > Superseded November 6, 2026: the public portfolio branch disables Finnhub unconditionally. The setup below is historical and cannot enable this build. No live calendar or replacement event feed is provided. See [public review](PUBLIC_POLISH_2026_11_06.md).
 
 # Earnings calendar — local Mac setup

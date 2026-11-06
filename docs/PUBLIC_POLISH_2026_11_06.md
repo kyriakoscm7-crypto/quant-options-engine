@@ -121,3 +121,12 @@ was verified against TradingView's live official page. The report checklist
 remains below it. No calendar data is copied, fetched by the backend or embedded
 through an undocumented widget. Finnhub remains disabled. Targeted earnings and
 navigation tests: 11 passed; Ruff and whitespace checks passed.
+
+## Company-sourced calendar follow-up
+
+The page now includes seven real company-announced earnings events directly
+in the app, with search, week/30-day filters, source links, separate release
+and call timing, checked date and stale-snapshot controls. This supersedes
+earlier statements that only the TradingView link is offered. See
+[issuer schedule evidence and maintenance](ISSUER_CALENDAR.md). No live provider
+feed or automatic issuer scraping was added.
