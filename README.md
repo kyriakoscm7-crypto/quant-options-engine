@@ -1,3 +1,5 @@
+> **November 6 public portfolio preparation (PR #12):** Finnhub is disabled in code, including backend calls and cached results; credentials/scope settings cannot enable it. Reading earnings replaces the calendar. No private duplicate, merge or deployment. See [public polish review](docs/PUBLIC_POLISH_2026_11_06.md). Historical private-build and calendar setup text below is superseded by this notice.
+
 > November 4 audit fixes are under review; production is unchanged. See
 > [issue checklist](docs/AUDIT_FIXES_2026_11_04.md),
 > [build/release procedure](docs/BUILD_AND_RELEASE.md) and

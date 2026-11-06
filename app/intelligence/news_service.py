@@ -1,7 +1,5 @@
 """Cached company-news access with explicit availability states."""
 
-import os
-
 from app.intelligence.gdelt_news import fetch_gdelt_news
 from app.intelligence.news_reliability import (
     NewsReliability,
@@ -47,9 +45,8 @@ def get_company_news(
 
     build_query(name)
 
-    if loader is None and (os.getenv("QI_GDELT_ENABLED") != "true"
-                           or not os.getenv("QI_GDELT_RIGHTS_REFERENCE", "").strip()):
-        return NewsResult([], "unavailable", None, "GDELT is disabled pending explicit enablement and recorded display rights.")
+    if loader is None:
+        return NewsResult([], "unavailable", None, "External headline feeds are disabled in the public build.")
 
     active_cache = cache if cache is not None else _NEWS_CACHE
     active_loader = loader if loader is not None else fetch_gdelt_news

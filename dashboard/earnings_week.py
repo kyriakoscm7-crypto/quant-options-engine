@@ -1,12 +1,8 @@
 """Weekly provider calendar and existing SEC research entry point."""
 import os
-from datetime import datetime, timedelta
-from itertools import groupby
-from zoneinfo import ZoneInfo
+from datetime import timedelta
 
 import streamlit as st
-
-from app.intelligence.earnings_calendar import CalendarConfig, calendar_service
 
 
 def week_bounds(day, offset=0):
@@ -15,59 +11,25 @@ def week_bounds(day, offset=0):
 
 
 def render_earnings_week():
-    st.title("Earnings this week")
-    st.write("See who is reporting, then understand the business behind the results.")
-    today = datetime.now(ZoneInfo("America/Toronto")).date()
-    offset = st.session_state.get("qi_earnings_week_offset", 0)
-    previous, current, following = st.columns(3)
-    if previous.button("← Previous week", width="stretch"):
-        st.session_state["qi_earnings_week_offset"] = offset - 1
-        st.rerun()
-    if current.button("This week", width="stretch"):
-        st.session_state["qi_earnings_week_offset"] = 0
-        st.rerun()
-    if following.button("Next week →", width="stretch"):
-        st.session_state["qi_earnings_week_offset"] = offset + 1
-        st.rerun()
-    start, end = week_bounds(today, offset)
-    st.subheader(f"{start:%b %d, %Y} – {end:%b %d, %Y}")
-    st.caption("America/Toronto week · US calendar · Dates and market sessions are supplied by Finnhub; exact times and event timezone are not supplied.")
-    try:
-        settings = st.secrets.get("earnings", {})
-    except (FileNotFoundError, st.errors.StreamlitSecretNotFoundError):
-        settings = {}
-    config = CalendarConfig(
-        os.environ.get("FINNHUB_API_KEY") or settings.get("api_key", ""),
-        os.environ.get("QI_EARNINGS_USE") or settings.get("use", ""),
-    )
-    result = calendar_service.load(config, start, end)
-    if result.error:
-        st.info("Earnings dates are unavailable. " + result.error)
-        st.caption("This does not mean no companies are reporting.")
-    else:
-        st.caption(f"Source: Finnhub · Retrieved {result.retrieved_at.astimezone(ZoneInfo('America/Toronto')):%Y-%m-%d %H:%M %Z} · Cache up to 15 minutes · Source update time unavailable")
-        st.link_button("Calendar source & methodology", "https://finnhub.io/docs/api/earnings-calendar")
-        st.info("Scheduled dates are unconfirmed: Finnhub does not identify company-confirmed versus estimated dates. Check the company's investor relations announcement before relying on a date.")
-        if result.rejected:
-            st.warning(f"{result.rejected} invalid or conflicting records withheld. Coverage may be incomplete.")
-        if not result.events:
-            st.info("Finnhub returned no events for this week. Coverage or plan limits may apply; this is not proof that no companies report.")
-        for day, events in groupby(result.events, key=lambda e: e.day):
-            st.subheader(f"{day:%A, %b %d}")
-            for event in events:
-                with st.container(border=True):
-                    st.markdown(f"**{event.symbol}**")
-                    st.write(event.session)
-                    st.caption(event.status)
-                    st.caption("Provider ticker · Company identity checked when research opens")
-                    if st.button(f"Open {event.symbol} research →", key=f"earnings_{event.day}_{event.symbol}", width="stretch"):
-                        open_research(event.symbol)
-    if st.button("Find stocks instead", type="primary"):
+    st.title("Reading earnings")
+    st.write("Learn what a company report can tell you, and what it cannot.")
+    st.info("No live earnings calendar is offered in this public build. No scheduled dates or provider events are substituted.")
+    st.subheader("A practical report checklist")
+    st.markdown("""
+1. **Check the period and source.** Start with the issuer's investor-relations announcement and its SEC filing. A filing date is not a scheduled earnings date.
+2. **Compare like with like.** Compare revenue, operating income and cash flow for the same periods and currency. Annual figures can hide seasonal changes.
+3. **Look beyond headline EPS.** Share issuance, buybacks and one-time items can change earnings per share without the same change in the underlying business.
+4. **Separate results from expectations.** Reported results describe the past. Guidance is uncertain; a good report does not guarantee a rising share price.
+5. **Record the counterargument.** Note missing evidence, debt, dilution and risks before forming a research thesis.
+""")
+    st.caption("Find stocks provides annual SEC accounting evidence, not prices, analyst expectations, event timing or investment recommendations.")
+    if st.button("Find stocks", type="primary"):
         st.session_state["_navigation_request"] = "💎 Quant Discovery"
         st.rerun()
-    with st.expander("Calendar setup & coverage"):
-        st.write("Finnhub US earnings calendar. Personal plan is for your own local research only; sharing or business use requires written provider approval. Configuration and Mac instructions: docs/EARNINGS_CALENDAR.md.")
-        st.caption("No earnings data is written to your notebook or disk. No investment score is derived from calendar events. Restart the app to clear cached calendar data when ending provider access.")
+    if st.button("Explore earnings lessons"):
+        st.session_state["_navigation_request"] = "📚 Learn"
+        st.rerun()
+    st.link_button("Search original SEC filings", "https://www.sec.gov/edgar/search/")
 
 
 def open_research(symbol):

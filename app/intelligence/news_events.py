@@ -1,7 +1,6 @@
 """Unified source-linked research with explicit rights and coverage diagnostics."""
 
 import json
-import os
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from urllib.parse import urlsplit, urlunsplit
@@ -40,14 +39,10 @@ class IntelligenceReport:
 
 
 def configured_providers():
-    """Fail closed: operator must record rights evidence for headline display."""
+    """Public build: environment declarations cannot grant display rights."""
     return (
-        Provider("Google News RSS", _google_loader,
-                 os.getenv("QI_GOOGLE_NEWS_ENABLED") == "true",
-                 os.getenv("QI_GOOGLE_NEWS_RIGHTS_REFERENCE", "")),
-        Provider("GDELT", fetch_gdelt_news,
-                 os.getenv("QI_GDELT_ENABLED") == "true",
-                 os.getenv("QI_GDELT_RIGHTS_REFERENCE", "")),
+        Provider("Google News RSS", _google_loader),
+        Provider("GDELT", fetch_gdelt_news),
     )
 
 

@@ -169,7 +169,7 @@ with st.sidebar:
         ]),
         ("Discover", "💎 Quant Discovery", [
             ("Find stocks", "💎 Quant Discovery"),
-            ("Earnings this week", "📅 Earnings this week"),
+            ("Reading earnings", "📅 Earnings this week"),
         ]),
         ("Quant Lab", "💰 Options Lab", [
             ("Options Lab", "💰 Options Lab"),
@@ -292,9 +292,9 @@ with st.sidebar:
     render_navigation_ux()
 
     st.divider()
-    st.caption("PRIVATE RESEARCH BUILD")
+    st.caption("PUBLIC PORTFOLIO PREVIEW")
     st.caption(
-        "Access managed in Streamlit Sharing · "
+        "SEC evidence · Synthetic model examples · "
         "Independent research and education"
     )
 

@@ -1,3 +1,5 @@
+> Superseded November 6, 2026: the public portfolio branch disables Finnhub unconditionally. The setup below is historical and cannot enable this build. No live calendar or replacement event feed is provided. See [public review](PUBLIC_POLISH_2026_11_06.md).
+
 # Earnings calendar — local Mac setup
 
 Reviewed November 6, 2026. Adapter: Finnhub official `/api/v1/calendar/earnings`, US only (`international=false`). No website scraping, proxying, sample credentials or inferred SEC earnings dates.
