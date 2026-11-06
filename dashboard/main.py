@@ -168,7 +168,8 @@ with st.sidebar:
             ("Stock Explorer", "🔎 Stock Explorer"),
         ]),
         ("Discover", "💎 Quant Discovery", [
-            ("Scan & investigate", "💎 Quant Discovery"),
+            ("Find stocks", "💎 Quant Discovery"),
+            ("Earnings this week", "📅 Earnings this week"),
         ]),
         ("Quant Lab", "💰 Options Lab", [
             ("Options Lab", "💰 Options Lab"),
@@ -377,6 +378,11 @@ elif page == "🔍 Market Scanner":
     st.session_state["_navigation_request"] = "💎 Quant Discovery"
     st.rerun()
 
+
+elif page == "📅 Earnings this week":
+    from dashboard.earnings_week import render_earnings_week
+
+    render_earnings_week()
 
 elif page == "💎 Quant Discovery":
     import runpy

@@ -51,6 +51,23 @@ def format_factor(key, value):
     return f"{value:.1%}"
 
 
+def company_synopsis(report):
+    """Describe observed accounting facts without inferring investment merit."""
+    research = report.get("research") or {}
+    factors = research.get("factors", {})
+    growth, margin = factors.get("revenue_cagr"), factors.get("operating_margin")
+    if growth is None and margin is None:
+        return "There is not enough comparable financial evidence to summarize this business."
+    parts = []
+    if growth is not None:
+        parts.append(f"Sales {'grew' if growth >= 0 else 'fell'} by {abs(growth):.1%} a year over the observed annual history.")
+    if margin is not None:
+        parts.append(f"The latest annual business {'earned' if margin >= 0 else 'lost'} about {abs(margin) * 100:.0f}¢ in operating profit for every $1 of sales.")
+    if research.get("issues"):
+        parts.append("Some evidence needs review; see the source checks.")
+    return " ".join(parts)
+
+
 PATTERN_GUIDES = {
     "Quality compounders": "Looks for growing revenue, strong operating profit, consistent profits and manageable liabilities. It helps you find businesses to study for durability.",
     "Improving fundamentals": "Looks for improving margins, revenue growth and a comparable share-count trend. It helps you investigate what is changing inside a business.",
@@ -146,21 +163,25 @@ def _margin_trend(history):
 
 
 def _research_detail(research, ticker, archetype, report):
-    overview, trends, factors, scenarios, evidence = st.tabs(["Overview", "Trends", "8 factors", "Stress", "Evidence"])
+    overview = st.container()
+    trends = st.expander("Financial history")
+    factors = st.expander("How the pattern is calculated")
+    scenarios = st.expander("Try a business scenario")
+    evidence = st.expander("Sources & evidence checks")
     with evidence:
+        st.caption(f"As of {research['as_of']} · {research['coverage']} factors available · {research['sector']}")
+        st.caption(research["uncertainty"])
         _source_checks(report, archetype)
     with overview:
-        _section_guide("Understand the business pattern", PATTERN_GUIDES[archetype])
-        st.markdown("**Overview · Fundamental trajectory**")
-        st.caption(f"As of {research['as_of']} · {research['coverage']} factors available · {research['sector']}")
-        st.caption(research['uncertainty'])
-        import pandas as pd
-        history = research['history']
+        st.write(company_synopsis(report))
+        st.caption("Financial quality: annual SEC evidence · Valuation: unavailable · Market environment: unavailable · Earnings: no connected calendar")
+    import pandas as pd
+    history = research["history"]
+    with trends:
         chart = pd.DataFrame([{"Period": h['period'], "Operating margin": h['operating_margin'],
                                "FCF margin": h['fcf_margin']} for h in history])
         if not chart.empty:
             st.line_chart(chart.set_index("Period"), y_label="Margin (decimal)", color=["#FF78B7", "#79D4CF"])
-    with trends:
         _section_guide("Follow the reported trajectory", "Compare annual revenue, operating cash and balance-sheet figures over time. Trends show what happened; they do not predict what happens next.")
         for title, metrics in (("Annual revenue & operating cash · USD", ("revenue", "cfo")), ("Assets & liabilities · USD", ("assets", "liabilities"))):
             frame = pd.DataFrame([{"Period": h["period"], **{k.replace("_", " ").title(): (h["observations"].get(k) or {}).get("value") for k in metrics}} for h in history])
@@ -204,7 +225,8 @@ def _research_detail(research, ticker, archetype, report):
 
 def render_intelligence():
     agent = os.environ.get("QI_SEC_USER_AGENT", "")
-    st.caption("SEC annual fundamentals · Dated issuer evidence · No investment recommendations")
+    st.write("Understand the business before you consider the stock.")
+    st.caption("Annual SEC financials only. Price, valuation and market conditions are not assessed; no overall investment score is available.")
     with st.expander("Data coverage & setup"):
         st.write("Coverage identifies SEC filers, not exchange listings. Generic factor rankings exclude financial/real estate and utility SIC ranges; missing SIC prevents ranking. International listings may be unsupported.")
         st.write("SEC: annual USD US-GAAP financial facts and recent filing links, retrieved on request. Directory cache: 24 hours; company evidence: one hour. Reporting periods can differ.")
@@ -212,7 +234,8 @@ def render_intelligence():
         st.code('export QI_SEC_USER_AGENT="Quant Intelligence $YOUR_REAL_CONTACT_EMAIL"', language="sh")
         st.caption("Replace the contact variable with your genuine operator email before starting Streamlit. No API key is required; an email-shaped value alone cannot prove contact ownership.")
     with st.expander("Research universe & SEC search", expanded=not bool(st.session_state.get("qi_discover_reports"))):
-        universe = st.selectbox("Start with a research universe", [*UNIVERSES, "My own tickers"])
+        with st.expander("Change starting companies"):
+            universe = st.selectbox("Start with a research universe", [*UNIVERSES, "My own tickers"])
         st.caption("Editorial starting sets or your own tickers · Up to eight companies per scan · No market-wide coverage")
         if not agent:
             st.info("SEC research is not connected. Set QI_SEC_USER_AGENT with your genuine operator contact, then restart Streamlit.")
@@ -261,15 +284,12 @@ def render_intelligence():
     for error in st.session_state.get("qi_discover_errors", []):
         st.warning(error)
     reports = list({r["company"].ticker: r for r in st.session_state.get("qi_discover_reports", [])}.values())
-    archetype = st.radio("Research pattern", list(ARCHETYPES), horizontal=True, key="qi_pattern") if reports else next(iter(ARCHETYPES))
-    if reports:
-        _section_guide("Choose a research lens", PATTERN_GUIDES[archetype])
+    archetype = st.session_state.get("qi_pattern", next(iter(ARCHETYPES)))
     modern = any(r.get("research") for r in reports)
     visible = []
     if reports:
-        with st.expander("Candidate search & comparison", expanded=not bool(st.session_state.get("qi_detail"))):
-            st.markdown("#### Research candidates")
-            _section_guide("Read a candidate in seconds", "Growth shows the annual pace of change. Margins show how much of each sales dollar becomes profit or cash. Pattern fit helps organize research; it does not measure data accuracy.")
+        with st.expander("Research options & comparison"):
+            archetype = st.radio("Research pattern", list(ARCHETYPES), horizontal=True, key="qi_pattern")
             st.caption("Pattern fit describes an accounting archetype, not expected returns or an investment recommendation. Missing evidence remains unranked.")
             controls = st.columns([2, 1])
             query = controls[0].text_input("Search candidates", placeholder="Company or ticker", key="qi_candidate_query")
@@ -332,20 +352,11 @@ def render_intelligence():
                             st.markdown(f'<div class="qi-meta">{escape(company.ticker)}</div><div class="qi-name">{escape(company.name)}</div>', unsafe_allow_html=True)
                             _filing_warning(company.ticker)
                             if research:
-                                st.markdown(f'<div class="qi-score">{fit:.0f}<span class="qi-meta"> / 100 pattern fit</span></div>' if fit is not None else '<div class="qi-score">Unranked</div>', unsafe_allow_html=True)
-                                st.caption(f"{archetype} · {pattern.get('coverage', '0')} required factors · {research.get('coverage', 'unavailable')} overall")
+                                st.write(company_synopsis(candidate))
                                 factors = research.get("factors", {})
-                                st.markdown('<div class="qi-facts">' + ''.join(f'<div><small>{label}</small>{format_factor(key, factors.get(key))}</div>' for key, label in (("revenue_cagr", "Revenue growth / year"), ("operating_margin", "Operating margin"), ("fcf_margin", "Free cash flow margin"), ("share_cagr", "Share-count growth / year"))) + '</div>', unsafe_allow_html=True)
-                                window = research.get("factor_windows", {}).get("share_cagr")
-                                if window:
-                                    st.caption(f"Share trend window · {window['start']} → {window['end']} · one filing basis")
-                                st.caption("SEC issuer evidence · independent cross-check not run")
+                                st.markdown('<div class="qi-facts">' + ''.join(f'<div><small>{label}</small>{format_factor(key, factors.get(key))}</div>' for key, label in (("revenue_cagr", "Sales growth / year"), ("operating_margin", "Profit from each sales dollar"))) + '</div>', unsafe_allow_html=True)
                                 _margin_trend(research.get("history", []))
-                                if fit is not None:
-                                    st.progress(fit / 100, text="Archetype-pattern fit")
-                                    keys = sorted(pattern.get("factors", []), key=lambda k: -(research["scores"].get(k) or 0))[:2]
-                                    st.caption("Why surfaced · " + " · ".join(f"{k.replace('_', ' ').title()} {format_factor(k, factors.get(k))}" for k in keys))
-                                else:
+                                if fit is None:
                                     st.caption("Why unranked · " + "; ".join(pattern.get("reasons", [])))
                             else:
                                 st.write(f"{candidate_screen['matches']} of 4 criteria met" if candidate_screen["eligible"] else candidate_screen["reason"])
@@ -379,8 +390,10 @@ def render_intelligence():
             if report.get("research"):
                 pattern = report["research"]["archetypes"][archetype]
                 fit = pattern["score"]
-                st.markdown(f"**{archetype} · {fit:.0f}/100 pattern fit**" if fit is not None else f"**{archetype} · Unranked**")
-                st.caption("Accounting pattern only · Not expected returns or a recommendation")
+                with st.expander("Accounting pattern fit · not an investment rating"):
+                    st.markdown(f"**{archetype} · {fit:.0f}/100 pattern fit**" if fit is not None else f"**{archetype} · Unranked**")
+                    st.caption(PATTERN_GUIDES[archetype])
+                    st.caption("Accounting pattern only · Not expected returns or a recommendation")
                 _research_detail(report["research"], company.ticker, archetype, report)
             if not modern:
                 st.write(f"{screen['matches']} of 4 criteria met" if screen["eligible"] else screen["reason"])

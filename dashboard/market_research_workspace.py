@@ -60,7 +60,7 @@ def render_market_discovery(*, scanner: bool = False) -> None:
     if not scanner:
         from dashboard.discover_intelligence import render_intelligence
 
-        st.title(":primary[:material/diamond:] Discover")
+        st.title("Find stocks")
         render_intelligence()
         st.divider()
     else:

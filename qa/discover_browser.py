@@ -23,6 +23,7 @@ def run(base, output, channel):
         page.get_by_role("button", name="Open QAMISSING research →", exact=True).click()
         expect(page.get_by_test_id("stMarkdownContainer").get_by_text("Not ranked: missing, conflicting or older than 550 days annual evidence", exact=True).last).to_be_visible()
         page.get_by_role("button", name="← Back to candidates", exact=True).click()
+        page.get_by_text("Research options & comparison", exact=True).click()
         page.get_by_text("Show only candidates meeting at least three criteria", exact=True).click()
         expect(page.get_by_text("4 of 4 criteria met", exact=True).first).to_be_visible()
         page.get_by_role("button", name="Open QAALPHA research →", exact=True).click()
