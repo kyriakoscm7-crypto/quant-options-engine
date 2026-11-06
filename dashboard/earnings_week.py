@@ -1,4 +1,4 @@
-"""Weekly provider calendar and existing SEC research entry point."""
+"""Earnings week: provider events + original SEC-backed company research."""
 import os
 from datetime import date, datetime, timedelta
 from itertools import groupby
@@ -12,57 +12,103 @@ def week_bounds(day, offset=0):
     return start, start + timedelta(days=6)
 
 
+def _earnings_api_key():
+    """Read server-side only; do not show keys in the UI or link URLs."""
+    key = os.environ.get("EARNINGSAPI_API_KEY", "").strip()
+    if key:
+        return key
+    try:
+        return str(st.secrets.get("EARNINGSAPI_API_KEY", "")).strip()
+    except (FileNotFoundError, KeyError, RuntimeError, OSError):
+        return ""
+
+
+def _render_provider_calendar(today, key):
+    from app.intelligence.earnings_api_provider import earnings_api_service
+
+    default_week = 1 if today.weekday() >= 4 else 0
+    week_name = st.radio(
+        "Reporting week",
+        ("This week", "Next week", "In two weeks", "In three weeks"),
+        index=default_week,
+        horizontal=True,
+    )
+    start, end = week_bounds(today, ("This week", "Next week", "In two weeks", "In three weeks").index(week_name))
+    query = st.text_input("Search earnings companies", placeholder="Company or ticker", max_chars=100).strip().lower()
+    with st.spinner("Loading earnings dates…"):
+        result = earnings_api_service.load_week(key, start)
+
+    st.caption(f"{start:%b %d} – {end:%b %d, %Y} · EarningsAPI.com calendar · Dates and sessions are provider-reported, not independently confirmed.")
+    if result.error:
+        st.warning(result.error)
+        st.info("The curated company-announcement schedule is available below.")
+        return False
+    if result.retrieved_at:
+        timestamp = datetime.fromtimestamp(result.retrieved_at, ZoneInfo("America/Toronto"))
+        st.caption(f"Retrieved {timestamp:%b %d, %Y at %I:%M %p} ET · Cached up to 6 hours")
+    events = [e for e in result.events if query in e.symbol.lower() or query in e.name.lower()]
+    st.write(f"**{len(events)} matching earnings events**")
+    if result.rejected:
+        st.caption(f"{result.rejected} inconsistent or invalid provider entries omitted.")
+    if not events:
+        st.info("No matching provider events for this week. This is not proof that no companies are reporting.")
+    for day, day_events in groupby(events, lambda e: e.day):
+        rows = list(day_events)
+        with st.expander(f"{day:%A, %B %d} · {len(rows)} companies", expanded=(len(events) < 18)):
+            for event in rows:
+                with st.container(border=True):
+                    a, b = st.columns([3, 1], vertical_alignment="center")
+                    with a:
+                        st.markdown(f"**{event.name} ({event.symbol})**")
+                        st.caption(event.session + " · Source: EarningsAPI.com · Confirmation not independently verified")
+                    with b:
+                        if st.button("Research", key=f"ea_{day.isoformat()}_{event.symbol}", width="stretch"):
+                            open_research(event.symbol)
+    with st.expander("Data source and limitations"):
+        st.write("EarningsAPI.com supplies the date and pre-market/after-market/unspecified category. It does not establish company confirmation, guarantee completeness, or supply an exact release time. The calendar is separate from SEC financial scores and is not investment advice. Provider results are displayed, not offered as a downloadable feed.")
+        st.link_button("Provider documentation", "https://www.earningsapi.com/docs/calendar-earnings")
+    return True
+
+
 def render_earnings_week():
     st.title("Earnings calendar")
-    from app.intelligence.issuer_calendar import REVIEWED, select_events
-
-    st.write("Upcoming company-announced earnings releases and calls.")
-    st.caption(f"Curated coverage: seven companies · Manually checked {REVIEWED:%B %d, %Y} · Not a live or market-wide feed")
+    st.write("See who's reporting earnings, then open their financial research in one click.")
     today = datetime.now(ZoneInfo("America/Toronto")).date()
+    key = _earnings_api_key()
+    if key and _render_provider_calendar(today, key):
+        return
+
+    from app.intelligence.issuer_calendar import REVIEWED, select_events
+    st.caption(f"Company-announced schedule · {len(__import__('app.intelligence.issuer_calendar', fromlist=['EVENTS']).EVENTS)} curated entries · Last reviewed {REVIEWED:%B %d, %Y}")
+    if not key:
+        st.info("The live calendar is not connected yet. Add EARNINGSAPI_API_KEY to Streamlit server secrets to enable weekly earnings coverage. The verified company-announcement list below works without a key.")
     if (today - REVIEWED).days > 7:
-        st.warning("This schedule needs a fresh source review. Dates may have changed; check the company announcement.")
+        st.warning("This manually reviewed schedule may be out of date. Check each issuer announcement.")
     window = st.selectbox("Show dates", ["Next 30 days", "This week", "Next week"])
-    query = st.text_input("Find a company or ticker", placeholder="Try TTD, Disney or Target", max_chars=100)
+    query = st.text_input("Find a company", placeholder="Ticker or company", max_chars=100)
     events = select_events(today, window, query)
-    st.caption("Dates use the issuer's announced event date. Times are US Eastern (ET). A call time is not the results-release time.")
     if not events:
-        st.info("No matching events in this curated schedule. This does not mean no companies are reporting. Try another date range or the broader calendar below.")
+        st.info("No matching events in this limited curated list. This does not mean no companies are reporting.")
     for day, rows in groupby(events, key=lambda e: e["day"]):
-        st.subheader(date.fromisoformat(day).strftime("%A, %B %d, %Y"))
-        for event in rows:
-            with st.container(border=True):
-                st.markdown(f"**{event['company']} · {event['symbol']}**")
-                st.write(f"Results release: {event['release']}")
-                st.write(f"Earnings call / webcast: {event['call']}")
-                st.caption(f"Company-announced event · Checked {REVIEWED.isoformat()} · Schedule subject to change")
-                st.link_button("Company announcement ↗", event["source"])
-    with st.expander("Sources & coverage"):
-        st.write("Independently compiled factual dates and times from each linked company announcement or investor-relations events page. No analyst estimates, article text or vendor calendar data is copied. Call-only announcements do not establish a precise results-release time. This small editorial schedule is manually maintained, not automatically refreshed; entries are withheld after 30 days without review.")
-    st.subheader("Broader earnings coverage")
-    st.link_button(
-        "Open earnings calendar on TradingView ↗",
-        "https://www.tradingview.com/earnings-calendar/?countries=us",
-        type="primary",
-        width="stretch",
-    )
-    st.caption("Opens TradingView in a new tab. Dates and coverage are supplied by TradingView and can change; verify important dates with the company’s investor-relations announcement.")
-    st.write("Then use the checklist below to understand the results.")
-    st.subheader("A practical report checklist")
-    st.markdown("""
-1. **Check the period and source.** Start with the issuer's investor-relations announcement and its SEC filing. A filing date is not a scheduled earnings date.
-2. **Compare like with like.** Compare revenue, operating income and cash flow for the same periods and currency. Annual figures can hide seasonal changes.
-3. **Look beyond headline EPS.** Share issuance, buybacks and one-time items can change earnings per share without the same change in the underlying business.
-4. **Separate results from expectations.** Reported results describe the past. Guidance is uncertain; a good report does not guarantee a rising share price.
-5. **Record the counterargument.** Note missing evidence, debt, dilution and risks before forming a research thesis.
-""")
-    st.caption("Find stocks provides annual SEC accounting evidence, not prices, analyst expectations, event timing or investment recommendations.")
-    if st.button("Find stocks", type="primary"):
+        with st.expander(date.fromisoformat(day).strftime("%A, %B %d, %Y"), expanded=True):
+            for event in rows:
+                with st.container(border=True):
+                    a, b = st.columns([3, 1], vertical_alignment="center")
+                    with a:
+                        st.markdown(f"**{event['company']} ({event['symbol']})**")
+                        st.caption(f"Results: {event['release']} · Call: {event['call']}")
+                        st.link_button("Official announcement", event["source"])
+                    with b:
+                        if st.button("Research", key=f"issuer_{day}_{event['symbol']}", width="stretch"):
+                            open_research(event["symbol"])
+    st.caption("Issuer-announced dates and conference-call times can change. Call time does not necessarily equal financial-results release time.")
+    with st.expander("Sources and other research options"):
+        st.write("Curated facts come from original issuer announcements. This is not a complete market-wide calendar. The broader TradingView calendar opens separately; its data is not imported into our engine.")
+        st.link_button("View broader TradingView calendar", "https://www.tradingview.com/earnings-calendar/?countries=us")
+        st.link_button("Search original SEC filings", "https://www.sec.gov/edgar/search/")
+    if st.button("Find stocks"):
         st.session_state["_navigation_request"] = "💎 Quant Discovery"
         st.rerun()
-    if st.button("Explore earnings lessons"):
-        st.session_state["_navigation_request"] = "📚 Learn"
-        st.rerun()
-    st.link_button("Search original SEC filings", "https://www.sec.gov/edgar/search/")
 
 
 def open_research(symbol):
