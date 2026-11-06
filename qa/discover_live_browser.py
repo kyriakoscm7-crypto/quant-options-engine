@@ -21,12 +21,13 @@ with sync_playwright() as p:
     field.fill("AAPL, MSFT")
     page.get_by_role("button", name="Find research candidates", exact=True).click()
     expect(
-        page.get_by_role("radio", name="AAPL · Apple Inc.", exact=True)
+        page.get_by_role("button", name="Open AAPL research →", exact=True)
     ).to_be_visible(timeout=90000)
     expect(
-        page.get_by_role("radio", name="MSFT · MICROSOFT CORP", exact=True)
+        page.get_by_role("button", name="Open MSFT research →", exact=True)
     ).to_be_visible()
     assert not page.get_by_test_id("stException").count()
+    page.get_by_role("button", name="Open AAPL research →", exact=True).click()
     expect(page.get_by_text("Evidence retrieved", exact=False)).to_be_visible()
     page.get_by_role("heading", name="Research candidates", exact=True).evaluate(
         "el => el.scrollIntoView({block: 'start'})"

@@ -1,0 +1,63 @@
+"""Real-browser UI acceptance using explicitly synthetic offline fixtures."""
+import argparse
+from pathlib import Path
+
+from playwright.sync_api import expect, sync_playwright
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--base', default='http://127.0.0.1:18532')
+parser.add_argument('--channel', default='chrome')
+parser.add_argument('--output', type=Path, default=Path('docs/images/discover-polish'))
+args = parser.parse_args()
+args.output.mkdir(parents=True, exist_ok=True)
+with sync_playwright() as p:
+    browser = p.chromium.launch(headless=True, **({'channel': args.channel} if args.channel else {}))
+    page = browser.new_page(viewport={'width': 1440, 'height': 1100})
+    page.goto(args.base)
+    page.get_by_role('button', name='Find research candidates', exact=True).click()
+    open_alpha = page.get_by_role('button', name='Open QAALPHA research →', exact=True)
+    expect(open_alpha).to_be_visible()
+    expect(page.get_by_role('img', name='Operating margin · observed annual periods; gaps are missing').first).to_be_visible()
+    for width in (1440, 768, 390):
+        page.set_viewport_size({'width': width, 'height': 1100})
+        page.get_by_role('heading', name='Research candidates').evaluate("el => el.scrollIntoView({block:'start'})")
+        page.wait_for_timeout(400)
+        page.screenshot(path=str(args.output / f'synthetic-cards-{width}.png'), full_page=False)
+        boxes = [page.get_by_role('button', name=f'Open {t} research →', exact=True).bounding_box() for t in ('QAALPHA', 'QABETA')]
+        assert (abs(boxes[0]['y'] - boxes[1]['y']) < 5) if width > 700 else (boxes[1]['y'] > boxes[0]['y'] + 100)
+        assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
+    page.set_viewport_size({'width': 1440, 'height': 1100})
+    search = page.get_by_role('textbox', name='Search candidates', exact=True)
+    search.fill('qamissing')
+    search.press('Enter')
+    expect(open_alpha).to_have_count(0)
+    expect(page.get_by_text('Why unranked', exact=False)).to_be_visible()
+    search.fill('')
+    search.press('Enter')
+    compare = page.get_by_test_id('stMultiSelect').get_by_role('combobox')
+    for ticker in ('QAALPHA', 'QABETA'):
+        compare.fill(ticker)
+        page.get_by_role('option', name=f'{ticker} · Synthetic {ticker}', exact=True).click()
+    expect(page.get_by_text('Your comparison', exact=True)).to_be_visible()
+    page.get_by_text('Your comparison', exact=True).click()
+    open_alpha.click()
+    expect(page.get_by_role('heading', name='Synthetic QAALPHA · QAALPHA', exact=True)).to_be_visible()
+    page.get_by_text('Stress the operating thesis · user assumptions', exact=True).click()
+    before = page.get_by_test_id('stMetricValue').inner_text()
+    slider = page.get_by_test_id('stSlider').filter(has_text='Revenue change (%)').get_by_role('slider')
+    slider.focus()
+    slider.press('End')
+    expect(page.get_by_test_id('stMetricValue')).not_to_have_text(before)
+    page.get_by_text('All 8 factors · contributions, formulas & filing evidence', exact=True).click()
+    expect(page.get_by_text('Fixed-anchor normalization:', exact=False)).to_be_visible()
+    for width in (1440, 390):
+        page.set_viewport_size({'width': width, 'height': 1100})
+        page.get_by_role('heading', name='Synthetic QAALPHA · QAALPHA', exact=True).evaluate("el => el.scrollIntoView({block:'start'})")
+        page.wait_for_timeout(400)
+        page.screenshot(path=str(args.output / f'synthetic-detail-{width}.png'), full_page=False)
+        assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
+    page.get_by_role('button', name='← Back to candidates', exact=True).click()
+    expect(page.get_by_role('heading', name='Synthetic QAALPHA · QAALPHA', exact=True)).to_have_count(0)
+    assert not page.get_by_test_id('stException').count()
+    browser.close()
+print('Browser passed: grid geometry, responsive overflow, search, drilldown/back, keyboard scenario, factor evidence.')

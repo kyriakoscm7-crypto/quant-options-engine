@@ -266,8 +266,8 @@ def test_configured_brief_ui_uses_provenance_and_comparison(monkeypatch):
     health = financial_health(facts(), CIK, today=NOW.date())
     from app.intelligence.company_identity import CompanyIdentity
 
-    def brief(*args, **kwargs):
-        return {"company": CompanyIdentity("AAPL", "Fixture issuer", CIK), "health": health,
+    def brief(_gateway, ticker):
+        return {"company": CompanyIdentity(ticker, "Fixture issuer", CIK), "health": health,
                 "filings": [], "sources": [], "issues": [],
                 "earnings": {"status": "unavailable", "evidence": []},
                 "analysts": {"status": "unavailable", "evidence": []}}
@@ -278,7 +278,9 @@ def test_configured_brief_ui_uses_provenance_and_comparison(monkeypatch):
     app.text_input[0].set_value("AAPL, MSFT")
     app.button[0].click().run()
     assert not app.exception
-    assert any("Your comparison" in x.value for x in app.markdown)
+    app.multiselect[0].set_value(["AAPL", "MSFT"]).run()
+    assert any(x.label == "Your comparison" for x in app.expander)
+    next(b for b in app.button if b.key == "open_AAPL").click().run()
     assert any("Next investigation" in x.value for x in app.markdown)
     assert any("Current ratio" == x.label for x in app.metric)
 
@@ -390,8 +392,9 @@ def test_synthetic_candidate_filter_and_failed_refresh():
     app.button[0].click().run()
     assert not app.exception
     assert any("4 of 4 criteria met" == x.value for x in app.markdown)
-    app.radio[-1].set_value("QAMISSING").run()
+    next(b for b in app.button if b.key == "open_QAMISSING").click().run()
     assert any("Not ranked:" in x.value for x in app.markdown)
+    next(b for b in app.button if b.label == "← Back to candidates").click().run()
     app.checkbox[0].check().run()
     assert any("4 of 4 criteria met" == x.value for x in app.markdown)
     app.text_input[0].set_value("QAERROR")
@@ -422,6 +425,7 @@ def test_main_discover_routes_render_native_candidates_without_external_panel(mo
     assert not app.exception
     assert app.session_state["selected_page"] == "💎 Quant Discovery"
     assert any(item.value == "4 of 4 criteria met" for item in app.markdown)
+    next(b for b in app.button if b.key == "open_AAPL").click().run()
     assert any(item.label == "Annual revenue" for item in app.metric)
     assert len(app.get("iframe")) == 0
     assert not any(toggle.key == "qi_discovery_consent" for toggle in app.toggle)
@@ -440,10 +444,12 @@ def test_candidate_cards_show_annual_evidence_before_selection():
     app.button[0].click().run()
     assert not app.exception
     text = "\n".join(x.value for x in app.markdown)
-    assert "**QAALPHA · Synthetic QAALPHA**" in text
-    assert "**QAMISSING · Synthetic QAMISSING**" in text
-    assert r"Revenue: \$1,000,000,000" in text
-    assert "Revenue: unavailable" in text
+    assert "Synthetic QAALPHA" in text
+    assert "Synthetic QAMISSING" in text
+    assert any("Revenue: $1,000,000,000" in c.value for c in app.caption)
+    assert any("Revenue: unavailable" in c.value for c in app.caption)
+    next(b for b in app.button if b.key == "open_QAALPHA").click().run()
+    text = "\n".join(x.value for x in app.markdown)
     assert "Reported: 20.0%" in text
 
 
@@ -468,3 +474,39 @@ def test_sec_directory_search_is_explicit_and_uses_verified_identity(monkeypatch
     assert calls == ["directory"]
     assert app.dataframe[0].value.iloc[0]["CIK"] == CIK
     assert "qi_discover_reports" not in app.session_state
+
+
+def test_discover_search_compare_and_navigation_state(monkeypatch):
+    monkeypatch.setenv("QI_QA_FACTORS", "1")
+    app = AppTest.from_file(str(Path(__file__).parents[1] / "qa/discover_preview.py")).run()
+    app.button[0].click().run()
+    app.multiselect[0].set_value(["QAALPHA", "QABETA"]).run()
+    assert len(app.dataframe[0].value) == 2
+    app.text_input(key="qi_candidate_query").set_value("  qamissing  ").run()
+    assert not app.exception
+    assert not any(b.key == "open_QAALPHA" for b in app.button)
+    assert any(b.key == "open_QAMISSING" for b in app.button)
+    assert app.multiselect[0].value == ["QAALPHA", "QABETA"]
+    app.text_input(key="qi_candidate_query").set_value("no such issuer").run()
+    assert any("No candidates match" in i.value for i in app.info)
+    app.text_input(key="qi_candidate_query").set_value("").run()
+    app.selectbox(key="qi_candidate_sort").set_value("Company A–Z").run()
+    assert [b.key for b in app.button if (b.key or "").startswith("open_")] == ["open_QAALPHA", "open_QABETA", "open_QAMISSING"]
+    next(b for b in app.button if b.key == "open_QAALPHA").click().run()
+    assert any("Synthetic QAALPHA" in h.value for h in app.subheader)
+    next(b for b in app.button if b.label == "← Back to candidates").click().run()
+    assert not app.subheader
+    app.text_input[0].set_value("QAMISSING")
+    app.button[0].click().run()
+    assert not app.exception
+    assert app.multiselect[0].value == []
+    assert "qi_detail" not in app.session_state
+
+
+def test_factor_display_units_and_missing():
+    from dashboard.discover_intelligence import format_factor
+
+    assert format_factor("cash_conversion", 1.25) == "1.25×"
+    assert format_factor("margin_change", -.025) == "-2.5 pp"
+    assert format_factor("revenue_cagr", .1) == "10.0%"
+    assert format_factor("revenue_cagr", None) == "Unavailable"

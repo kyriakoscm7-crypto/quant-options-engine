@@ -1,6 +1,7 @@
 """Simple company evidence workspace; no widget extraction or recommendations."""
 import os
 from datetime import UTC, datetime
+from html import escape
 
 import streamlit as st
 
@@ -38,8 +39,37 @@ def _investigation_steps(report):
     return steps
 
 
-def _research_detail(research, ticker):
-    st.markdown("**Fundamental trajectory**")
+def format_factor(key, value):
+    if value is None:
+        return "Unavailable"
+    if key == "cash_conversion":
+        return f"{value:.2f}×"
+    if key == "margin_change":
+        return f"{value * 100:+.1f} pp"
+    return f"{value:.1%}"
+
+
+def _margin_trend(history):
+    """Render observed annual margins only; missing observations break the line."""
+    values = [h.get("operating_margin") for h in history]
+    known = [v for v in values if v is not None]
+    if len(known) < 2:
+        return
+    low, high = min(known), max(known)
+    spread = high - low or 1
+    points = [(8 + i * 284 / max(1, len(values) - 1), 48 - (v - low) / spread * 36)
+              if v is not None else None for i, v in enumerate(values)]
+    segments = "".join(f'<line x1="{a[0]:.2f}" y1="{a[1]:.2f}" x2="{b[0]:.2f}" y2="{b[1]:.2f}"/>'
+                       for a, b in zip(points, points[1:]) if a and b)
+    dots = "".join(f'<circle cx="{p[0]:.2f}" cy="{p[1]:.2f}" r="3"/>' for p in points if p)
+    label = "Operating margin · observed annual periods; gaps are missing"
+    st.markdown(f'<svg viewBox="0 0 300 60" height="60" width="100%" role="img" aria-label="{label}"><title>{label}</title><g stroke="#FF78B7" stroke-width="2" fill="#FF78B7">{segments}{dots}</g></svg>', unsafe_allow_html=True)
+    first, last = history[0], history[-1]
+    st.caption(f"Operating margin · {first['period']} {format_factor('operating_margin', values[0])} → {last['period']} {format_factor('operating_margin', values[-1])}")
+
+
+def _research_detail(research, ticker, archetype):
+    st.markdown("**Overview · Fundamental trajectory**")
     st.caption(f"As of {research['as_of']} · {research['coverage']} factors available · {research['sector']}")
     st.caption(research['uncertainty'])
     import pandas as pd
@@ -48,11 +78,19 @@ def _research_detail(research, ticker):
                            "FCF margin": h['fcf_margin']} for h in history])
     if not chart.empty:
         st.line_chart(chart.set_index("Period"), y_label="Margin (decimal)", color=["#FF78B7", "#79D4CF"])
-    with st.expander("Factor contributions, formulas & filing evidence"):
+    with st.expander("Financial trends · revenue, cash flow & balance sheet"):
+        for title, metrics in (("Annual revenue & operating cash · USD", ("revenue", "cfo")), ("Assets & liabilities · USD", ("assets", "liabilities"))):
+            frame = pd.DataFrame([{"Period": h["period"], **{k.replace("_", " ").title(): (h["observations"].get(k) or {}).get("value") for k in metrics}} for h in history])
+            if not frame.empty:
+                st.caption(title)
+                st.line_chart(frame.set_index("Period"), color=["#FF78B7", "#79D4CF"])
+        st.caption("Reported annual observations; gaps remain missing. Accounting tags and revisions are retained in evidence below.")
+    with st.expander("All 8 factors · contributions, formulas & filing evidence"):
         st.caption("Fixed-anchor normalization: clip (value − lower)/(upper − lower) to [0,1], reverse for lower-is-better, multiply by 100. Equal weights; all archetype factors required. Scores describe accounting patterns, not probabilities. No sample-relative or sector percentile claims.")
-        st.dataframe([{"Factor": k, "Value": v, "Pattern score / 100": research['scores'][k],
+        st.dataframe([{"Factor": k, "Value": format_factor(k, v), "Pattern score / 100": research['scores'][k],
                        "Lower anchor": ANCHORS[k][0], "Upper anchor": ANCHORS[k][1],
-                       "Direction": "higher" if ANCHORS[k][2] == 1 else "lower"}
+                       "Direction": "higher" if ANCHORS[k][2] == 1 else "lower",
+                       "In selected pattern": k in ARCHETYPES[archetype]}
                       for k, v in research['factors'].items()], hide_index=True)
         st.write("Revenue and share CAGR use actual elapsed years with at least three consecutive annual observations and unchanged tags. Margin change is last minus first (percentage points). Earnings consistency is positive-income years / observed consecutive years. FCF = CFO − positive reported PP&E purchases; excludes acquisitions and other investment. Cash conversion = CFO / positive net income. Liabilities / assets uses positive assets. Ratios require identical filing accession and period; unavailable is never zero.")
         st.dataframe([o for h in history for o in h['observations'].values() if o], hide_index=True)
@@ -84,107 +122,162 @@ def render_intelligence():
         st.write("Licensed earnings calendars, analyst estimates, prices and valuation data are unavailable. SEC filing dates are not earnings dates. Stock Explorer retains its separate consented chart display.")
         st.code('export QI_SEC_USER_AGENT="Quant Intelligence $YOUR_REAL_CONTACT_EMAIL"', language="sh")
         st.caption("Replace the contact variable with your genuine operator email before starting Streamlit. No API key is required; an email-shaped value alone cannot prove contact ownership.")
-    universe = st.selectbox("Start with a research universe", [*UNIVERSES, "My own tickers"])
-    st.caption("Editorial starting sets or your own tickers · Up to eight companies per scan · No market-wide coverage")
-    if not agent:
-        st.info("SEC research is not connected. Set QI_SEC_USER_AGENT with your genuine operator contact, then restart Streamlit.")
-        st.caption("Enable SEC research with a genuine operator contact in QI_SEC_USER_AGENT. No live facts or example scores are substituted.")
-        return
-    with st.form("discover_evidence_search"):
-        tickers = st.text_input("Companies to investigate", value=", ".join(UNIVERSES.get(universe, ())), placeholder="AAPL, MSFT", max_chars=100,
-                               help="Choose up to eight exact SEC tickers.")
-        submitted = st.form_submit_button("Find research candidates", type="primary")
-    with st.expander("Find SEC tickers by company name"):
-        with st.form("discover_identity_search"):
-            query = st.text_input("Company name or ticker", max_chars=100)
-            find_identity = st.form_submit_button("Search official directory")
-        if find_identity:
-            try:
-                directory = _gateway(agent).fetch("directory")
-                matches = CompanyRegistry(directory["data"]).search(query)
-                if matches:
-                    st.dataframe([{"Ticker": c.ticker, "Company": c.name, "CIK": c.cik} for c in matches], hide_index=True)
-                    st.caption(f"Official SEC directory retrieved {directory['retrieved_at']}. Copy exact tickers into Companies to investigate. Results identify filers, not verified exchange listings.")
-                else:
-                    st.info("No matching SEC filing entity. Try another company name or ticker.")
-            except (ValueError, RuntimeError, OSError):
-                st.warning("SEC company directory unavailable or search invalid. No identities substituted.")
-    if submitted:
-        symbols = list(dict.fromkeys(x.strip().upper() for x in tickers.split(",") if x.strip()))
-        if not 1 <= len(symbols) <= 8:
-            st.warning("Choose between one and eight SEC tickers.")
-            st.session_state["qi_discover_reports"] = []
-            st.session_state["qi_discover_errors"] = []
-        else:
-            reports, errors = [], []
-            for ticker in symbols:
+    with st.expander("Research universe & SEC search", expanded=not bool(st.session_state.get("qi_discover_reports"))):
+        universe = st.selectbox("Start with a research universe", [*UNIVERSES, "My own tickers"])
+        st.caption("Editorial starting sets or your own tickers · Up to eight companies per scan · No market-wide coverage")
+        if not agent:
+            st.info("SEC research is not connected. Set QI_SEC_USER_AGENT with your genuine operator contact, then restart Streamlit.")
+            st.caption("Enable SEC research with a genuine operator contact in QI_SEC_USER_AGENT. No live facts or example scores are substituted.")
+            return
+        with st.form("discover_evidence_search"):
+            tickers = st.text_input("Companies to investigate", value=", ".join(UNIVERSES.get(universe, ())), placeholder="AAPL, MSFT", max_chars=100,
+                                   help="Choose up to eight exact SEC tickers.", key=f"qi_tickers_{universe}")
+            submitted = st.form_submit_button("Find research candidates", type="primary")
+        with st.expander("Find SEC tickers by company name"):
+            with st.form("discover_identity_search"):
+                query = st.text_input("Company name or ticker", max_chars=100)
+                find_identity = st.form_submit_button("Search official directory")
+            if find_identity:
                 try:
-                    with st.spinner(f"Checking SEC evidence for {ticker}…"):
-                        reports.append(company_deep_dive(_gateway(agent), ticker))
-                except (ValueError, LookupError, RuntimeError, OSError):
-                    errors.append(f"{ticker}: SEC evidence unavailable or identity could not be verified. No company facts substituted.")
-            st.session_state["qi_discover_reports"] = reports
-            st.session_state["qi_discover_errors"] = errors
+                    directory = _gateway(agent).fetch("directory")
+                    matches = CompanyRegistry(directory["data"]).search(query)
+                    if matches:
+                        st.dataframe([{"Ticker": c.ticker, "Company": c.name, "CIK": c.cik} for c in matches], hide_index=True)
+                        st.caption(f"Official SEC directory retrieved {directory['retrieved_at']}. Copy exact tickers into Companies to investigate. Results identify filers, not verified exchange listings.")
+                    else:
+                        st.info("No matching SEC filing entity. Try another company name or ticker.")
+                except (ValueError, RuntimeError, OSError):
+                    st.warning("SEC company directory unavailable or search invalid. No identities substituted.")
+        if submitted:
+            symbols = list(dict.fromkeys(x.strip().upper() for x in tickers.split(",") if x.strip()))
+            if not 1 <= len(symbols) <= 8:
+                st.warning("Choose between one and eight SEC tickers.")
+                st.session_state["qi_discover_reports"] = []
+                st.session_state["qi_discover_errors"] = []
+            else:
+                reports, errors = [], []
+                for ticker in symbols:
+                    try:
+                        with st.spinner(f"Checking SEC evidence for {ticker}…"):
+                            reports.append(company_deep_dive(_gateway(agent), ticker))
+                    except (ValueError, LookupError, RuntimeError, OSError):
+                        errors.append(f"{ticker}: SEC evidence unavailable or identity could not be verified. No company facts substituted.")
+                st.session_state.pop("qi_detail", None)
+                st.session_state["qi_discover_reports"] = reports
+                st.session_state["qi_discover_errors"] = errors
+                st.rerun()
     for error in st.session_state.get("qi_discover_errors", []):
         st.warning(error)
-    reports = st.session_state.get("qi_discover_reports", [])
-    if len(reports) > 1:
-        with st.expander("Compare annual fundamentals"):
-            st.markdown("#### Your comparison")
-            st.caption("Annual periods can differ. Compare filing dates, accounting policies and sector context; ratios are not a score.")
-            st.dataframe([{"Company": r["company"].name, "Annual period": (r["health"] or {}).get("period"),
-                           **(r["health"] or {}).get("ratios", {})} for r in reports], hide_index=True)
-    archetype = st.selectbox("Research pattern", list(ARCHETYPES)) if reports else next(iter(ARCHETYPES))
+    reports = list({r["company"].ticker: r for r in st.session_state.get("qi_discover_reports", [])}.values())
+    archetype = st.selectbox("Research pattern", list(ARCHETYPES), key="qi_pattern") if reports else next(iter(ARCHETYPES))
     modern = any(r.get("research") for r in reports)
+    visible = []
     if reports:
-        st.markdown("#### Research candidates")
-        if not modern:
-            st.caption("Order: number of four disclosed criteria met, descending; ticker breaks ties. All four ratios and an annual period within 550 days are required; conflicts are excluded. This is a screening rule, not a quality or investment score. Missing evidence is never zero.")
-        if any(r.get("research") for r in reports):
-            st.caption("Multi-year pattern ranking uses equal-weight fixed-anchor factors; missing factors, stale annual periods or unsupported sectors remain unranked. This scan is not a matched peer population. Inspect factor contributions and counterevidence below.")
-        only_matches = st.checkbox("Show only ranked pattern matches" if modern else "Show only candidates meeting at least three criteria")
-        visible = [(r, screen) for r, screen in rank_reports(reports) if not only_matches or ((r.get("research") or {}).get("archetypes", {}).get(archetype, {}).get("score") is not None if modern else (screen["eligible"] and screen["matches"] >= 3))]
-        if not visible:
-            st.info("No candidates meet this screen. Clear the filter to inspect missing evidence and counterevidence.")
-    else:
-        visible = []
-    if visible and any(r.get("research") for r, _ in visible):
-        def pattern_order(row):
-            research = row[0].get("research") or {}
-            score = research.get("archetypes", {}).get(archetype, {}).get("score")
-            return (score is None, -(score or 0), row[0]["company"].ticker)
-        visible.sort(key=pattern_order)
-    if visible:
-        st.caption(f"{len(visible)} companies shown · Inspect coverage and source dates before comparison")
-        for candidate, candidate_screen in visible:
-            candidate_health = candidate["health"] or {}
-            with st.container(border=True):
-                st.markdown(f"**{candidate['company'].ticker} · {candidate['company'].name}**")
-                if not modern:
-                    st.caption(f"Annual period {candidate_health.get('period') or 'unavailable'} · " +
-                           (f"{candidate_screen['matches']} / 4 disclosed criteria met" if candidate_screen["eligible"] else candidate_screen["reason"]))
-                research = candidate.get("research")
-                if research:
-                    pattern = research['archetypes'][archetype]
-                    score = pattern['score']
-                    st.write(f"Why investigate · {archetype}: {score:.0f}/100 pattern fit" if score is not None else f"{archetype} · Unranked: " + "; ".join(pattern["reasons"]))
-                    st.caption(f"Annual period {research['period'] or 'unavailable'} · As of {research['as_of']} · Pattern coverage {pattern['coverage']} · {research['sector']}")
-                    st.write(" · ".join(f"{key.replace('_', ' ')}: {research['factors'][key]:.1%}" if research['factors'][key] is not None else f"{key.replace('_', ' ')}: unavailable" for key in pattern['factors']))
-                observations = candidate_health.get("observations", {})
-                st.write(" · ".join(f"{label}: ${observations[key]['value']:,.0f}" if key in observations else f"{label}: unavailable"
-                                   for key, label in (("revenue", "Revenue"), ("income", "Net income"), ("operating_cash", "Operating cash"))).replace("$", r"\$"))
-                st.caption("; ".join(health_observations(candidate_health)) if candidate_health else "Financial facts unavailable; inspect filing sources.")
-        candidates = {r["company"].ticker: (r, screen) for r, screen in visible}
-        labels = {ticker: f"{ticker} · {row[0]['company'].name}" for ticker, row in candidates.items()}
-        selected = st.radio("Investigate a candidate", list(candidates), format_func=labels.get, horizontal=True)
-        visible = [candidates[selected]]
+        with st.expander("Candidate search & comparison", expanded=not bool(st.session_state.get("qi_detail"))):
+            st.markdown("#### Research candidates")
+            st.caption("Pattern fit describes an accounting archetype, not expected returns or an investment recommendation. Missing evidence remains unranked.")
+            controls = st.columns([2, 1])
+            query = controls[0].text_input("Search candidates", placeholder="Company or ticker", key="qi_candidate_query")
+            order = controls[1].selectbox("Sort by", ["Pattern fit", "Company A–Z", "Revenue growth", "Operating margin"], key="qi_candidate_sort")
+            only_matches = st.checkbox("Show only ranked pattern matches" if modern else "Show only candidates meeting at least three criteria")
+            def score(report):
+                return ((report.get("research") or {}).get("archetypes", {}).get(archetype, {}).get("score"))
+            for report, screen in rank_reports(reports):
+                identity = report["company"]
+                ranked = score(report) is not None if modern else screen["eligible"] and screen["matches"] >= 3
+                if query.strip().casefold() not in f"{identity.ticker} {identity.name}".casefold() or (only_matches and not ranked):
+                    continue
+                visible.append((report, screen))
+            def sort_key(row):
+                report, screen = row
+                value = score(report) if modern else screen["matches"]
+                if order in ("Revenue growth", "Operating margin"):
+                    value = (report.get("research") or {}).get("factors", {}).get("revenue_cagr" if order == "Revenue growth" else "operating_margin")
+                return (report["company"].name.casefold(),) if order == "Company A–Z" else (value is None, -(value or 0), report["company"].ticker)
+            visible.sort(key=sort_key)
+            st.caption(f"{len(visible)} of {len(reports)} companies · Annual SEC evidence")
+            if not visible:
+                st.info("No candidates match. Clear search or the ranked filter to inspect all evidence.")
+            labels = {r["company"].ticker: f"{r['company'].ticker} · {r['company'].name}" for r in reports}
+            # Keep comparison independent of the current search and reconcile refreshed universes.
+            previous = st.session_state.get("qi_compare", [])
+            retained = [t for t in previous if t in labels]
+            if retained != previous:
+                st.session_state["qi_compare"] = retained
+            compare = st.multiselect("Compare companies · choose up to four", list(labels), format_func=labels.get, max_selections=4, key="qi_compare")
+            if len(compare) >= 2:
+                with st.expander("Your comparison", expanded=True):
+                    st.caption("Reporting periods may differ. Missing values are unavailable, never zero.")
+                    st.dataframe([{"Company": r["company"].ticker, "Annual period": (r.get("research") or r.get("health") or {}).get("period"),
+                                   "Pattern fit / 100": score(r),
+                                   **{k.replace("_", " ").title(): format_factor(k, v) for k, v in (r.get("research") or {}).get("factors", {}).items()},
+                                   **{k: (f"{v:.2f}×" if k == "Current ratio" else f"{v:.1%}") for k, v in (r.get("health") or {}).get("ratios", {}).items()}}
+                                  for r in reports if r["company"].ticker in compare], hide_index=True, width="stretch")
+        st.markdown("""<style>
+        .st-key-qi_cards [data-testid="stVerticalBlock"][data-border="true"] {background:#121D35;border-radius:18px;}
+        .st-key-qi_cards [data-testid="stVerticalBlock"] {gap:.55rem}
+        .qi-score {color:#FF78B7;font-size:2rem;font-weight:700;line-height:1.2}
+        .qi-name {font-size:1.1rem;font-weight:650;color:#F4F6FF;overflow-wrap:anywhere}
+        .qi-meta {color:#BBC7DE;font-size:.85rem}
+        .qi-facts {display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:8px 0;color:#F4F6FF}
+        .qi-facts small {display:block;color:#BBC7DE}
+        button:focus-visible,input:focus-visible {outline:3px solid #FF78B7!important;outline-offset:3px}
+        @media(max-width:700px){.st-key-qi_cards [data-testid="stHorizontalBlock"] {flex-direction:column}.st-key-qi_cards [data-testid="stColumn"] {width:100%!important;flex:1 1 100%!important}}
+        </style>""", unsafe_allow_html=True)
+        if not st.session_state.get("qi_detail"):
+            with st.container(key="qi_cards"):
+                for start in range(0, len(visible), 2):
+                    columns = st.columns(2)
+                    for column, (candidate, candidate_screen) in zip(columns, visible[start:start+2]):
+                        with column, st.container(border=True):
+                            company = candidate["company"]
+                            research = candidate.get("research") or {}
+                            pattern = research.get("archetypes", {}).get(archetype, {})
+                            fit = pattern.get("score")
+                            st.markdown(f'<div class="qi-meta">{escape(company.ticker)}</div><div class="qi-name">{escape(company.name)}</div>', unsafe_allow_html=True)
+                            if research:
+                                st.markdown(f'<div class="qi-score">{fit:.0f}<span class="qi-meta"> / 100 pattern fit</span></div>' if fit is not None else '<div class="qi-score">Unranked</div>', unsafe_allow_html=True)
+                                st.caption(f"{archetype} · {pattern.get('coverage', '0')} factors")
+                                factors = research.get("factors", {})
+                                st.markdown('<div class="qi-facts">' + ''.join(f'<div><small>{label}</small>{format_factor(key, factors.get(key))}</div>' for key, label in (("revenue_cagr", "Revenue CAGR"), ("operating_margin", "Operating margin"), ("fcf_margin", "FCF margin"), ("share_cagr", "Share CAGR"))) + '</div>', unsafe_allow_html=True)
+                                _margin_trend(research.get("history", []))
+                                if fit is not None:
+                                    st.progress(fit / 100, text="Archetype-pattern fit")
+                                    keys = sorted(pattern.get("factors", []), key=lambda k: -(research["scores"].get(k) or 0))[:2]
+                                    st.caption("Why surfaced · " + " · ".join(f"{k.replace('_', ' ').title()} {format_factor(k, factors.get(k))}" for k in keys))
+                                else:
+                                    st.caption("Why unranked · " + "; ".join(pattern.get("reasons", [])))
+                            else:
+                                st.write(f"{candidate_screen['matches']} of 4 criteria met" if candidate_screen["eligible"] else candidate_screen["reason"])
+                                for key, label in (("revenue", "Revenue"), ("income", "Net income")):
+                                    fact = (candidate.get("health") or {}).get("observations", {}).get(key)
+                                    st.caption(f"{label}: ${fact['value']:,.0f}" if fact else f"{label}: unavailable")
+                            st.caption(f"Annual period {research.get('period') or (candidate.get('health') or {}).get('period') or 'unavailable'}")
+                            sources = candidate.get("sources", [])
+                            st.caption(f"Retrieved {sources[-1]['retrieved_at']}" if sources else "Retrieval timestamp unavailable")
+                            if st.button(f"Open {company.ticker} research →", key=f"open_{company.ticker}", width="stretch"):
+                                st.session_state["qi_detail"] = company.ticker
+                                st.rerun()
+        selected = st.session_state.get("qi_detail")
+        chosen = next((row for row in rank_reports(reports) if row[0]["company"].ticker == selected), None)
+        if chosen:
+            if st.button("← Back to candidates"):
+                st.session_state.pop("qi_detail", None)
+                st.rerun()
+            visible = [chosen]
+        else:
+            visible = []
     for report, screen in visible:
         company, health = report["company"], report["health"]
         with st.container(border=True):
             st.subheader(f"{company.name} · {company.ticker}")
             st.caption(f"SEC CIK {company.cik} · Identity matched to official directory · Coverage: {(health or {}).get('status', 'unavailable')}")
             if report.get("research"):
-                _research_detail(report["research"], company.ticker)
+                pattern = report["research"]["archetypes"][archetype]
+                fit = pattern["score"]
+                st.markdown(f"**{archetype} · {fit:.0f}/100 pattern fit**" if fit is not None else f"**{archetype} · Unranked**")
+                st.caption("Accounting pattern only · Not expected returns or a recommendation")
+                _research_detail(report["research"], company.ticker, archetype)
             if not modern:
                 st.write(f"{screen['matches']} of 4 criteria met" if screen["eligible"] else screen["reason"])
             for check in ([] if modern else screen["checks"]):
@@ -214,22 +307,23 @@ def render_intelligence():
                     st.dataframe(list(health["observations"].values()), hide_index=True)
                     for issue in health["issues"]:
                         st.write(f"• {issue}")
-            st.markdown("**Catalysts & upcoming earnings**")
-            earnings = report["earnings"]
-            st.write(f"Evidence: {earnings['status']}")
-            confirmed = [item for item in earnings["evidence"] if item.confirmed]
-            for item in confirmed:
-                st.write(earnings_label(item, now=datetime.now(UTC)))
-                st.link_button(f"Earnings source · {item.provider}", item.url)
-            if not confirmed:
-                st.caption("No confirmed licensed catalyst available. A filing date is not an earnings date; estimated dates are not shown as catalysts.")
-            st.markdown("**Analyst perspective**")
-            st.caption("Unavailable · No licensed analyst dataset connected. SEC filings and news headlines do not establish expert sentiment.")
-            st.markdown("**Risks & next investigation**")
-            st.caption("These are accounting flags and research prompts, not an exhaustive business-risk assessment. Read the issuer’s risk factors and management discussion.")
-            st.markdown("**Next investigation**")
-            for step in _investigation_steps(report):
-                st.write(f"• {step}")
+            with st.expander("Event coverage & next investigation"):
+                st.markdown("**Catalysts & upcoming earnings**")
+                earnings = report["earnings"]
+                st.write(f"Evidence: {earnings['status']}")
+                confirmed = [item for item in earnings["evidence"] if item.confirmed]
+                for item in confirmed:
+                    st.write(earnings_label(item, now=datetime.now(UTC)))
+                    st.link_button(f"Earnings source · {item.provider}", item.url)
+                if not confirmed:
+                    st.caption("No confirmed licensed catalyst available. A filing date is not an earnings date; estimated dates are not shown as catalysts.")
+                st.markdown("**Analyst perspective**")
+                st.caption("Unavailable · No licensed analyst dataset connected. SEC filings and news headlines do not establish expert sentiment.")
+                st.markdown("**Risks & next investigation**")
+                st.caption("These are accounting flags and research prompts, not an exhaustive business-risk assessment. Read the issuer’s risk factors and management discussion.")
+                st.markdown("**Next investigation**")
+                for step in _investigation_steps(report):
+                    st.write(f"• {step}")
             with st.expander("Recent filings & provenance"):
                 for filing in report["filings"][:8]:
                     st.link_button(f"{filing['form']} · {filing['filing_date']} · {filing['accession']}", filing["url"])

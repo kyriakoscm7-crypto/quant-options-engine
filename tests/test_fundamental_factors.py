@@ -183,9 +183,11 @@ def test_factor_ui_missing_filter_and_scenario(monkeypatch):
     app = AppTest.from_file(str(Path(__file__).parents[1] / 'qa/discover_preview.py')).run()
     app.button[0].click().run()
     assert not app.exception
+    next(b for b in app.button if b.key == "open_QAALPHA").click().run()
     before = app.metric[0].value
     app.slider[0].set_value(-20).run()
     assert not app.exception
     assert app.metric[0].value != before
+    next(b for b in app.button if b.label == "← Back to candidates").click().run()
     app.checkbox[0].check().run()
-    assert 'QAMISSING' not in app.radio[-1].options
+    assert not any(b.key == 'open_QAMISSING' for b in app.button)
