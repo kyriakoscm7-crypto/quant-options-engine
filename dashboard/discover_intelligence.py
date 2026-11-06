@@ -174,7 +174,7 @@ def _research_detail(research, ticker, archetype, report):
         _source_checks(report, archetype)
     with overview:
         st.write(company_synopsis(report))
-        st.caption("Financial quality: annual SEC evidence · Valuation: unavailable · Market environment: unavailable · Earnings: no connected calendar")
+        st.caption("Financial quality: annual SEC evidence · Valuation: unavailable · Market environment: unavailable · Earnings: see Earnings this week for calendar coverage")
     import pandas as pd
     history = research["history"]
     with trends:
@@ -225,12 +225,16 @@ def _research_detail(research, ticker, archetype, report):
 
 def render_intelligence():
     agent = os.environ.get("QI_SEC_USER_AGENT", "")
+    if st.session_state.get("qi_earnings_origin") and st.button("← Back to earnings week"):
+        st.session_state.pop("qi_earnings_origin", None)
+        st.session_state["_navigation_request"] = "📅 Earnings this week"
+        st.rerun()
     st.write("Understand the business before you consider the stock.")
     st.caption("Annual SEC financials only. Price, valuation and market conditions are not assessed; no overall investment score is available.")
     with st.expander("Data coverage & setup"):
         st.write("Coverage identifies SEC filers, not exchange listings. Generic factor rankings exclude financial/real estate and utility SIC ranges; missing SIC prevents ranking. International listings may be unsupported.")
         st.write("SEC: annual USD US-GAAP financial facts and recent filing links, retrieved on request. Directory cache: 24 hours; company evidence: one hour. Reporting periods can differ.")
-        st.write("Licensed earnings calendars, analyst estimates, prices and valuation data are unavailable. SEC filing dates are not earnings dates. Stock Explorer retains its separate consented chart display.")
+        st.write("The separate Earnings this week page supports a configured Finnhub calendar. Analyst estimates, prices and valuation data are unavailable here. SEC filing dates are not earnings dates. Stock Explorer retains its separate consented chart display.")
         st.code('export QI_SEC_USER_AGENT="Quant Intelligence $YOUR_REAL_CONTACT_EMAIL"', language="sh")
         st.caption("Replace the contact variable with your genuine operator email before starting Streamlit. No API key is required; an email-shaped value alone cannot prove contact ownership.")
     with st.expander("Research universe & SEC search", expanded=not bool(st.session_state.get("qi_discover_reports"))):
