@@ -1,6 +1,7 @@
 """Offline Discover admission, normalization, orchestration and UX checks."""
 import json
 from datetime import UTC, date, datetime, timedelta
+from pathlib import Path
 
 import pytest
 from streamlit.testing.v1 import AppTest
@@ -342,3 +343,85 @@ def test_cache_expiry_does_not_substitute_stale_facts():
     now[0] = 3601
     with pytest.raises(RuntimeError, match="provider down"):
         client.fetch("companyfacts", CIK)
+
+
+def test_screen_transparent_thresholds_and_no_missing_zero():
+    from app.intelligence.discover_screen import screen_report
+
+    health = financial_health(facts(), CIK, today=NOW.date())
+    result = screen_report({"health": health}, today=NOW.date())
+    assert result["eligible"] and result["matches"] == 4
+    health["ratios"].pop("Current ratio")
+    result = screen_report({"health": health}, today=NOW.date())
+    assert result["matches"] is None
+    assert result["checks"][-1]["passes"] is None
+
+
+@pytest.mark.parametrize("patch", [
+    {"period": "2020-01-01"}, {"period": "2027-01-01"},
+    {"issues": ["Conflicting assets facts; excluded"]}, {"period": None},
+])
+def test_screen_excludes_stale_future_or_conflicting_evidence(patch):
+    from app.intelligence.discover_screen import screen_report
+
+    health = financial_health(facts(), CIK, today=NOW.date())
+    health.update(patch)
+    assert screen_report({"health": health}, today=NOW.date())["matches"] is None
+
+
+def test_rank_is_deterministic_missing_last_and_not_investment_rating():
+    from app.intelligence.company_identity import CompanyIdentity
+    from app.intelligence.discover_screen import rank_reports
+
+    def report(ticker, ratios):
+        return {"company": CompanyIdentity(ticker, "QA issuer", CIK),
+                "health": {"period": "2026-09-30", "issues": [], "ratios": ratios}}
+
+    ratios = {"Net margin": .1, "Operating cash / revenue": .1,
+              "Liabilities / assets": .6, "Current ratio": 1}
+    rows = rank_reports([report("Z", ratios), report("M", {}), report("A", ratios)], today=NOW.date())
+    assert [r["company"].ticker for r, _ in rows] == ["A", "Z", "M"]
+    ratios["Net margin"] = float("nan")
+    assert rank_reports([report("Z", ratios)], today=NOW.date())[0][1]["matches"] is None
+
+
+def test_synthetic_candidate_filter_and_failed_refresh():
+    app = AppTest.from_file(str(Path(__file__).parents[1] / "qa/discover_preview.py")).run()
+    app.button[0].click().run()
+    assert not app.exception
+    assert any("4 of 4 criteria met" == x.value for x in app.markdown)
+    app.radio[-1].set_value("QAMISSING").run()
+    assert any("Not ranked:" in x.value for x in app.markdown)
+    app.checkbox[0].check().run()
+    assert any("4 of 4 criteria met" == x.value for x in app.markdown)
+    app.text_input[0].set_value("QAERROR")
+    app.button[0].click().run()
+    assert not app.exception
+    assert app.warning
+    assert not app.session_state["qi_discover_reports"]
+
+
+@pytest.mark.parametrize("route", ["💎 Quant Discovery", "🔍 Market Scanner"])
+def test_main_discover_routes_render_native_candidates_without_external_panel(monkeypatch, route):
+    from app.intelligence.company_identity import CompanyIdentity
+    from dashboard import discover_intelligence as ui
+
+    monkeypatch.setenv("QI_SEC_USER_AGENT", "offline fixture")
+    monkeypatch.setattr(ui, "_gateway", lambda _: None)
+    health = financial_health(facts(), CIK, today=NOW.date())
+    health["period"] = datetime.now(UTC).date().isoformat()
+    report = {"company": CompanyIdentity("AAPL", "Fixture issuer", CIK), "health": health,
+              "filings": [], "sources": [], "issues": [],
+              "earnings": {"status": "unavailable", "evidence": []},
+              "analysts": {"status": "unavailable", "evidence": []}}
+    monkeypatch.setattr(ui, "company_deep_dive", lambda *args: report)
+    app = AppTest.from_file(str(Path(__file__).parents[1] / "dashboard/main.py"))
+    app.session_state["selected_page"] = route
+    app.run(timeout=45)
+    next(button for button in app.button if button.label == "Find research candidates").click().run()
+    assert not app.exception
+    assert app.session_state["selected_page"] == "💎 Quant Discovery"
+    assert any(item.value == "4 of 4 criteria met" for item in app.markdown)
+    assert any(item.label == "Annual revenue" for item in app.metric)
+    assert len(app.get("iframe")) == 0
+    assert not any(toggle.key == "qi_discovery_consent" for toggle in app.toggle)

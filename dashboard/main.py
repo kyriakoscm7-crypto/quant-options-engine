@@ -339,7 +339,7 @@ if page == "🏠 Overview":
     if research_notes_enabled():
         st.caption(
             "Real-stock charts in Stock Explorer are provided by TradingView. "
-            "Discovery and Scanner use official provider displays. Simulation Lab uses independent assumptions; portfolio and forecast demos remain fictional."
+            "Discover screens annual SEC fundamentals inside the app. Simulation Lab uses independent assumptions; portfolio and forecast demos remain fictional."
         )
     render_premium_home()
 

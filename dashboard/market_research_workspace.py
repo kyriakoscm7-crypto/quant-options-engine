@@ -65,18 +65,13 @@ def render_market_discovery(*, scanner: bool = False) -> None:
         st.divider()
     else:
         st.title(":primary[:material/diamond:] Opportunity Discovery")
-    st.caption("SCAN → INVESTIGATE → REVIEW · REAL COMPANIES · YOUR RESEARCH")
-    mode = st.radio("Research stage", ["Scan", "Investigate"], horizontal=True,
-                    index=0, key="qi_discovery_stage")
-    if mode == "Scan":
-        st.write("Find candidates with the provider's filters and sorting, then enter an exact listing below to investigate. Provider selections stay inside its panel.")
-        with st.expander("Explore the market screener", expanded=scanner):
+    if scanner:
+        st.caption("Optional external screener · results remain inside the provider panel")
+        with st.expander("Explore the market screener", expanded=False):
             if render_external_panel_consent("qi_discovery_consent"):
                 components.html(screener_embed_html(), height=760, scrolling=False)
-        st.caption("TradingView supplies the screening and ratings inside its official display. These are not Quant Intelligence recommendations or validated forecasts. Data can be delayed or unavailable; the app cannot read or export results.")
-        st.link_button("Open full stock screener on TradingView ↗", "https://www.tradingview.com/screener/")
-    else:
-        st.write("Build an evidence trail: identify a listing, read primary reports, challenge your question and set a review trigger.")
+    st.markdown("### Your research notebook")
+    st.caption("Keep your thesis, counterevidence and next review trigger. Choose an exact exchange listing for your notes; SEC identities above do not verify a listing.")
     symbol = _select_company("qi_discovery_company")
     if symbol:
         a, b = st.columns(2)

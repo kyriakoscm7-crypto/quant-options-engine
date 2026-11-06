@@ -1,0 +1,12 @@
+{
+  "synthetic_fixture_only": true,
+  "ranking_and_filter": true,
+  "missing_unranked": true,
+  "provider_failure_clears_results": true,
+  "no_external_panel": true,
+  "responsive_widths": [
+    390,
+    768,
+    1440
+  ]
+}
