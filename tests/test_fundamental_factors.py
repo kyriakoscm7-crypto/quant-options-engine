@@ -22,6 +22,8 @@ def payload():
                           income=10, cfo=20, capex=5, shares=100, assets=200, liabilities=80)
             row = dict(val=values[metric], end=f'{year}-12-31', filed=f'{year + 1}-02-01',
                        form='10-K', accn=f'0000000001-{year % 100:02d}-000001')
+            if metric == 'shares':
+                row.update(filed='2026-02-01', accn='0000000001-25-000001')
             if metric not in {'assets', 'liabilities'}:
                 row['start'] = f'{year}-01-01'
             rows.append(row)
@@ -191,3 +193,51 @@ def test_factor_ui_missing_filter_and_scenario(monkeypatch):
     next(b for b in app.button if b.label == "← Back to candidates").click().run()
     app.checkbox[0].check().run()
     assert not any(b.key == 'open_QAMISSING' for b in app.button)
+
+
+def test_share_growth_never_stitches_pre_split_filing_bases():
+    data = payload()
+    for i, row in enumerate(rows(data, 'shares')):
+        row.update(accn=f'0000000001-{23 + i}-000001', filed=f'{2024 + i}-02-01', val=100 if i == 0 else 1000)
+    result = research(data)
+    assert result['factors']['share_cagr'] is None
+    assert result['factor_windows']['share_cagr'] is None
+    assert result['archetypes']['Improving fundamentals']['score'] is None
+    assert result['archetypes']['Quality compounders']['score'] == research()['archetypes']['Quality compounders']['score']
+    assert any('cross-filing split bases' in issue for issue in result['issues'])
+
+
+def test_share_growth_uses_dated_common_filing_suffix_without_split_inference():
+    data = payload()
+    shares = rows(data, 'shares')
+    for year in (2021, 2022):
+        shares.insert(0, {**shares[-1], 'start': f'{year}-01-01', 'end': f'{year}-12-31',
+                          'filed': f'{year + 1}-02-01', 'accn': f'0000000001-{year % 100}-000001', 'val': 10})
+    result = research(data)
+    assert result['factors']['share_cagr'] == 0
+    assert result['factor_windows']['share_cagr'] == {
+        'start': '2023-12-31', 'end': '2025-12-31', 'observations': 3,
+        'accession': '0000000001-25-000001'}
+    shares[-2]['val'] = 0
+    assert research(data)['factors']['share_cagr'] is None
+
+
+def test_nvda_published_comparative_shares_manual_cagr():
+    # Primary document: NVIDIA FY2026 10-K, Note 4, in millions; all shares
+    # retrospectively split adjusted. A fixed test fixture, never production data.
+    # https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm
+    import math
+
+    observations = []
+    for start, end, value in [('2023-01-30', '2024-01-28', 24940e6),
+                               ('2024-01-29', '2025-01-26', 24804e6),
+                               ('2025-01-27', '2026-01-25', 24514e6)]:
+        observations.append(dict(start=start, end=end, val=value, filed='2026-02-25',
+                                 form='10-K', accn='0001045810-26-000021'))
+    data = {'cik': 1045810, 'facts': {'us-gaap': {CONCEPTS['shares'][1][0]: {'units': {'shares': observations}}}}}
+    result = factor_research(data, 1045810, sic=3674, as_of=ASOF)
+    elapsed = (date(2026, 1, 25) - date(2024, 1, 28)).days / 365.2425
+    expected = math.pow(24514 / 24940, 1 / elapsed) - 1
+    assert result['factors']['share_cagr'] == pytest.approx(expected)
+    assert -.01 < expected < 0
+    assert result['factor_windows']['share_cagr']['observations'] == 3

@@ -10,7 +10,7 @@ The SEC documents Company Facts as standard-taxonomy, entity-wide observations, 
 
 ## Calculation contract
 
-- Revenue/share CAGR: actual elapsed years (365.2425 days/year), minimum three consecutive observations, 330–400 days between year ends, annual duration lengths within 14 days, positive values and unchanged tags. Missing intervening years prevent CAGR.
+- Revenue/share CAGR: actual elapsed years (365.2425 days/year), minimum three consecutive observations, 330–400 days between year ends, annual duration lengths within 14 days, positive values and unchanged tags. Missing intervening years prevent CAGR. Share CAGR now uses only the latest contiguous comparative suffix from a single filing accession (minimum three annual observations), to avoid mixing pre/post-split filing bases. Its explicit date window may be shorter than revenue history; no split multiplier is guessed.
 - Operating margin = operating income / positive revenue. Change = last minus first over at least three consecutive observed years, unchanged numerator and denominator tags.
 - FCF = CFO minus nonnegative `PaymentsToAcquirePropertyPlantAndEquipment`; CFO, capex and revenue must have identical period and accession. This is a narrow PP&E cash-flow proxy, not distributable cash, EBITDA or acquisition-adjusted cash flow.
 - Cash conversion = CFO / positive net income. Nonpositive income gives unavailable, not a misleading negative conversion ratio.

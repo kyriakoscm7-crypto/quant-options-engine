@@ -118,8 +118,8 @@ def factor_research(payload, cik, *, sic=None, as_of=None):
             for a, b in zip(rows, rows[1:]))
 
     # Trends need a contiguous annual sequence, a single concept and comparable durations.
-    def trend(metric):
-        rows = [h['observations'][metric] for h in history]
+    def trend(metric, rows=None):
+        rows = [h['observations'][metric] for h in history] if rows is None else rows
         if not contiguous(rows):
             return None
         if len({r['tag'] for r in rows}) != 1 or any(r['value'] <= 0 for r in rows):
@@ -137,7 +137,23 @@ def factor_research(payload, cik, *, sic=None, as_of=None):
     incomes = [h['observations']['income'] for h in history]
     margin_periods_compatible = contiguous([h['observations']['revenue'] for h in history])
     margin_tags_consistent = all(len({h['observations'][k]['tag'] for h in history if h['observations'][k]}) == 1 for k in ('revenue', 'operating_income'))
-    factors = dict(revenue_cagr=trend('revenue'), share_cagr=trend('shares'),
+    # Share counts from different filings may use different split bases. Use only
+    # the contiguous comparative suffix in the latest share observation's filing;
+    # never infer a split ratio from a numerical jump or stitch filing bases.
+    share_rows = []
+    latest_shares = latest.get('observations', {}).get('shares')
+    if latest_shares:
+        for h in reversed(history):
+            row = h['observations']['shares']
+            if not row or row['accession'] != latest_shares['accession']:
+                break
+            share_rows.insert(0, row)
+    share_growth = trend('shares', share_rows)
+    if share_growth is None and any(h['observations']['shares'] for h in history):
+        issues.append('Share CAGR unavailable: need at least three consecutive annual share observations in one filing; cross-filing split bases are not inferred.')
+    share_window = dict(start=share_rows[0]['end'], end=share_rows[-1]['end'],
+                        observations=len(share_rows), accession=latest_shares['accession']) if share_growth is not None else None
+    factors = dict(revenue_cagr=trend('revenue'), share_cagr=share_growth,
                    margin_change=margins[-1] - margins[0] if consecutive and margin_periods_compatible and margin_tags_consistent and all(x is not None for x in margins) else None,
                    earnings_consistency=sum(x['value'] > 0 for x in incomes) / len(incomes) if contiguous(incomes) else None,
                    **{key: latest.get(key) for key in ('operating_margin', 'fcf_margin', 'cash_conversion', 'liabilities_assets')})
@@ -170,6 +186,8 @@ def factor_research(payload, cik, *, sic=None, as_of=None):
     risks = ['Annual accounting signals do not measure valuation, competitive durability or investment returns.']
     if factors['cash_conversion'] is not None and factors['cash_conversion'] < 1:
         risks.append('Operating cash trails positive net income; investigate working capital and noncash items.')
+    if share_window is None:
+        risks.append('Share-count comparability unverified; no dilution trend is inferred across filing bases.')
     if factors['share_cagr'] is not None and factors['share_cagr'] > 0:
         risks.append('Diluted weighted-average shares increased; investigate dilution and per-share economics.')
     if latest.get('fcf') is not None and latest['fcf'] < 0:
@@ -180,6 +198,7 @@ def factor_research(payload, cik, *, sic=None, as_of=None):
         risks.append('Latest annual period missing or older than 550 days; no ranking.')
     return dict(as_of=as_of.isoformat(), period=periods[-1] if periods else None, history=history,
                 factors=factors, scores=scores, archetypes=archetypes, sector=sector,
+                factor_windows={'share_cagr': share_window},
                 issues=issues, risks=risks, coverage=f'{sum(v is not None for v in factors.values())}/{len(factors)}',
                 uncertainty='Single issuer source; latest-known restatements; no point-in-time backtest or peer percentile.')
 

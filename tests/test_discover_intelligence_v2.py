@@ -510,3 +510,29 @@ def test_factor_display_units_and_missing():
     assert format_factor("margin_change", -.025) == "-2.5 pp"
     assert format_factor("revenue_cagr", .1) == "10.0%"
     assert format_factor("revenue_cagr", None) == "Unavailable"
+
+
+def test_research_tabs_guides_and_original_check_failure_are_honest(monkeypatch):
+    monkeypatch.setenv("QI_QA_FACTORS", "1")
+    app = AppTest.from_file(str(Path(__file__).parents[1] / "qa/discover_preview.py")).run()
+    app.button[0].click().run()
+    assert app.radio[0].label == "Research pattern"
+    next(b for b in app.button if b.key == "open_QAALPHA").click().run()
+    assert [t.label for t in app.tabs] == ["Overview", "Trends", "8 factors", "Stress", "Evidence"]
+    assert any("Understand the business pattern" in m.value for m in app.markdown)
+    assert any("Independent financial-source corroboration has not run" in i.value for i in app.info)
+    next(b for b in app.button if b.key == "check_filing_QAALPHA").click().run()
+    assert not app.exception
+    assert any("Original filing check unavailable" in w.value for w in app.warning)
+    assert "qi_filing_check_QAALPHA" not in app.session_state
+
+
+def test_document_discrepancy_stays_visible_next_to_candidate(monkeypatch):
+    monkeypatch.setenv("QI_QA_FACTORS", "1")
+    app = AppTest.from_file(str(Path(__file__).parents[1] / "qa/discover_preview.py")).run()
+    app.button[0].click().run()
+    app.session_state["qi_filing_check_QAALPHA"] = {"rows": [{"Status": "discrepancy"}]}
+    app.run()
+    assert not app.exception
+    assert any("Evidence discrepancy" in w.value for w in app.warning)
+    assert any(b.key == "open_QAALPHA" for b in app.button)
