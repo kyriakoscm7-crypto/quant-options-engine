@@ -19,7 +19,7 @@ def _earnings_api_key():
         return key
     try:
         return str(st.secrets.get("EARNINGSAPI_API_KEY", "")).strip()
-    except (FileNotFoundError, KeyError, RuntimeError, OSError):
+    except Exception:  # Streamlit raises a custom error when no secrets file exists
         return ""
 
 
@@ -78,8 +78,8 @@ def render_earnings_week():
     if key and _render_provider_calendar(today, key):
         return
 
-    from app.intelligence.issuer_calendar import REVIEWED, select_events
-    st.caption(f"Company-announced schedule · {len(__import__('app.intelligence.issuer_calendar', fromlist=['EVENTS']).EVENTS)} curated entries · Last reviewed {REVIEWED:%B %d, %Y}")
+    from app.intelligence.issuer_calendar import EVENTS, REVIEWED, select_events
+    st.caption(f"Company-announced schedule · {len(EVENTS)} curated entries · Last reviewed {REVIEWED:%B %d, %Y}")
     if not key:
         st.info("The live calendar is not connected yet. Add EARNINGSAPI_API_KEY to Streamlit server secrets to enable weekly earnings coverage. The verified company-announcement list below works without a key.")
     if (today - REVIEWED).days > 7:
