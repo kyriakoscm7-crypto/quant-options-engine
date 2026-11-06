@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 import streamlit as st
 
+from app.intelligence.company_registry import CompanyRegistry
 from app.intelligence.discover_evidence import earnings_label
 from app.intelligence.discover_financials import health_observations
 from app.intelligence.discover_screen import UNIVERSES, rank_reports
@@ -32,27 +33,39 @@ def _investigation_steps(report):
 
 
 def render_intelligence():
-    st.markdown("### Find your next research question")
-    st.write("Understand the business. Check the evidence. Decide what to investigate next.")
     agent = os.environ.get("QI_SEC_USER_AGENT", "")
-    a, b, c = st.columns(3)
-    a.metric("Company financials", "Ready to check" if agent else "Not connected")
-    b.metric("Earnings coverage", "Not connected")
-    c.metric("Analyst coverage", "Not connected")
-    st.caption("Company facts come from SEC EDGAR. Issuer reports are one source, not independent verification. Earnings dates and analyst views appear only when sourced coverage is connected.")
+    st.caption("SEC annual fundamentals · Dated issuer evidence · No investment recommendations")
+    with st.expander("Data coverage & setup"):
+        st.write("Coverage identifies SEC filers, not exchange listings. No sector adjustment; financial businesses may need different measures. International listings may be unsupported.")
+        st.write("SEC: annual USD US-GAAP financial facts and recent filing links, retrieved on request. Directory cache: 24 hours; company evidence: one hour. Reporting periods can differ.")
+        st.write("Licensed earnings calendars, analyst estimates, prices and valuation data are unavailable. SEC filing dates are not earnings dates. Stock Explorer retains its separate consented chart display.")
+        st.code('export QI_SEC_USER_AGENT="Quant Intelligence $YOUR_REAL_CONTACT_EMAIL"', language="sh")
+        st.caption("Replace the contact variable with your genuine operator email before starting Streamlit. No API key is required; an email-shaped value alone cannot prove contact ownership.")
     universe = st.selectbox("Start with a research universe", [*UNIVERSES, "My own tickers"])
-    st.caption("Small editorial starting sets, not a market-wide scan or index membership. No sector adjustment; financial businesses may need different measures.")
-    if universe in UNIVERSES:
-        st.write(" · ".join(UNIVERSES[universe]))
+    st.caption("Editorial starting sets or your own tickers · Up to eight companies per scan · No market-wide coverage")
     if not agent:
-        st.info("Company briefs are not connected yet. Keep investigating with Stock Explorer and your shortlist below.")
+        st.info("SEC research is not connected. Set QI_SEC_USER_AGENT with your genuine operator contact, then restart Streamlit.")
         st.caption("Enable SEC research with a genuine operator contact in QI_SEC_USER_AGENT. No live facts or example scores are substituted.")
         return
-    st.caption("SEC coverage identifies a filing entity, not an exchange listing. Use its exact SEC ticker; international listings may be unsupported.")
     with st.form("discover_evidence_search"):
         tickers = st.text_input("Companies to investigate", value=", ".join(UNIVERSES.get(universe, ())), placeholder="AAPL, MSFT", max_chars=100,
                                help="Choose up to eight exact SEC tickers.")
         submitted = st.form_submit_button("Find research candidates", type="primary")
+    with st.expander("Find SEC tickers by company name"):
+        with st.form("discover_identity_search"):
+            query = st.text_input("Company name or ticker", max_chars=100)
+            find_identity = st.form_submit_button("Search official directory")
+        if find_identity:
+            try:
+                directory = _gateway(agent).fetch("directory")
+                matches = CompanyRegistry(directory["data"]).search(query)
+                if matches:
+                    st.dataframe([{"Ticker": c.ticker, "Company": c.name, "CIK": c.cik} for c in matches], hide_index=True)
+                    st.caption(f"Official SEC directory retrieved {directory['retrieved_at']}. Copy exact tickers into Companies to investigate. Results identify filers, not verified exchange listings.")
+                else:
+                    st.info("No matching SEC filing entity. Try another company name or ticker.")
+            except (ValueError, RuntimeError, OSError):
+                st.warning("SEC company directory unavailable or search invalid. No identities substituted.")
     if submitted:
         symbols = list(dict.fromkeys(x.strip().upper() for x in tickers.split(",") if x.strip()))
         if not 1 <= len(symbols) <= 8:
@@ -88,12 +101,17 @@ def render_intelligence():
     else:
         visible = []
     if visible:
-        st.dataframe([{
-            "Ticker": r["company"].ticker, "Company": r["company"].name,
-            "Criteria met / 4": screen["matches"],
-            "Annual period": (r["health"] or {}).get("period"),
-            "Coverage": screen["reason"],
-        } for r, screen in visible], hide_index=True, width="stretch")
+        st.caption(f"{len(visible)} companies shown · {sum(screen['eligible'] for _, screen in visible)} with comparable screening evidence")
+        for candidate, candidate_screen in visible:
+            candidate_health = candidate["health"] or {}
+            with st.container(border=True):
+                st.markdown(f"**{candidate['company'].ticker} · {candidate['company'].name}**")
+                st.caption(f"Annual period {candidate_health.get('period') or 'unavailable'} · " +
+                           (f"{candidate_screen['matches']} / 4 disclosed criteria met" if candidate_screen["eligible"] else candidate_screen["reason"]))
+                observations = candidate_health.get("observations", {})
+                st.write(" · ".join(f"{label}: ${observations[key]['value']:,.0f}" if key in observations else f"{label}: unavailable"
+                                   for key, label in (("revenue", "Revenue"), ("income", "Net income"), ("operating_cash", "Operating cash"))).replace("$", r"\$"))
+                st.caption("; ".join(health_observations(candidate_health)) if candidate_health else "Financial facts unavailable; inspect filing sources.")
         candidates = {r["company"].ticker: (r, screen) for r, screen in visible}
         labels = {ticker: f"{ticker} · {row[0]['company'].name}" for ticker, row in candidates.items()}
         selected = st.radio("Investigate a candidate", list(candidates), format_func=labels.get, horizontal=True)
@@ -106,9 +124,9 @@ def render_intelligence():
             st.write(f"{screen['matches']} of 4 criteria met" if screen["eligible"] else screen["reason"])
             for check in screen["checks"]:
                 state = "Meets" if check["passes"] is True else "Does not meet" if check["passes"] is False else "Unavailable"
-                st.write(f"{state} · {check['criterion']}")
-            st.markdown("**Valuation**")
-            st.caption("Unavailable · No licensed, dated price/share-count dataset connected. Annual profit is not a valuation. P/E, market cap and fair value are not inferred.")
+                value = check["value"]
+                formatted = "unavailable" if value is None else f"{value:.2f}×" if check["factor"] == "Current ratio" else f"{value:.1%}"
+                st.write(f"{state} · {check['criterion']} · Reported: {formatted}")
             if report["sources"]:
                 st.caption(f"Evidence retrieved {report['sources'][-1]['retrieved_at']} · Build the brief again to check for updates.")
             if health:
@@ -117,7 +135,8 @@ def render_intelligence():
                 for column, (key, label) in zip(facts_columns, (("revenue", "Annual revenue"), ("income", "Annual net income"), ("operating_cash", "Annual operating cash")), strict=True):
                     fact = health["observations"].get(key)
                     column.metric(label, f"${fact['value']:,.0f}" if fact else "Unavailable")
-                st.caption("Issuer-reported USD · See financial facts for each filing date, accession and source link.")
+                dates = sorted({fact["filed"] for fact in health["observations"].values()})
+                st.caption(f"Issuer-reported USD · Filed {', '.join(dates) or 'unavailable'} · Each observation retains its filing accession and source.")
                 columns = st.columns(2)
                 for index, (name, value) in enumerate(health["ratios"].items()):
                     columns[index % 2].metric(name, f"{value:.2f}×" if name == "Current ratio" else f"{value:.1%}")

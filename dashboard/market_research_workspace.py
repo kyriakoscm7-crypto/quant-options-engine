@@ -70,21 +70,22 @@ def render_market_discovery(*, scanner: bool = False) -> None:
         with st.expander("Explore the market screener", expanded=False):
             if render_external_panel_consent("qi_discovery_consent"):
                 components.html(screener_embed_html(), height=760, scrolling=False)
-    st.markdown("### Your research notebook")
-    st.caption("Keep your thesis, counterevidence and next review trigger. Choose an exact exchange listing for your notes; SEC identities above do not verify a listing.")
-    symbol = _select_company("qi_discovery_company")
-    if symbol:
-        a, b = st.columns(2)
-        a.button("Open Stock Explorer", type="primary", key="qi_discovery_open",
-                 on_click=_open_company, args=(symbol,))
-        b.link_button("Find issuer filings · SEC EDGAR ↗", official_filings_url(symbol))
-        st.caption(
-            "For Apple and Microsoft, this opens an SEC-verified issuer record. "
-            "For other symbols, it opens SEC company search: enter the company "
-            "name or ticker and verify the exact issuer before relying on filings. "
-            "Some listings do not have SEC coverage."
-        )
-    render_discovery_notebook(symbol)
+    with st.expander("Your research notebook · thesis, counterevidence & exports", expanded=False):
+        st.markdown("### Your research notebook")
+        st.caption("Keep your thesis, counterevidence and next review trigger. Choose an exact exchange listing for your notes; SEC identities above do not verify a listing.")
+        symbol = _select_company("qi_discovery_company")
+        if symbol:
+            a, b = st.columns(2)
+            a.button("Open Stock Explorer", type="primary", key="qi_discovery_open",
+                     on_click=_open_company, args=(symbol,))
+            b.link_button("Find issuer filings · SEC EDGAR ↗", official_filings_url(symbol))
+            st.caption(
+                "For Apple and Microsoft, this opens an SEC-verified issuer record. "
+                "For other symbols, it opens SEC company search: enter the company "
+                "name or ticker and verify the exact issuer before relying on filings. "
+                "Some listings do not have SEC coverage."
+            )
+        render_discovery_notebook(symbol)
 
 
 def render_company_simulation_lab() -> None:

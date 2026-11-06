@@ -2042,3 +2042,7 @@ Theoretical model outputs and market-data-derived estimates should not be relied
 ## Current release preparation
 
 Draft PR #6 remains unmerged. See [production readiness and preview steps](docs/PRODUCTION_READINESS_2026_11.md) and [source-rights evidence](docs/SOURCE_RIGHTS_2026_11.md). Discovery offers provider-hosted screening plus session-local evidence shortlists; synthetic forecasts and portfolios live under Quant Lab. No new backend feed is licensed or enabled.
+
+### Discover on `feature/discover-intelligence-v2` / PR #12
+
+This feature branch replaces the historical fictional/external Discover flow with user-requested, sourced SEC annual-fundamental research. It provides bounded ticker scans, official company-directory search, evidence cards and four disclosed accounting filters. Licensed earnings, analyst and valuation feeds remain unavailable. See [Mac setup, live retrieval verification and exact limitations](docs/DISCOVER_SETUP_MAC.md). This branch has not been merged or deployed.

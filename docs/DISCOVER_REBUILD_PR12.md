@@ -62,3 +62,7 @@ python -m streamlit run dashboard/main.py
 ```
 
 Open the local URL printed by Streamlit, refresh the browser and select Discover → Scan & investigate. Expect “Find your next research question”, a research universe selector and “Find research candidates”. Click that button to fetch evidence and show candidates. Without the contact setting, Discover explains that company briefs are not connected; it still must not show the oversized TradingView screener. SEC/provider errors are shown rather than replaced with example data. Hosted production remains unchanged by this feature-branch update.
+
+## Current continuation
+
+The earlier no-live-contact limitation above is superseded by [the current Mac setup and verification record](DISCOVER_SETUP_MAC.md): a genuine contact was supplied privately, live SEC retrieval succeeded, and AAPL/MSFT cards were browser-tested. The empty status tiles are removed, all retrieved companies receive evidence cards, official company-name directory search is available, and the notebook is secondary. Licensed market, earnings and analyst datasets remain unavailable.

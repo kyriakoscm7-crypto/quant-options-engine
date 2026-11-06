@@ -425,3 +425,46 @@ def test_main_discover_routes_render_native_candidates_without_external_panel(mo
     assert any(item.label == "Annual revenue" for item in app.metric)
     assert len(app.get("iframe")) == 0
     assert not any(toggle.key == "qi_discovery_consent" for toggle in app.toggle)
+
+
+def test_discover_leads_with_evidence_not_dead_status_tiles(monkeypatch):
+    monkeypatch.delenv("QI_SEC_USER_AGENT", raising=False)
+    app = AppTest.from_string("from dashboard.discover_intelligence import render_intelligence\nrender_intelligence()").run()
+    assert not app.exception
+    assert not app.metric
+    assert any(x.label == "Data coverage & setup" for x in app.expander)
+
+
+def test_candidate_cards_show_annual_evidence_before_selection():
+    app = AppTest.from_file(str(Path(__file__).parents[1] / "qa/discover_preview.py")).run()
+    app.button[0].click().run()
+    assert not app.exception
+    text = "\n".join(x.value for x in app.markdown)
+    assert "**QAALPHA · Synthetic QAALPHA**" in text
+    assert "**QAMISSING · Synthetic QAMISSING**" in text
+    assert r"Revenue: \$1,000,000,000" in text
+    assert "Revenue: unavailable" in text
+    assert "Reported: 20.0%" in text
+
+
+def test_sec_directory_search_is_explicit_and_uses_verified_identity(monkeypatch):
+    from dashboard import discover_intelligence as ui
+
+    calls = []
+
+    class Directory:
+        def fetch(self, resource):
+            calls.append(resource)
+            return {"data": {"0": {"ticker": "AAPL", "title": "Apple Inc.", "cik_str": 320193}},
+                    "retrieved_at": "2026-11-06T00:00:00+00:00"}
+
+    monkeypatch.setenv("QI_SEC_USER_AGENT", "offline fixture")
+    monkeypatch.setattr(ui, "_gateway", lambda _: Directory())
+    app = AppTest.from_string("from dashboard.discover_intelligence import render_intelligence\nrender_intelligence()").run()
+    assert not calls
+    app.text_input[1].set_value("Apple")
+    app.button[1].click().run()
+    assert not app.exception
+    assert calls == ["directory"]
+    assert app.dataframe[0].value.iloc[0]["CIK"] == CIK
+    assert "qi_discover_reports" not in app.session_state

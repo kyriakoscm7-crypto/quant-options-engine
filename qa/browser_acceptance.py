@@ -28,6 +28,7 @@ def run(base, output, channel):
         page.goto(base)
         expect(button("Open Discovery")).to_be_visible(timeout=30000)
         button("Open Discovery").click()
+        page.get_by_text("Your research notebook · thesis, counterevidence & exports", exact=True).click()
         button("Add selected listing to shortlist").click()
         field("Research question").fill("QA public-company research — α")
         trigger = "FINAL FIELD — review next public filing ✓"
@@ -131,6 +132,7 @@ def run(base, output, channel):
         other = other_context.new_page()
         other.goto(base)
         other.get_by_role("button", name="Open Discovery", exact=True).click()
+        other.get_by_text("Your research notebook · thesis, counterevidence & exports", exact=True).click()
         expect(
             other.get_by_text(
                 "Select a company to begin a source-linked research record.", exact=True

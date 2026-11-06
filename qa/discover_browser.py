@@ -17,8 +17,8 @@ def run(base, output, channel):
         expect(page.get_by_text("4 of 4 criteria met", exact=True)).to_be_visible()
         expect(page.get_by_text("No confirmed licensed catalyst available.", exact=False)).to_be_visible()
         assert page.locator('iframe[data-testid="stIFrame"]').count() == 0
-        page.get_by_text("QAMISSING · Synthetic QAMISSING", exact=True).click()
-        expect(page.get_by_test_id("stMarkdownContainer").get_by_text("Not ranked: missing, conflicting or older than 550 days annual evidence", exact=True)).to_be_visible()
+        page.get_by_test_id("stRadioGroup").get_by_text("QAMISSING · Synthetic QAMISSING", exact=True).click()
+        expect(page.get_by_test_id("stMarkdownContainer").get_by_text("Not ranked: missing, conflicting or older than 550 days annual evidence", exact=True).last).to_be_visible()
         page.get_by_text("Show only candidates meeting at least three criteria", exact=True).click()
         expect(page.get_by_text("4 of 4 criteria met", exact=True)).to_be_visible()
         for width in (390, 768, 1440):
