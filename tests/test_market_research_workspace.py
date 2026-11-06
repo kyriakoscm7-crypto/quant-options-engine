@@ -25,7 +25,7 @@ def test_screener_matches_official_stock_demo_and_preserves_attribution():
 
 
 @pytest.mark.parametrize('route,embed_count', [
-    ('💎 Quant Discovery', 1), ('🔍 Market Scanner', 1), ('🧪 Simulation Lab', 2),
+    ('💎 Quant Discovery', 0), ('🔍 Market Scanner', 0), ('🧪 Simulation Lab', 2),
 ])
 def test_real_research_routes_opt_in_without_backend_requests(route, embed_count, monkeypatch):
     import requests
@@ -43,6 +43,11 @@ def test_real_research_routes_opt_in_without_backend_requests(route, embed_count
     assert not app.exception
     assert len(app.get('iframe')) == 0
     assert not any('SYNTHETIC DEMO' in item.value for item in app.info)
+    if embed_count == 0:
+        app.toggle(key='qi_external_charts').set_value(True).run()
+        assert not app.exception
+        assert len(app.get('iframe')) == 0
+        return
     consent_key = 'qi_simulation_consent' if route == '🧪 Simulation Lab' else 'qi_discovery_consent'
     app.toggle(key=consent_key).set_value(True).run()
     assert not app.exception
@@ -95,15 +100,15 @@ def test_invalid_custom_reference_is_never_embedded():
 
 def test_old_chart_only_consent_requires_new_disclosure_before_new_pages_load():
     app = AppTest.from_file(str(ROOT / 'dashboard/main.py'))
-    app.session_state['selected_page'] = '💎 Quant Discovery'
+    app.session_state['selected_page'] = '🧪 Simulation Lab'
     app.session_state['qi_external_charts'] = True
     # A session from before the cross-page screener disclosure has no version.
     app.run(timeout=45)
     assert not app.exception
     assert len(app.get('iframe')) == 0
     assert app.session_state['qi_external_charts'] is False
-    app.toggle(key='qi_discovery_consent').set_value(True).run()
-    assert len(app.get('iframe')) == 1
+    app.toggle(key='qi_simulation_consent').set_value(True).run()
+    assert len(app.get('iframe')) == 2
     assert app.session_state['qi_external_panels_notice_version'] == 2
     app.button(key='qi_reset_workspace_preferences').click().run()
     assert len(app.get('iframe')) == 0
@@ -116,7 +121,7 @@ def test_settings_opt_in_records_current_scope_for_other_research_pages():
     app.run(timeout=45)
     app.toggle(key='qi_external_charts').set_value(True).run()
     assert not app.exception
-    assert len(app.get('iframe')) == 1
+    assert len(app.get('iframe')) == 0
     app.session_state['selected_page'] = '🧪 Simulation Lab'
     app.run()
     assert len(app.get('iframe')) == 2

@@ -39,3 +39,14 @@ Re-opened official TradingView policies §§3–4, general widget FAQ, data FAQ 
 - **Streamlit:** current terms §9.4 prohibit processing content subject to heightened protection, explicitly including financial information. The terms do not supply an app-specific exception for private sharing. Whether this exact public-company-display / hypothetical-calculator app fits the restriction remains unresolved. Current marketing also mentions public-only Community Cloud availability while security documentation still describes private app authentication; grandfathered/private deployment availability must be reconfirmed with the host. Existing observed private settings do not resolve either question.
 
 **Still required:** owner/provider confirmation for the precise widget use and host eligibility, plus actual privacy/retention practices and access acceptance tests. No confirmation request was sent on the owner's behalf. No source purchase, new live feed, account connection or terms acceptance occurred. Private sign-in does not grant market-data redistribution rights.
+
+## Discover v2 structured SEC review — November 5, 2026
+
+The proposed feature adds only structured SEC ticker identifiers, submissions
+metadata and companyfacts numeric observations. See
+[Discover v2 source admission and deployment limits](DISCOVER_INTELLIGENCE_V2.md)
+for exact endpoints, official guidance, provenance, fair-access controls and
+remaining gates. This narrowly supersedes the older link-only Discover entry;
+no filing prose/exhibit ingestion or other provider admission is implied.
+Earnings and analyst sources remain disconnected pending reviewed contracts
+and provider-specific adapters. No generic market-data rights flag enables them.

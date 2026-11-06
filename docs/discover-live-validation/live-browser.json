@@ -1,0 +1,13 @@
+{
+  "live_SEC": true,
+  "tickers": [
+    "AAPL",
+    "MSFT"
+  ],
+  "cards_and_detail": true,
+  "responsive_widths": [
+    390,
+    768,
+    1440
+  ]
+}

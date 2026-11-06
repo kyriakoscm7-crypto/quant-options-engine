@@ -1,0 +1,81 @@
+........................................................................ [  3%]
+........................................................................ [  6%]
+........................................................................ [ 10%]
+........................................................................ [ 13%]
+........................................................................ [ 16%]
+........................................................................ [ 20%]
+........................................................................ [ 23%]
+........................................................................ [ 27%]
+........................................................................ [ 30%]
+........................................................................ [ 33%]
+........................................................................ [ 37%]
+........................................................................ [ 40%]
+........................................................................ [ 44%]
+........................................................................ [ 47%]
+........................................................................ [ 50%]
+........................................................................ [ 54%]
+........................................................................ [ 57%]
+........................................................................ [ 60%]
+........................................................................ [ 64%]
+........................................................................ [ 67%]
+........................................................................ [ 71%]
+........................................................................ [ 74%]
+........................................................................ [ 77%]
+........................................................................ [ 81%]
+........................................................................ [ 84%]
+........................................................................ [ 88%]
+........................................................................ [ 91%]
+........................................................................ [ 94%]
+........................................................................ [ 98%]
+.....................................                                    [100%]
+=============================== warnings summary ===============================
+.venv/lib/python3.11/site-packages/fastapi/testclient.py:1
+  /Users/Kyriakos/Documents/ChatGPT/Quant Intellegence App/repo/.venv/lib/python3.11/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+.venv/lib/python3.11/site-packages/pandas/core/series.py:848
+.venv/lib/python3.11/site-packages/pandas/core/series.py:848
+.venv/lib/python3.11/site-packages/pandas/core/series.py:848
+.venv/lib/python3.11/site-packages/pandas/core/series.py:848
+  /Users/Kyriakos/Documents/ChatGPT/Quant Intellegence App/repo/.venv/lib/python3.11/site-packages/pandas/core/series.py:848: Pandas4Warning: Series.values returning an ndarray that drops timezone information for DatetimeTZDtype is deprecated. In a future version, this will return the underlying DatetimeArray instead. Use 'Series.dt.tz_convert(None).to_numpy()' to get a NumPy array of UTC values, or 'Series.array' to get the ExtensionArray.
+  See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#whatsnew-310-deprecations-values for more details.
+    warnings.warn(
+
+tests/test_api_safety.py::test_nonfinite_calculation_cannot_be_reported_as_valid_price
+  /Users/Kyriakos/Documents/ChatGPT/Quant Intellegence App/repo/app/pricing/vectorized_black_scholes.py:179: RuntimeWarning: overflow encountered in divide
+    d1 = (
+
+tests/test_api_safety.py::test_nonfinite_calculation_cannot_be_reported_as_valid_price
+  /Users/Kyriakos/Documents/ChatGPT/Quant Intellegence App/repo/app/pricing/vectorized_black_scholes.py:195: RuntimeWarning: overflow encountered in exp
+    strike * np.exp(-rate * time)
+
+tests/test_api_safety.py::test_nonfinite_calculation_cannot_be_reported_as_valid_price
+  /Users/Kyriakos/Documents/ChatGPT/Quant Intellegence App/repo/app/pricing/vectorized_black_scholes.py:200: RuntimeWarning: invalid value encountered in multiply
+    - discounted_strike * norm.cdf(d2)
+
+tests/test_market_scanner.py: 44 warnings
+tests/test_scanner_gap_integration.py: 6 warnings
+  /Users/Kyriakos/Documents/ChatGPT/Quant Intellegence App/repo/app/market_data/market_scanner.py:235: Pandas4Warning: The inplace keyword in DataFrame.dropna is deprecated and will be removed in a future version (PDEP-8).
+  See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+    frame.dropna(
+
+tests/test_market_scanner.py: 44 warnings
+tests/test_scanner_gap_integration.py: 6 warnings
+  /Users/Kyriakos/Documents/ChatGPT/Quant Intellegence App/repo/app/market_data/market_scanner.py:240: Pandas4Warning: The inplace keyword in DataFrame.drop is deprecated and will be removed in a future version (PDEP-8).
+  See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+    frame.drop(
+
+tests/test_market_scanner.py: 44 warnings
+tests/test_scanner_gap_integration.py: 6 warnings
+  /Users/Kyriakos/Documents/ChatGPT/Quant Intellegence App/repo/app/market_data/market_scanner.py:247: Pandas4Warning: The inplace keyword in DataFrame.sort_values is deprecated and will be removed in a future version (PDEP-8).
+  See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+    frame.sort_values(
+
+tests/test_market_scanner.py: 44 warnings
+tests/test_scanner_gap_integration.py: 6 warnings
+  /Users/Kyriakos/Documents/ChatGPT/Quant Intellegence App/repo/app/market_data/market_scanner.py:252: Pandas4Warning: The inplace keyword in DataFrame.drop_duplicates is deprecated and will be removed in a future version (PDEP-8).
+  See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.
+    frame.drop_duplicates(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+2125 passed, 208 warnings in 26.25s

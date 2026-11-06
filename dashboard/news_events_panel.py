@@ -18,7 +18,7 @@ def render_news_events():
     st.caption("OFFICIAL IDENTITY · SOURCE EVIDENCE · TRANSPARENT COVERAGE")
     st.write("Search SEC filing entities, inspect disclosures and review headline identity evidence.")
     if not st.toggle("Connect official SEC directory and configured news sources", key="qi_news_connect"):
-        st.info("Enable to search the SEC directory. News sources require operator-configured display rights; GDELT is optional.")
+        st.info("Enable to search the SEC directory. External headline feeds are disabled in this public build.")
         return
     directory, service = _services()
     snapshot = directory.get()

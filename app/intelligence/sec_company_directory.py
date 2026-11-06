@@ -3,10 +3,11 @@
 import os
 import re
 
-import requests
+import requests  # noqa: F401 - shared HTTP transport patched by offline tests
 
 from app.intelligence.company_identity import resolve_sec_company
 from app.intelligence.news_reliability import NewsRateLimited, retry_after_seconds
+from app.intelligence.sec_access import sec_get
 
 SEC_DIRECTORY_URL = "https://www.sec.gov/files/company_tickers.json"
 MAX_RESPONSE_BYTES = 3_000_000
@@ -27,7 +28,7 @@ def _declared_user_agent() -> str:
 
 def fetch_sec_company_directory() -> dict:
     """Download the SEC ticker directory with bounded resource usage."""
-    response = requests.get(
+    response = sec_get(
         SEC_DIRECTORY_URL,
         headers={
             "User-Agent": _declared_user_agent(),

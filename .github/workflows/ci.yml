@@ -36,7 +36,20 @@ jobs:
             curl --fail --silent http://127.0.0.1:18501/_stcore/health && break
             sleep 1
           done
+          python qa/discover_navigation_browser.py --base http://127.0.0.1:18501 --channel '' --output /tmp/qi-browser/discover-navigation
           python qa/browser_acceptance.py --channel '' --output /tmp/qi-browser
+          python -m streamlit run qa/discover_preview.py --server.address 127.0.0.1 --server.port 18503 --server.headless true > /tmp/discover-preview.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            curl --fail --silent http://127.0.0.1:18503/_stcore/health && break
+            sleep 1
+          done
+          python qa/discover_browser.py --base http://127.0.0.1:18503 --channel '' --output /tmp/qi-browser/discover
+          QI_QA_FACTORS=1 python -m streamlit run qa/discover_preview.py --server.address 127.0.0.1 --server.port 18514 --server.headless true > /tmp/factor-preview.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            curl --fail --silent http://127.0.0.1:18514/_stcore/health && break
+            sleep 1
+          done
+          python qa/factor_browser.py --channel ''
           python -m streamlit run qa/news_events_preview.py --server.address 127.0.0.1 --server.port 18502 --server.headless true > /tmp/news-preview.log 2>&1 &
           for attempt in $(seq 1 30); do
             curl --fail --silent http://127.0.0.1:18502/_stcore/health && break

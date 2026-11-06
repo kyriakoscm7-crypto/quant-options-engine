@@ -1,3 +1,5 @@
+> **November 6 public portfolio preparation (PR #12):** Finnhub is disabled in code, including backend calls and cached results; credentials/scope settings cannot enable it. Reading earnings replaces the calendar. No private duplicate, merge or deployment. See [public polish review](docs/PUBLIC_POLISH_2026_11_06.md). Historical private-build and calendar setup text below is superseded by this notice.
+
 > November 4 audit fixes are under review; production is unchanged. See
 > [issue checklist](docs/AUDIT_FIXES_2026_11_04.md),
 > [build/release procedure](docs/BUILD_AND_RELEASE.md) and
@@ -2042,3 +2044,7 @@ Theoretical model outputs and market-data-derived estimates should not be relied
 ## Current release preparation
 
 Draft PR #6 remains unmerged. See [production readiness and preview steps](docs/PRODUCTION_READINESS_2026_11.md) and [source-rights evidence](docs/SOURCE_RIGHTS_2026_11.md). Discovery offers provider-hosted screening plus session-local evidence shortlists; synthetic forecasts and portfolios live under Quant Lab. No new backend feed is licensed or enabled.
+
+### Discover on `feature/discover-intelligence-v2` / PR #12
+
+This feature branch replaces the historical fictional/external Discover flow with user-requested, sourced SEC annual-fundamental research. It provides bounded ticker scans, official company-directory search, evidence cards and four disclosed accounting filters. A Finnhub US earnings calendar adapter is available for authorized local personal research; local key setup and live verification are required. See [earnings setup](docs/EARNINGS_CALENDAR.md). Analyst and valuation feeds remain unavailable. See [Mac setup, live retrieval verification and exact limitations](docs/DISCOVER_SETUP_MAC.md). This branch has not been merged or deployed.
