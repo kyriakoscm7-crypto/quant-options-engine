@@ -81,11 +81,12 @@ def normalize_day(payload, expected_day):
                 eps_estimate=_optional_number(item.get("epsEstimate")),
                 revenue_estimate=_optional_number(item.get("revenueEstimate")),
             )
-            if symbol in events and events[symbol].session != session:
-                # Conflicting within-day sessions must not be silently resolved.
-                events[symbol] = None
-                rejected += 1
-            elif symbol not in events:
+            if symbol in events:
+                if events[symbol] is not None and events[symbol].session != session:
+                    # Withhold any ticker with contradictory reporting sessions.
+                    events[symbol] = None
+                    rejected += 1
+            else:
                 events[symbol] = event
     return tuple(x for x in events.values() if x is not None), rejected
 
