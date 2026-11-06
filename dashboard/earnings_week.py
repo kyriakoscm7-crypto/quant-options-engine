@@ -11,9 +11,16 @@ def week_bounds(day, offset=0):
 
 
 def render_earnings_week():
-    st.title("Reading earnings")
-    st.write("Learn what a company report can tell you, and what it cannot.")
-    st.info("No live earnings calendar is offered in this public build. No scheduled dates or provider events are substituted.")
+    st.title("Earnings calendar")
+    st.write("See which US companies are reporting earnings and when.")
+    st.link_button(
+        "Open earnings calendar on TradingView ↗",
+        "https://www.tradingview.com/earnings-calendar/?countries=us",
+        type="primary",
+        width="stretch",
+    )
+    st.caption("Opens TradingView in a new tab. Dates and coverage are supplied by TradingView and can change; verify important dates with the company’s investor-relations announcement.")
+    st.write("Then use the checklist below to understand the results.")
     st.subheader("A practical report checklist")
     st.markdown("""
 1. **Check the period and source.** Start with the issuer's investor-relations announcement and its SEC filing. A filing date is not a scheduled earnings date.

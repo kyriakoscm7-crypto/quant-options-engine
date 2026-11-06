@@ -29,13 +29,13 @@ def test_two_sidebar_pages_and_calendar_navigation(monkeypatch):
     app.run(timeout=45)
     assert not app.exception
     labels = [b.label.lstrip("●› ") for b in app.sidebar.button]
-    assert "Find stocks" in labels and "Reading earnings" in labels
+    assert "Find stocks" in labels and "Earnings calendar" in labels
     assert "Scan & investigate" not in labels
     assert not any(t.label in {"Find stocks", "Earnings this week", "Overview", "8 factors"} for t in app.tabs)
-    next(b for b in app.sidebar.button if b.label.endswith("Reading earnings")).click().run()
+    next(b for b in app.sidebar.button if b.label.endswith("Earnings calendar")).click().run()
     assert not app.exception
     assert app.session_state["selected_page"] == "📅 Earnings this week"
-    assert any("No live earnings calendar" in i.value for i in app.info)
+    assert any("tradingview.com/earnings-calendar/" in b.url for b in app.get("link_button"))
     assert not app.dataframe and not app.metric
     next(b for b in app.button if b.label == "Find stocks").click().run()
     assert not app.exception

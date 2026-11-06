@@ -225,7 +225,7 @@ def _research_detail(research, ticker, archetype, report):
 
 def render_intelligence():
     agent = os.environ.get("QI_SEC_USER_AGENT", "")
-    if st.session_state.get("qi_earnings_origin") and st.button("← Back to Reading earnings"):
+    if st.session_state.get("qi_earnings_origin") and st.button("← Back to Earnings calendar"):
         st.session_state.pop("qi_earnings_origin", None)
         st.session_state["_navigation_request"] = "📅 Earnings this week"
         st.rerun()
@@ -237,7 +237,7 @@ def render_intelligence():
     with st.expander("Data coverage & setup"):
         st.write("Coverage identifies SEC filers, not exchange listings. Generic factor rankings exclude financial/real estate and utility SIC ranges; missing SIC prevents ranking. International listings may be unsupported.")
         st.write("SEC: annual USD US-GAAP financial facts and recent filing links, retrieved on request. Directory cache: 24 hours; company evidence: one hour. Reporting periods can differ.")
-        st.write("Reading earnings explains how to interpret issuer reports; no live calendar is offered. Analyst estimates, prices and valuation data are unavailable here. SEC filing dates are not earnings dates. Stock Explorer retains its separate consented chart display.")
+        st.write("Earnings calendar explains how to interpret issuer reports; no live calendar is offered. Analyst estimates, prices and valuation data are unavailable here. SEC filing dates are not earnings dates. Stock Explorer retains its separate consented chart display.")
         st.code('export QI_SEC_USER_AGENT="Quant Intelligence $YOUR_REAL_CONTACT_EMAIL"', language="sh")
         st.caption("Replace the contact variable with your genuine operator email before starting Streamlit. No API key is required; an email-shaped value alone cannot prove contact ownership.")
     with st.expander("Research universe & SEC search", expanded=not bool(st.session_state.get("qi_discover_reports"))):

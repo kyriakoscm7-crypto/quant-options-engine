@@ -169,7 +169,7 @@ with st.sidebar:
         ]),
         ("Discover", "💎 Quant Discovery", [
             ("Find stocks", "💎 Quant Discovery"),
-            ("Reading earnings", "📅 Earnings this week"),
+            ("Earnings calendar", "📅 Earnings this week"),
         ]),
         ("Quant Lab", "💰 Options Lab", [
             ("Options Lab", "💰 Options Lab"),

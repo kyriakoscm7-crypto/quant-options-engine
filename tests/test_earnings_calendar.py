@@ -99,5 +99,5 @@ def test_public_earnings_page_is_educational(monkeypatch):
     monkeypatch.setattr(calendar.calendar_service, "load", lambda *a, **k: pytest.fail("UI consulted provider"))
     app = AppTest.from_string("from dashboard.earnings_week import render_earnings_week\nrender_earnings_week()").run()
     assert not app.exception
-    assert app.title[0].value == "Reading earnings"
+    assert app.title[0].value == "Earnings calendar"
     assert not any("week" in b.label.lower() for b in app.button)

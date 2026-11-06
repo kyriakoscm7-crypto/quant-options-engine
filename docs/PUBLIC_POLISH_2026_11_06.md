@@ -111,3 +111,13 @@ identity/contact locally before starting; never commit that value. Check filing
 periods, source links, missing-data notices and company identity. No Finnhub key
 is needed or accepted in this build. Do not enable personal provider feeds for
 an employer demo. Leave merge/deployment for review.
+
+## Earnings-calendar follow-up
+
+The Discover sidebar now labels this page **Earnings calendar**. Its primary
+button opens TradingView's US earnings calendar in a new tab:
+https://www.tradingview.com/earnings-calendar/?countries=us . The destination
+was verified against TradingView's live official page. The report checklist
+remains below it. No calendar data is copied, fetched by the backend or embedded
+through an undocumented widget. Finnhub remains disabled. Targeted earnings and
+navigation tests: 11 passed; Ruff and whitespace checks passed.
