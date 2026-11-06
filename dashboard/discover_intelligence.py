@@ -10,6 +10,12 @@ from app.intelligence.discover_financials import health_observations
 from app.intelligence.discover_screen import UNIVERSES, rank_reports
 from app.intelligence.discover_sec import SecGateway
 from app.intelligence.discover_service import company_deep_dive
+from app.intelligence.fundamental_factors import (
+    ANCHORS,
+    ARCHETYPES,
+    compatible,
+    operating_scenario,
+)
 
 
 @st.cache_resource
@@ -32,11 +38,48 @@ def _investigation_steps(report):
     return steps
 
 
+def _research_detail(research, ticker):
+    st.markdown("**Fundamental trajectory**")
+    st.caption(f"As of {research['as_of']} · {research['coverage']} factors available · {research['sector']}")
+    st.caption(research['uncertainty'])
+    import pandas as pd
+    history = research['history']
+    chart = pd.DataFrame([{"Period": h['period'], "Operating margin": h['operating_margin'],
+                           "FCF margin": h['fcf_margin']} for h in history])
+    if not chart.empty:
+        st.line_chart(chart.set_index("Period"), y_label="Margin (decimal)", color=["#FF78B7", "#79D4CF"])
+    with st.expander("Factor contributions, formulas & filing evidence"):
+        st.caption("Fixed-anchor normalization: clip (value − lower)/(upper − lower) to [0,1], reverse for lower-is-better, multiply by 100. Equal weights; all archetype factors required. Scores describe accounting patterns, not probabilities. No sample-relative or sector percentile claims.")
+        st.dataframe([{"Factor": k, "Value": v, "Pattern score / 100": research['scores'][k],
+                       "Lower anchor": ANCHORS[k][0], "Upper anchor": ANCHORS[k][1],
+                       "Direction": "higher" if ANCHORS[k][2] == 1 else "lower"}
+                      for k, v in research['factors'].items()], hide_index=True)
+        st.write("Revenue and share CAGR use actual elapsed years with at least three consecutive annual observations and unchanged tags. Margin change is last minus first (percentage points). Earnings consistency is positive-income years / observed consecutive years. FCF = CFO − positive reported PP&E purchases; excludes acquisitions and other investment. Cash conversion = CFO / positive net income. Liabilities / assets uses positive assets. Ratios require identical filing accession and period; unavailable is never zero.")
+        st.dataframe([o for h in history for o in h['observations'].values() if o], hide_index=True)
+        for issue in research['issues']:
+            st.write(issue)
+    st.markdown("**What could go wrong**")
+    for risk in research['risks']:
+        st.write(f"• {risk}")
+    with st.expander("Stress the operating thesis · user assumptions"):
+        st.caption("Mechanical sensitivity, not a forecast. Applies user-selected revenue and margin shocks to the latest reported annual operating result. No tax, financing, cash-flow or stock-price projection.")
+        obs = history[-1]['observations'] if history else {}
+        rev, inc = obs.get('revenue'), obs.get('operating_income')
+        if compatible(rev, inc) and rev['value'] > 0:
+            shock = st.slider("Revenue change (%)", -100, 100, -10, key=f"rev_{ticker}")
+            margin = st.slider("Operating margin change (percentage points)", -20., 20., -2., step=.5, key=f"margin_{ticker}")
+            result = operating_scenario(rev['value'], inc['value'], revenue_change=shock / 100, margin_change_pp=margin)
+            st.metric("Hypothetical operating income", f"${result['operating_income']:,.0f}", f"${result['income_change']:,.0f} vs reported")
+            st.caption(f"Hypothetical revenue ${result['revenue']:,.0f}; operating margin {result['operating_margin']:.1%}. Baseline annual period {research['period']}.")
+        else:
+            st.info("Compatible annual revenue and operating income required; no assumed baseline.")
+
+
 def render_intelligence():
     agent = os.environ.get("QI_SEC_USER_AGENT", "")
     st.caption("SEC annual fundamentals · Dated issuer evidence · No investment recommendations")
     with st.expander("Data coverage & setup"):
-        st.write("Coverage identifies SEC filers, not exchange listings. No sector adjustment; financial businesses may need different measures. International listings may be unsupported.")
+        st.write("Coverage identifies SEC filers, not exchange listings. Generic factor rankings exclude financial/real estate and utility SIC ranges; missing SIC prevents ranking. International listings may be unsupported.")
         st.write("SEC: annual USD US-GAAP financial facts and recent filing links, retrieved on request. Directory cache: 24 hours; company evidence: one hour. Reporting periods can differ.")
         st.write("Licensed earnings calendars, analyst estimates, prices and valuation data are unavailable. SEC filing dates are not earnings dates. Stock Explorer retains its separate consented chart display.")
         st.code('export QI_SEC_USER_AGENT="Quant Intelligence $YOUR_REAL_CONTACT_EMAIL"', language="sh")
@@ -91,23 +134,42 @@ def render_intelligence():
             st.caption("Annual periods can differ. Compare filing dates, accounting policies and sector context; ratios are not a score.")
             st.dataframe([{"Company": r["company"].name, "Annual period": (r["health"] or {}).get("period"),
                            **(r["health"] or {}).get("ratios", {})} for r in reports], hide_index=True)
+    archetype = st.selectbox("Research pattern", list(ARCHETYPES)) if reports else next(iter(ARCHETYPES))
+    modern = any(r.get("research") for r in reports)
     if reports:
         st.markdown("#### Research candidates")
-        st.caption("Order: number of four disclosed criteria met, descending; ticker breaks ties. All four ratios and an annual period within 550 days are required; conflicts are excluded. This is a screening rule, not a quality or investment score. Missing evidence is never zero.")
-        only_matches = st.checkbox("Show only candidates meeting at least three criteria")
-        visible = [(r, screen) for r, screen in rank_reports(reports) if not only_matches or (screen["eligible"] and screen["matches"] >= 3)]
+        if not modern:
+            st.caption("Order: number of four disclosed criteria met, descending; ticker breaks ties. All four ratios and an annual period within 550 days are required; conflicts are excluded. This is a screening rule, not a quality or investment score. Missing evidence is never zero.")
+        if any(r.get("research") for r in reports):
+            st.caption("Multi-year pattern ranking uses equal-weight fixed-anchor factors; missing factors, stale annual periods or unsupported sectors remain unranked. This scan is not a matched peer population. Inspect factor contributions and counterevidence below.")
+        only_matches = st.checkbox("Show only ranked pattern matches" if modern else "Show only candidates meeting at least three criteria")
+        visible = [(r, screen) for r, screen in rank_reports(reports) if not only_matches or ((r.get("research") or {}).get("archetypes", {}).get(archetype, {}).get("score") is not None if modern else (screen["eligible"] and screen["matches"] >= 3))]
         if not visible:
             st.info("No candidates meet this screen. Clear the filter to inspect missing evidence and counterevidence.")
     else:
         visible = []
+    if visible and any(r.get("research") for r, _ in visible):
+        def pattern_order(row):
+            research = row[0].get("research") or {}
+            score = research.get("archetypes", {}).get(archetype, {}).get("score")
+            return (score is None, -(score or 0), row[0]["company"].ticker)
+        visible.sort(key=pattern_order)
     if visible:
-        st.caption(f"{len(visible)} companies shown · {sum(screen['eligible'] for _, screen in visible)} with comparable screening evidence")
+        st.caption(f"{len(visible)} companies shown · Inspect coverage and source dates before comparison")
         for candidate, candidate_screen in visible:
             candidate_health = candidate["health"] or {}
             with st.container(border=True):
                 st.markdown(f"**{candidate['company'].ticker} · {candidate['company'].name}**")
-                st.caption(f"Annual period {candidate_health.get('period') or 'unavailable'} · " +
+                if not modern:
+                    st.caption(f"Annual period {candidate_health.get('period') or 'unavailable'} · " +
                            (f"{candidate_screen['matches']} / 4 disclosed criteria met" if candidate_screen["eligible"] else candidate_screen["reason"]))
+                research = candidate.get("research")
+                if research:
+                    pattern = research['archetypes'][archetype]
+                    score = pattern['score']
+                    st.write(f"Why investigate · {archetype}: {score:.0f}/100 pattern fit" if score is not None else f"{archetype} · Unranked: " + "; ".join(pattern["reasons"]))
+                    st.caption(f"Annual period {research['period'] or 'unavailable'} · As of {research['as_of']} · Pattern coverage {pattern['coverage']} · {research['sector']}")
+                    st.write(" · ".join(f"{key.replace('_', ' ')}: {research['factors'][key]:.1%}" if research['factors'][key] is not None else f"{key.replace('_', ' ')}: unavailable" for key in pattern['factors']))
                 observations = candidate_health.get("observations", {})
                 st.write(" · ".join(f"{label}: ${observations[key]['value']:,.0f}" if key in observations else f"{label}: unavailable"
                                    for key, label in (("revenue", "Revenue"), ("income", "Net income"), ("operating_cash", "Operating cash"))).replace("$", r"\$"))
@@ -121,15 +183,18 @@ def render_intelligence():
         with st.container(border=True):
             st.subheader(f"{company.name} · {company.ticker}")
             st.caption(f"SEC CIK {company.cik} · Identity matched to official directory · Coverage: {(health or {}).get('status', 'unavailable')}")
-            st.write(f"{screen['matches']} of 4 criteria met" if screen["eligible"] else screen["reason"])
-            for check in screen["checks"]:
+            if report.get("research"):
+                _research_detail(report["research"], company.ticker)
+            if not modern:
+                st.write(f"{screen['matches']} of 4 criteria met" if screen["eligible"] else screen["reason"])
+            for check in ([] if modern else screen["checks"]):
                 state = "Meets" if check["passes"] is True else "Does not meet" if check["passes"] is False else "Unavailable"
                 value = check["value"]
                 formatted = "unavailable" if value is None else f"{value:.2f}×" if check["factor"] == "Current ratio" else f"{value:.1%}"
                 st.write(f"{state} · {check['criterion']} · Reported: {formatted}")
             if report["sources"]:
                 st.caption(f"Evidence retrieved {report['sources'][-1]['retrieved_at']} · Build the brief again to check for updates.")
-            if health:
+            if health and not modern:
                 st.write(f"Annual financial health · period ending {health['period'] or 'unavailable'}")
                 facts_columns = st.columns(3)
                 for column, (key, label) in zip(facts_columns, (("revenue", "Annual revenue"), ("income", "Annual net income"), ("operating_cash", "Annual operating cash")), strict=True):

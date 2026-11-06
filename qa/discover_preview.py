@@ -1,4 +1,5 @@
 """Local UI acceptance fixture. Never imported by production routing."""
+import os
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -30,7 +31,7 @@ def brief(_gateway, ticker):
                           "url": "https://example.test/synthetic-qa-only"}
                     for key, value in {"revenue": 1_000_000_000, "income": 200_000_000,
                                        "operating_cash": 300_000_000}.items()}
-    return {
+    report = {
         "company": CompanyIdentity(ticker, f"Synthetic {ticker}", "0000000001"),
         "health": {"period": datetime.now(UTC).date().isoformat(),
                    "ratios": {} if missing else ratios, "observations": {} if missing else observations,
@@ -40,6 +41,15 @@ def brief(_gateway, ticker):
         "earnings": {"status": "unavailable", "evidence": []},
         "analysts": {"status": "unavailable", "evidence": []},
     }
+
+    if os.environ.get("QI_QA_FACTORS") == "1":
+        from app.intelligence.fundamental_factors import factor_research
+        from qa.factor_fixture import payload
+        data = payload()
+        if missing:
+            data['facts'] = {}
+        report['research'] = factor_research(data, 1, sic=3571, as_of=datetime.now(UTC).date())
+    return report
 
 
 with patch.dict(ui.os.environ, {"QI_SEC_USER_AGENT": "QA fixture — gateway disabled"}), \

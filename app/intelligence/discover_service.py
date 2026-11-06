@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from app.intelligence.company_registry import CompanyRegistry
 from app.intelligence.discover_evidence import corroborate
 from app.intelligence.discover_financials import financial_health, normalized_filings
+from app.intelligence.fundamental_factors import factor_research
 
 
 def company_deep_dive(gateway, ticker, *, providers=(), now=None):
@@ -16,9 +17,11 @@ def company_deep_dive(gateway, ticker, *, providers=(), now=None):
     if str(submissions["data"].get("cik", "")).lstrip("0") != company.cik.lstrip("0"):
         raise ValueError("Submissions identity mismatch")
     facts = None
+    research = None
     failures = []
     try:
         facts = gateway.fetch("companyfacts", company.cik)
+        research = factor_research(facts["data"], company.cik, sic=submissions["data"].get("sic"), as_of=now.date())
         health = financial_health(facts["data"], company.cik, today=now.date())
     except (ValueError, RuntimeError, OSError):
         health = None
@@ -29,7 +32,7 @@ def company_deep_dive(gateway, ticker, *, providers=(), now=None):
             evidence.extend(provider.evidence(company.cik))
         except (ValueError, RuntimeError, OSError):
             failures.append("An optional evidence provider is unavailable")
-    return {"company": company, "health": health,
+    return {"company": company, "health": health, "research": research,
             "filings": normalized_filings(submissions["data"], company.cik, now.date()),
             "sources": [{"url": source["url"], "retrieved_at": source["retrieved_at"]}
                         for source in [directory, submissions] + ([facts] if facts else [])],
