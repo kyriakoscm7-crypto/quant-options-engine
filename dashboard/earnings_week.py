@@ -46,33 +46,52 @@ def _render_provider_calendar(today, key):
 
     ordered, ordering = order_featured_events(result.events)
     st.caption(ordering)
-    days = sorted({e.day for e in ordered})
-    chosen = st.selectbox("Reporting day", [None, *days],
-                          format_func=lambda d: "All days" if d is None else f"{d:%a, %b %d} · {sum(e.day == d for e in ordered)} events")
-    signature = (start.isoformat(), query, chosen, result.retrieved_at)
-    if st.session_state.get("earnings_view") != signature:
-        st.session_state["earnings_view"] = signature
-        st.session_state["earnings_limit"] = 10
-    rows, count = select_page(ordered, query, chosen, st.session_state.get("earnings_limit", 10))
+    from app.intelligence.earnings_ranking import (
+        FEATURED_MAJOR_SYMBOLS,
+        normalize_featured_symbol,
+    )
+
+    # Week-scoped widget identity survives Research navigation and resets on rollover.
+    days = [start + timedelta(days=i) for i in range(5)]
+    options = ['Top this week', 'All week', *[d.strftime('%a') for d in days]]
+    saved_week, saved_choice = st.session_state.get('earnings_selection', (None, options[0]))
+    initial = options.index(saved_choice) if saved_week == start.isoformat() and saved_choice in options else 0
+    choice = st.radio('Browse earnings', options, horizontal=True, index=initial,
+                      key=f'earnings_day_{start.isoformat()}')
+    st.session_state['earnings_selection'] = (start.isoformat(), choice)
+    chosen = days[options.index(choice) - 2] if choice not in options[:2] else None
+    top = choice == 'Top this week' and not query
+    candidates = tuple(e for e in ordered if normalize_featured_symbol(e.symbol) in FEATURED_MAJOR_SYMBOLS) if top else ordered
+    st.subheader('Top earnings this week' if top else ('Search earnings this week' if query and chosen is None else 'Earnings this week' if chosen is None else chosen.strftime('%A earnings')))
+    if top:
+        st.caption('Up to 10 featured companies to start · Ranked across all reporting days. Browse All week for every provider event.')
+    signature = (start.isoformat(), query, choice)
+    if st.session_state.get('earnings_view') != signature:
+        st.session_state['earnings_view'] = signature
+        st.session_state['earnings_limit'] = 10
+    rows, count = select_page(candidates, query, chosen, st.session_state.get('earnings_limit', 10))
     st.markdown(f"**{count:,} matching earnings events** · {len(result.events):,} this week · Showing {len(rows):,}")
     if result.rejected:
         st.caption(f"{result.rejected} inconsistent or invalid provider entries omitted.")
     if not rows:
         st.info("No matching provider events for this week. This is not proof that no companies are reporting.")
     st.markdown("""<style>
-    .earnings-card {padding:18px 20px 12px;border-top:2px solid #FF78B7;
-      border-radius:12px;background:linear-gradient(130deg,#121D35,#0D1424);color:#f3f5fc;min-height:132px}
+    div[data-testid="stRadio"] label[data-testid="stRadioOption"] {border:1px solid #586078;border-radius:18px;padding:3px 10px}
+    div[data-testid="stRadio"] label[data-selected="true"] {border-color:#FF78B7;background:#121D35}
+    div[data-testid="stRadio"] label:focus-within {outline:2px solid #FF78B7;outline-offset:2px}
+    .earnings-card {padding:12px 16px 10px;border-top:2px solid #FF78B7;
+      border-radius:12px;background:linear-gradient(130deg,#121D35,#0D1424);color:#f3f5fc;min-height:102px}
     .earnings-card h3 {font-size:1.3rem;margin:8px 0 4px;color:#fff}
     .earnings-card p {margin:0;overflow-wrap:anywhere}
     .earnings-meta {font-size:.85rem;color:#c2cade}
     </style>""", unsafe_allow_html=True)
     for index in range(0, len(rows), 2):
         columns = st.columns(2)
-        for col, event in zip(columns, rows[index:index + 2]):
+        for position, (col, event) in enumerate(zip(columns, rows[index:index + 2]), start=index + 1):
             with col, st.container(border=True):
                 session = {"Before market": "BMO · Before market", "After market": "AMC · After market"}.get(event.session, "Time not supplied")
                 st.markdown(f'<article class="earnings-card"><p class="earnings-meta">{event.day:%a, %b %d, %Y} · {session}</p>'
-                            f'<h3>{escape(event.symbol)}</h3><p>{escape(event.name)}</p></article>', unsafe_allow_html=True)
+                            f'<h3>{("#" + str(position) + " · ") if top else ""}{escape(event.symbol)}</h3><p>{escape(event.name)}</p></article>', unsafe_allow_html=True)
                 st.caption("Source: EarningsAPI.com · Provider-reported")
                 if st.button(f"Research {event.symbol}", key=f"ea_{event.day.isoformat()}_{event.symbol}", width="stretch"):
                     open_stock_explorer(event.symbol)
@@ -80,7 +99,9 @@ def _render_provider_calendar(today, key):
         st.session_state["earnings_limit"] = len(rows) + 10
         st.rerun()
     with st.expander("Data source and limitations"):
-        st.write("Featured major companies uses a manually curated list of recognizable companies, not market-cap ranking or a complete list of large companies. Only tickers in this week’s provider events can appear. Featured matches come first across the full week, ordered by date then ticker; all remaining provider events follow by date then ticker. Search and day filters cover the entire week. If the list has no matches, all events use date then ticker. No market caps are calculated or fetched.")
+        st.write("Featured major companies uses a manually curated list of recognizable companies, not market-cap ranking or a complete list of large companies. Only tickers in this week’s provider events can appear. Featured matches use a published editorial priority sequence across the entire week, then ticker for the remaining curated membership. Other events follow by date then ticker. Top this week includes only featured matches; All week includes every provider event. Search and day filters cover the entire week. If the list has no matches, all events use date then ticker. True market-cap ranking is unavailable: no approved market-cap source is connected. No market caps are calculated or fetched.")
+        from app.intelligence.earnings_ranking import EDITORIAL_PRIORITY
+        st.caption('Editorial priority v2 (Nov 7, 2026): ' + ', '.join(EDITORIAL_PRIORITY) + '. Remaining curated companies: ticker order. This is editorial judgment, not a measured financial ranking.')
         if result.retrieved_at:
             timestamp = datetime.fromtimestamp(result.retrieved_at, ZoneInfo("America/New_York"))
             st.caption(f"Retrieved {timestamp:%b %d, %Y at %I:%M %p} ET · Shared cache up to 24 hours")

@@ -5,18 +5,20 @@ Reviewed November 7, 2026. Applies to PR #12.
 ## Current decision
 
 **No market-cap source is connected. True market-cap ranking is unavailable.**
-The default is **Featured major companies**, an editorial shortlist of recognizable
-companies, not a measured size ranking. Membership is versioned in
-`earnings_ranking.FEATURED_MAJOR_SYMBOLS` (v1, November 7, 2026), alphabetically
-stored, and manually maintained. It is subjective, incomplete, and can age; changes
-require code review. No current valuation or membership in an index is asserted.
+The default is **Top earnings this week**: up to ten featured provider events,
+ranked across every reporting day by editorial prominence. Never pad a sparse
+week with companies absent from the provider schedule. Show 10 more reveals
+additional featured matches. All week includes the complete event universe,
+including weekends; Monday–Friday chips select individual days, even empty ones.
+Search covers the full weekly universe, within a chosen day when selected.
 
-Only authenticated provider events supplied to the calendar are partitioned.
-Featured matches come first across the entire week, then all remaining events;
-each group uses stable date/ticker ordering. No dates, sessions, companies, caps,
-or provider requests are added. Search/day filtering precedes pagination over
-this complete ordered universe. No matches produces the explicit message
-**No featured major companies in this week's provider events · Date, then ticker**.
+Editorial priority v2 (November 7, 2026) is published in
+`earnings_ranking.EDITORIAL_PRIORITY` and the UI limitations panel. It reflects
+subjective broad investor recognition and earnings attention, not size, returns,
+or a measured popularity score. Remaining members of the versioned
+`FEATURED_MAJOR_SYMBOLS` set use ticker order; nonfeatured events use date/ticker.
+No dates, sessions, companies, caps or provider requests are added.
+No featured matches leaves Top empty with All week available.
 
 Matching trims whitespace, uppercases and equates dot/hyphen share-class notation
 (e.g. BRK-B/BRK.B); it does not strip exchange suffixes or equate different share
@@ -69,16 +71,17 @@ integration must also display individual value/source provenance before release.
 ## Interface and validation
 
 Ten two-column cards initially, stacking on narrow screens; Show 10 more;
-search across all weekly events; all-days/date selector with counts; explicit
+search across all weekly events; Top/All week/weekday chips; explicit
 BMO/AMC/unknown sessions; provider source; distinct accessible Research buttons.
-Search, day, week or retrieval changes reset pagination. Research uses the
+Search, view and week changes reset pagination; background retrieval does not.
+The week-scoped choice survives Research navigation and resets on week rollover. Research uses the
 existing Stock Explorer ticker request, preserving identity verification there.
 Curated issuer fallback and source limitations remain intact.
 
 Synthetic fixtures contain 1,270 entries and never call a provider. Unit tests
 cover pagination, full-universe search, day counts, numeric ordering, incomplete
 coverage, invalid values, freshness, permission, provenance and adapter failure.
-Browser checks cover 1440px and 390px layouts, widget counts, paging, search,
+Browser checks cover 390px, 768px and 1440px layouts, widget counts, paging, search,
 day filtering, overflow and Research routing. Screenshots are generated under
 `/tmp/qi-browser/earnings` and uploaded by the existing CI browser artifact step.
 
@@ -93,3 +96,19 @@ original seven requests, with an unchanged durable budget. Browser fixtures labe
 all entries synthetic and assert a Friday featured event precedes Monday events,
 BMO/AMC dates, full-universe search, pagination resets, day counts, Research and
 no horizontal overflow at 1440 and 390 px. No live calendar or cap calls are made.
+
+## Current source recheck (November 7, 2026)
+
+- https://www.earningsapi.com/docs/calendar-earnings still supplies no cap field.
+- https://www.earningsapi.com/terms permits displaying earnings content; it does
+  not establish an explicit market-cap data grant. Its Market Caps documentation
+  link (https://www.earningsapi.com/docs/marketcaps) currently redirects to the
+  general docs without a response contract, currency, coverage or as-of policy.
+  No authenticated cap request was made and no entitlement/freshness is claimed.
+- https://ranaroussi.github.io/yfinance/ explicitly describes the Yahoo API as
+  intended for personal use. Existing Yahoo code is not a cap display license.
+
+Therefore no numbers are shown. The future adapter retains complete coverage,
+USD units, source URLs, authorization and common recent as-of requirements.
+A future integration must disclose coverage and individual value/provenance,
+resolve share classes, and use a bounded batch cache rather than per-card calls.

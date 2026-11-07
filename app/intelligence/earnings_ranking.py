@@ -94,18 +94,33 @@ def normalize_featured_symbol(symbol):
     return symbol.strip().upper().replace('-', '.')
 
 
+# Editorial priority v2: broad investor recognition and earnings attention, not
+# company size, expected returns or a live popularity measurement. Within the
+# remaining curated membership use ticker order, never reporting-day order.
+EDITORIAL_PRIORITY = (
+    'AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL', 'GOOG', 'META', 'TSLA',
+    'BRK.B', 'JPM', 'WMT', 'LLY', 'AVGO', 'TSM', 'V', 'MA', 'UNH',
+    'XOM', 'COST', 'NFLX', 'HD', 'AMD', 'PLTR', 'CRM', 'ORCL',
+    'DIS', 'UBER', 'SHOP', 'COIN', 'ABNB', 'PYPL', 'SOFI',
+)
+EDITORIAL_ORDER = {symbol: index for index, symbol in enumerate(EDITORIAL_PRIORITY)}
+
+
 def order_featured_events(events):
     """Partition verified input events; add no events, values or provider requests.
 
-    Sort each partition by day/ticker across the full week before pagination.
+    Rank featured input across all days before pagination.
     normalize_day already deduplicates and withholds contradictory sessions.
     """
     events = tuple(events)
     def featured(event):
         return normalize_featured_symbol(event.symbol) in FEATURED_MAJOR_SYMBOLS
-    ordered = tuple(sorted(events, key=lambda e: (not featured(e), e.day, e.symbol)))
+    ordered = tuple(sorted(events, key=lambda e: (
+        not featured(e),
+        EDITORIAL_ORDER.get(normalize_featured_symbol(e.symbol), len(EDITORIAL_ORDER)) if featured(e) else 0,
+        normalize_featured_symbol(e.symbol) if featured(e) else '', e.day, e.symbol)))
     if any(featured(e) for e in events):
-        return ordered, "Featured major companies · Curated list, not market-cap ranking"
+        return ordered, "Editorial priority · Curated recognition and earnings attention, not market-cap ranking"
     return ordered, "No featured major companies in this week's provider events · Date, then ticker"
 
 
