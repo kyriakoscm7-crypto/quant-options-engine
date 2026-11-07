@@ -24,16 +24,13 @@ def _earnings_api_key():
 
 
 def _render_provider_calendar(today, key):
-    from app.intelligence.earnings_api_provider import earnings_api_service
-
-    default_week = 1 if today.weekday() >= 4 else 0
-    week_name = st.radio(
-        "Reporting week",
-        ("This week", "Next week", "In two weeks", "In three weeks"),
-        index=default_week,
-        horizontal=True,
+    from app.intelligence.earnings_api_provider import (
+        earnings_api_service,
+        reporting_week,
     )
-    start, end = week_bounds(today, ("This week", "Next week", "In two weeks", "In three weeks").index(week_name))
+
+    start = reporting_week()
+    end = start + timedelta(days=6)
     query = st.text_input("Search earnings companies", placeholder="Company or ticker", max_chars=100).strip().lower()
     with st.spinner("Loading earnings dates…"):
         result = earnings_api_service.load_week(key, start)
@@ -44,8 +41,8 @@ def _render_provider_calendar(today, key):
         st.info("The curated company-announcement schedule is available below.")
         return False
     if result.retrieved_at:
-        timestamp = datetime.fromtimestamp(result.retrieved_at, ZoneInfo("America/Toronto"))
-        st.caption(f"Retrieved {timestamp:%b %d, %Y at %I:%M %p} ET · Cached up to 6 hours")
+        timestamp = datetime.fromtimestamp(result.retrieved_at, ZoneInfo("America/New_York"))
+        st.caption(f"Retrieved {timestamp:%b %d, %Y at %I:%M %p} ET · As of this retrieval · Shared cache up to 24 hours")
     events = [e for e in result.events if query in e.symbol.lower() or query in e.name.lower()]
     st.write(f"**{len(events)} matching earnings events**")
     if result.rejected:
@@ -73,7 +70,7 @@ def _render_provider_calendar(today, key):
 def render_earnings_week():
     st.title("Earnings calendar")
     st.write("See who's reporting earnings, then open their financial research in one click.")
-    today = datetime.now(ZoneInfo("America/Toronto")).date()
+    today = datetime.now(ZoneInfo("America/New_York")).date()
     key = _earnings_api_key()
     if key and _render_provider_calendar(today, key):
         return
@@ -84,9 +81,12 @@ def render_earnings_week():
         st.info("The live calendar is not connected yet. Add EARNINGSAPI_API_KEY to Streamlit server secrets to enable weekly earnings coverage. The verified company-announcement list below works without a key.")
     if (today - REVIEWED).days > 7:
         st.warning("This manually reviewed schedule may be out of date. Check each issuer announcement.")
-    window = st.selectbox("Show dates", ["Next 30 days", "This week", "Next week"])
+    from app.intelligence.earnings_api_provider import reporting_week
+    start = reporting_week()
+    st.caption(f"{start:%b %d} – {start + timedelta(days=6):%b %d, %Y} · Automatic reporting week")
     query = st.text_input("Find a company", placeholder="Ticker or company", max_chars=100)
-    events = select_events(today, window, query)
+    events = [e for e in select_events(start, "This week", query)
+              if start <= date.fromisoformat(e["day"]) <= start + timedelta(days=6)]
     if not events:
         st.info("No matching events in this limited curated list. This does not mean no companies are reporting.")
     for day, rows in groupby(events, key=lambda e: e["day"]):

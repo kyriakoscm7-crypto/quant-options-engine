@@ -56,6 +56,12 @@ jobs:
             sleep 1
           done
           python qa/news_events_browser.py --channel '' --output /tmp/qi-browser/news
+          python -m streamlit run qa/earnings_preview.py --server.address 127.0.0.1 --server.port 18525 --server.headless true > /tmp/earnings-preview.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            curl --fail --silent http://127.0.0.1:18525/_stcore/health && break
+            sleep 1
+          done
+          python qa/earnings_browser.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:

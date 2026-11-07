@@ -1,76 +1,85 @@
-# EarningsAPI.com integration (public portfolio build)
+# EarningsAPI.com automatic calendar
 
-Provider: [EarningsAPI.com](https://www.earningsapi.com/) using the documented
-[GET /v2/calendar/earnings](https://www.earningsapi.com/docs/calendar-earnings)
-endpoint, one request for each day of a Monday–Sunday week.
+The provider is **earningsapi.com**, not earningsapi.io. Its documented
+[calendar endpoint](https://www.earningsapi.com/docs/calendar-earnings) accepts
+one `date`; no date-range parameter is documented. A complete Monday–Sunday
+week therefore needs seven requests. Documentation checked November 7, 2026.
 
-## Configure the key
+Only one week is available: current week until Friday 16:00 America/New_York,
+then next week throughout the weekend. DST follows the IANA timezone. The
+cutoff is fixed at 16:00 even on holidays/early closes, as requested. Search
+filters the loaded week locally. No week selector or refresh endpoint exists.
+Research still passes the ticker to the existing Stock Explorer flow.
 
-Sign up for a provider account. Copy the API key into the **server environment**
-as `EARNINGSAPI_API_KEY`, or into your **untracked** local
-`.streamlit/secrets.toml`:
+## Server configuration
 
-```toml
-EARNINGSAPI_API_KEY = "paste-your-own-key-here"
-```
+Keep `EARNINGSAPI_API_KEY` in the server environment or untracked Streamlit
+secrets. Never put it in GitHub, client code, screenshots or URLs shown to users.
+The provider's documented authentication uses a query parameter; HTTP debug
+logging or outbound proxy URL logging must redact `apikey`.
 
-Do not put it in the repository, browser code, app text, screenshots or chat.
-The existing `QI_SEC_USER_AGENT` server environment setting is separately
-required for SEC company analysis; the Earnings calendar itself needs only the
-EarningsAPI key. Restart Streamlit after adding the secret.
+Set **environment variable** `EARNINGSAPI_CACHE_PATH` to an SQLite file in a
+private directory on a persistent volume, for example `/var/lib/qi/earnings.sqlite`.
+Provision the directory with operator-only access. The app does not create the
+volume or silently substitute temporary storage. Missing/unwritable storage
+returns the curated issuer fallback without making provider requests. Do not
+commit the database or include it in image builds, exports or backups.
 
-For Streamlit Community Cloud, configure the key in the app's private Secrets
-management UI, not in GitHub. Only do so once the account's display terms and
-plan are suitable for the visitors who will use your deployment.
+The operator must ensure this volume survives restarts AND deployments. An
+empty/replaced disk resets the ledger; the application cannot detect that.
+Streamlit Community Cloud local files are not guaranteed persistent across
+redeploys. For that environment, retain fallback or implement a genuinely shared
+durable database before enabling provider access. No deployment was performed.
 
-## What the public page does
+## Quota and concurrency
 
-With the key configured, Discover → Earnings calendar reads a week from the
-provider and displays company name, ticker, reporting date, and the provider's
-before/after/unspecified market-session group. Click **Research** on a company
-to open **Research → Stock Explorer** with its ticker preselected when the
-existing verified search can identify an unambiguous exchange listing. If the
-listing cannot be resolved, the research page requests an exact listing rather
-than guessing. The SEC-based Find stocks page remains separate.
+SQLite atomically reserves all seven requests BEFORE any HTTP call, with a
+24-hour cooldown per week. Other processes/visitors return the cache or fallback
+while a batch is in flight. A killed process, invalid response, rejected key,
+429 or network failure keeps that reservation. There are no immediate retries;
+one later visit can retry after 24 hours. Partial weeks are withheld. A separate
+250-request monthly reservation cap (New York calendar month) includes failed
+batches and week rollovers. Other API consumers are outside this ledger.
 
-Without a key, or when a provider request fails, an independently curated
-small set of issuer-announced events remains available with links to original
-announcements. No events or estimates are invented.
+A complete normalized week is served for at most 24 hours with its actual
+retrieval timestamp. Expired payloads are removed on the next calendar access;
+no stale payload is displayed. Idle database files may still contain expired
+bytes until cleanup; this is not a strict physical-deletion guarantee. No raw
+responses, credentials, credential hashes, exceptions or request URLs are cached.
+Only calendar visits call the provider. No background polling is added.
 
-## Reliability and permissions
+Processes on **one host sharing the same SQLite file** coordinate. Independent
+Streamlit replicas with separate disks each have their own budget and can
+multiply usage. Do not use this SQLite implementation on network filesystems;
+use a transactional shared database for multiple hosts. All replicas using the
+same provider key must share one ledger to enforce a true account-wide cap.
 
-- Provider events are **not automatically company-confirmed**. An earnings
-  release can shift; check the original company investor-relations page before
-  relying on a date. `pre` and `after` are market-session categories, not
-  precise local timestamps.
-- Dates are kept exactly as reported, with a Monday–Sunday Toronto calendar
-  view and no fictitious timezone conversion.
-- Only displayable event fields are normalized. Missing estimates remain
-  missing. We do not calculate investment scores from this feed.
-- Fetches use HTTPS and a fixed provider endpoint, 12-second timeouts, and
-  reject HTTP errors. A partially failed week is withheld, never displayed as
-  a complete calendar.
-- Valid full-week responses are cached **in server memory for six hours**.
-  Seven daily requests are needed per uncached week. No raw data is saved to
-  disk or redistributed as a separate feed.
-- The server-side API key is never rendered; internal errors do not include
-  request URLs, response bodies or secrets.
-- Published provider terms explicitly allow displaying earnings content in
-  your own website, but prohibit republishing its proprietary data feed.
-  See [Terms](https://www.earningsapi.com/terms). Re-check plan entitlements
-  and terms before publishing or extending to derived datasets.
+The documented free plan allows 60 requests/minute, 100/day and 1,000/month;
+quotas reset in New York time. A single calendar ledger reserves at most 250/month
+and normally uses about seven/day, independent of visitor count. Refreshing a
+page, filtering, Research navigation and unrelated pages do not independently
+spend quota. Provider schedules can change between daily refreshes.
+
+## Display rights and retention
+
+[Provider terms](https://www.earningsapi.com/terms) permit retrieving and displaying
+content in one's own application/website and prohibit republishing its proprietary
+feed. They do **not** explicitly specify a caching duration or separately grant
+permanent derived-data storage. The 24-hour normalized display cache is an
+implementation interpretation of that display permission, not a provider-stated
+retention entitlement. No historical archive, downloadable feed or derived score
+is created. Confirm this short operational cache with the provider if explicit
+contractual approval is needed; do not extend retention based on these docs.
+
+Provider dates/session categories are not issuer confirmation or exact release
+times. As-of means retrieval time, not provider update time. Missing keys, storage,
+quota or provider availability preserve the independently curated issuer schedule
+for the same automatic week, with original source links and review dates.
 
 ## Verification
 
-Offline contract tests in `tests/test_earnings_api_provider.py` use **synthetic**
-payloads and mock HTTP responses. They do not verify an authenticated live
-response or company-confirmed dates. After adding your own key, start:
-
-```sh
-python -m streamlit run dashboard/main.py --server.address 127.0.0.1 --server.port 18520
-```
-
-Open Discover → Earnings calendar and confirm the page shows a retrieved
-timestamp and the expected weekday entries. Click **Research** and confirm the
-Stock Explorer selection. Do not consider the data live until an authenticated
-request has succeeded.
+Offline unit tests cover calendar boundaries, DST, normalization, restart reuse,
+concurrent calls, expired cache, failure cooldown and credential-safe results.
+`qa/earnings_preview.py` and `qa/earnings_browser.py` exercise real Chromium using
+synthetic data only; no live key or provider quota is needed. Authenticated live
+provider behavior and actual hosting persistence have not been verified.

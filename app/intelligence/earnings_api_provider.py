@@ -5,17 +5,21 @@ No third-party feed is exposed to clients; only the rendered calendar is display
 """
 from __future__ import annotations
 
-import hashlib
+import json
+import os
 import re
+import sqlite3
 import time
 from dataclasses import dataclass
-from datetime import date, timedelta
-from threading import RLock
+from datetime import UTC, date, datetime, timedelta
+from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import httpx
 
 API_URL = "https://api.earningsapi.com/v2/calendar/earnings"
-CACHE_SECONDS = 6 * 60 * 60
+CACHE_SECONDS = 24 * 60 * 60
+ET = ZoneInfo("America/New_York")
 SYMBOL = re.compile(r"[A-Z][A-Z0-9.\-]{0,14}\Z")
 SESSIONS = {
     "pre": "Before market",
@@ -91,68 +95,92 @@ def normalize_day(payload, expected_day):
     return tuple(x for x in events.values() if x is not None), rejected
 
 
-class EarningsAPIService:
-    """In-process six-hour week cache; no storage of key or raw provider payload."""
-    def __init__(self):
-        self._lock = RLock()
-        self._cache = {}
+def reporting_week(now=None):
+    """One automatic Monday–Sunday window, rolling at Friday 16:00 ET."""
+    now = datetime.now(ET) if now is None else now
+    if now.tzinfo is None:
+        raise ValueError("An aware datetime is required")
+    local = now.astimezone(ET)
+    monday = local.date() - timedelta(days=local.weekday())
+    if local.weekday() > 4 or (local.weekday() == 4 and local.hour >= 16):
+        monday += timedelta(days=7)
+    return monday
 
-    def load_week(self, api_key: str, monday: date, *, client=None, now=None):
+
+class EarningsAPIService:
+    """SQLite shared lease, durable precharged budget, and expiring display cache.
+
+    Configure a persistent local volume shared by all processes on one host.
+    Missing/unwritable storage fails closed rather than spending untracked quota.
+    """
+    def __init__(self, cache_path=None):
+        self.cache_path = cache_path
+
+    def load_week(self, api_key, monday=None, *, client=None, now=None):
+        now = time.time() if now is None else now
+        selected = reporting_week(datetime.fromtimestamp(now, UTC))
+        if monday is not None and monday != selected:
+            return WeekResult(error="Only the automatic reporting week is available.")
+        monday = selected
         if not api_key or not api_key.strip():
             return WeekResult(error="Configure EARNINGSAPI_API_KEY on the server.")
-        if monday.weekday() != 0:
-            return WeekResult(error="Calendar start must be a Monday.")
-        now = time.time() if now is None else now
-        identity = (hashlib.sha256(api_key.encode()).hexdigest(), monday)
-        with self._lock:
-            entry = self._cache.get(identity)
-            if entry and now - entry[0] < CACHE_SECONDS:
-                return entry[1]
+        path = self.cache_path or os.environ.get("EARNINGSAPI_CACHE_PATH")
+        if not path:
+            return WeekResult(error="Persistent earnings cache is not configured; showing issuer announcements.")
+        try:
+            return self._load(path, api_key, monday, client, now)
+        except (OSError, sqlite3.Error, ValueError, TypeError, KeyError):
+            return WeekResult(error="Earnings cache unavailable; no untracked requests will be made.")
 
+    def _load(self, path, api_key, monday, client, now):
+        # The directory must be provisioned privately by the operator. No secrets
+        # or credential hashes are stored; key rotation cannot reset the budget.
+        with sqlite3.connect(Path(path), timeout=2) as db:
+            db.execute("CREATE TABLE IF NOT EXISTS weeks (week TEXT PRIMARY KEY, next_attempt REAL, payload TEXT, fetched REAL)")
+            db.execute("CREATE TABLE IF NOT EXISTS budget (month TEXT PRIMARY KEY, calls INTEGER)")
+            db.execute("BEGIN IMMEDIATE")
+            db.execute("UPDATE weeks SET payload=NULL, fetched=NULL WHERE fetched <= ?", (now-CACHE_SECONDS,))
+            row = db.execute("SELECT next_attempt, payload, fetched FROM weeks WHERE week=?", (monday.isoformat(),)).fetchone()
+            if row and row[1]:
+                saved = json.loads(row[1])
+                events = tuple(EarningsEvent(**dict(e, day=date.fromisoformat(e["day"]))) for e in saved["events"])
+                return WeekResult(events=events, retrieved_at=row[2], rejected=saved["rejected"])
+            if row and now < row[0]:
+                return WeekResult(error="Calendar refresh pending or unavailable; next automatic attempt after " + datetime.fromtimestamp(row[0], ET).strftime("%b %d, %Y %I:%M %p ET") + ".")
+            month = datetime.fromtimestamp(now, ET).strftime("%Y-%m")
+            db.execute("INSERT OR IGNORE INTO budget VALUES (?, 0)", (month,))
+            used = db.execute("SELECT calls FROM budget WHERE month=?", (month,)).fetchone()[0]
+            if used + 7 > 250:
+                return WeekResult(error="Calendar monthly request budget reached; showing issuer announcements.")
+            # Charge the entire batch before HTTP. Crash, timeout, malformed data,
+            # and failed responses cannot reset the 24h cooldown or monthly cap.
+            db.execute("UPDATE budget SET calls=calls+7 WHERE month=?", (month,))
+            db.execute("INSERT OR REPLACE INTO weeks VALUES (?, ?, NULL, NULL)", (monday.isoformat(), now+CACHE_SECONDS))
+            db.execute("DELETE FROM weeks WHERE week < ?", ((monday-timedelta(days=14)).isoformat(),))
+            db.execute("DELETE FROM budget WHERE month < ?", (month,))
+            db.commit()
             def fetch(http):
-                events = []
-                rejected = 0
+                events, rejected = [], 0
                 for offset in range(7):
                     day = monday + timedelta(days=offset)
-                    response = http.get(
-                        API_URL,
-                        params={"date": day.isoformat(), "apikey": api_key},
-                        timeout=12.0,
-                        follow_redirects=False,
-                    )
-                    if response.status_code == 429:
-                        raise RuntimeError("EarningsAPI request limit reached; try later.")
-                    if response.status_code in (401, 403):
-                        raise RuntimeError("EarningsAPI key was rejected or lacks calendar access.")
+                    response = http.get(API_URL, params={"date": day.isoformat(), "apikey": api_key}, timeout=12.0, follow_redirects=False)
                     if response.status_code != 200:
-                        raise RuntimeError("EarningsAPI calendar is temporarily unavailable.")
+                        raise ValueError("Unavailable provider")
                     found, invalid = normalize_day(response.json(), day)
                     events.extend(found)
                     rejected += invalid
-                return WeekResult(
-                    events=tuple(sorted(events, key=lambda e: (e.day, e.session, e.symbol))),
-                    retrieved_at=now,
-                    rejected=rejected,
-                )
-
+                return WeekResult(events=tuple(sorted(events, key=lambda e: (e.day, e.session, e.symbol))), retrieved_at=now, rejected=rejected)
             try:
                 if client is None:
                     with httpx.Client() as http:
                         result = fetch(http)
                 else:
                     result = fetch(client)
-            except (httpx.HTTPError, ValueError, RuntimeError) as exc:
-                # Never expose URLs, response bodies, HTTP errors or key in UI.
-                if isinstance(exc, RuntimeError):
-                    message = str(exc)
-                else:
-                    message = "Unable to verify the EarningsAPI response right now."
-                result = WeekResult(error=message)
-            # Cache only a successful, complete week. Do not treat partial data as complete.
-            if not result.error:
-                self._cache[identity] = (now, result)
-                if len(self._cache) > 20:
-                    self._cache.pop(next(iter(self._cache)))
+            except (httpx.HTTPError, ValueError):
+                return WeekResult(error="EarningsAPI unavailable. Automatic retry is paused for 24 hours; showing issuer announcements.")
+            from dataclasses import asdict
+            payload = json.dumps({"events": [dict(asdict(e), day=e.day.isoformat()) for e in result.events], "rejected": result.rejected})
+            db.execute("UPDATE weeks SET payload=?, fetched=? WHERE week=?", (payload, now, monday.isoformat()))
             return result
 
 
