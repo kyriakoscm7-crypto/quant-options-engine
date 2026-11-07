@@ -26,7 +26,9 @@ with sync_playwright() as p:
     earnings.focus()
     earnings.press('Enter')
     expect(page.get_by_role('heading', name='Earnings calendar', exact=True)).to_be_visible()
-    expect(page.get_by_role('link', name='Open earnings calendar on TradingView ↗')).to_have_attribute('href', 'https://www.tradingview.com/earnings-calendar/?countries=us')
+    assert page.get_by_role('combobox', name='Show dates').count() == 0
+    page.get_by_text('Sources and other research options', exact=True).click()
+    expect(page.get_by_role('link', name='View broader TradingView calendar')).to_have_attribute('href', 'https://www.tradingview.com/earnings-calendar/?countries=us')
     for width in (1440, 768, 390):
         page.set_viewport_size({'width': width, 'height': 1100})
         page.wait_for_timeout(350)
@@ -50,4 +52,4 @@ with sync_playwright() as p:
     expect(page.get_by_role('heading', name=re.compile('Stock Explorer'))).to_be_visible()
     assert not page.get_by_test_id('stException').count()
     browser.close()
-print('Passed: two sidebar routes, keyboard activation/focus, educational earnings page, disabled calendar, notebook and Stock Explorer, overflow at 390/768/1440.')
+print('Passed: two sidebar routes, keyboard activation/focus, automatic earnings week, issuer fallback, notebook and Stock Explorer, overflow at 390/768/1440.')
