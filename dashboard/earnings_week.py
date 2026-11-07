@@ -35,33 +35,55 @@ def _render_provider_calendar(today, key):
     with st.spinner("Loading earnings dates…"):
         result = earnings_api_service.load_week(key, start)
 
-    st.caption(f"{start:%b %d} – {end:%b %d, %Y} · EarningsAPI.com calendar · Dates and sessions are provider-reported, not independently confirmed.")
+    st.caption(f"{start:%b %d} – {end:%b %d, %Y} · EarningsAPI.com · Provider-reported dates")
     if result.error:
         st.warning(result.error)
         st.info("The curated company-announcement schedule is available below.")
         return False
-    if result.retrieved_at:
-        timestamp = datetime.fromtimestamp(result.retrieved_at, ZoneInfo("America/New_York"))
-        st.caption(f"Retrieved {timestamp:%b %d, %Y at %I:%M %p} ET · As of this retrieval · Shared cache up to 24 hours")
-    events = [e for e in result.events if query in e.symbol.lower() or query in e.name.lower()]
-    st.write(f"**{len(events)} matching earnings events**")
+    from html import escape
+
+    from app.intelligence.earnings_ranking import order_events, select_page
+
+    ordered, ordering = order_events(result.events, today)
+    st.caption(ordering)
+    days = sorted({e.day for e in ordered})
+    chosen = st.selectbox("Reporting day", [None, *days],
+                          format_func=lambda d: "All days" if d is None else f"{d:%a, %b %d} · {sum(e.day == d for e in ordered)} events")
+    signature = (start.isoformat(), query, chosen, result.retrieved_at)
+    if st.session_state.get("earnings_view") != signature:
+        st.session_state["earnings_view"] = signature
+        st.session_state["earnings_limit"] = 10
+    rows, count = select_page(ordered, query, chosen, st.session_state.get("earnings_limit", 10))
+    st.markdown(f"**{count:,} matching earnings events** · {len(result.events):,} this week · Showing {len(rows):,}")
     if result.rejected:
         st.caption(f"{result.rejected} inconsistent or invalid provider entries omitted.")
-    if not events:
+    if not rows:
         st.info("No matching provider events for this week. This is not proof that no companies are reporting.")
-    for day, day_events in groupby(events, lambda e: e.day):
-        rows = list(day_events)
-        with st.expander(f"{day:%A, %B %d} · {len(rows)} companies", expanded=(len(events) < 18)):
-            for event in rows:
-                with st.container(border=True):
-                    a, b = st.columns([3, 1], vertical_alignment="center")
-                    with a:
-                        st.markdown(f"**{event.name} ({event.symbol})**")
-                        st.caption(event.session + " · Source: EarningsAPI.com · Confirmation not independently verified")
-                    with b:
-                        if st.button("Research", key=f"ea_{day.isoformat()}_{event.symbol}", width="stretch"):
-                            open_stock_explorer(event.symbol)
+    st.markdown("""<style>
+    .earnings-card {padding:18px 20px 12px;border-top:2px solid #FF78B7;
+      border-radius:12px;background:linear-gradient(130deg,#121D35,#0D1424);color:#f3f5fc;min-height:132px}
+    .earnings-card h3 {font-size:1.3rem;margin:8px 0 4px;color:#fff}
+    .earnings-card p {margin:0;overflow-wrap:anywhere}
+    .earnings-meta {font-size:.85rem;color:#c2cade}
+    </style>""", unsafe_allow_html=True)
+    for index in range(0, len(rows), 2):
+        columns = st.columns(2)
+        for col, event in zip(columns, rows[index:index + 2]):
+            with col, st.container(border=True):
+                session = {"Before market": "BMO · Before market", "After market": "AMC · After market"}.get(event.session, "Time not supplied")
+                st.markdown(f'<article class="earnings-card"><p class="earnings-meta">{event.day:%a, %b %d, %Y} · {session}</p>'
+                            f'<h3>{escape(event.symbol)}</h3><p>{escape(event.name)}</p></article>', unsafe_allow_html=True)
+                st.caption("Source: EarningsAPI.com · Provider-reported")
+                if st.button(f"Research {event.symbol}", key=f"ea_{event.day.isoformat()}_{event.symbol}", width="stretch"):
+                    open_stock_explorer(event.symbol)
+    if len(rows) < count and st.button("Show 10 more", width="stretch"):
+        st.session_state["earnings_limit"] = len(rows) + 10
+        st.rerun()
     with st.expander("Data source and limitations"):
+        st.write("Market-cap ranking is unavailable: no comparable, display-authorized feed is connected. The first 10 are calendar events, not the largest companies.")
+        if result.retrieved_at:
+            timestamp = datetime.fromtimestamp(result.retrieved_at, ZoneInfo("America/New_York"))
+            st.caption(f"Retrieved {timestamp:%b %d, %Y at %I:%M %p} ET · Shared cache up to 24 hours")
         st.write("EarningsAPI.com supplies the date and pre-market/after-market/unspecified category. It does not establish company confirmation, guarantee completeness, or supply an exact release time. The calendar is separate from SEC financial scores and is not investment advice. Provider results are displayed, not offered as a downloadable feed.")
         st.link_button("Provider documentation", "https://www.earningsapi.com/docs/calendar-earnings")
     return True
