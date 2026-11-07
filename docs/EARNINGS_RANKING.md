@@ -5,11 +5,24 @@ Reviewed November 7, 2026. Applies to PR #12.
 ## Current decision
 
 **No market-cap source is connected. True market-cap ranking is unavailable.**
-The default is explicitly labelled **Date, then ticker**, not largest first or a
-large-cap subset. No issuer size assertions, estimated valuations, investment
-scores, or alphabetical ordering disguised as capitalization ranking are used.
-The first 10 are the first calendar events under that ordering.
+The default is **Featured major companies**, an editorial shortlist of recognizable
+companies, not a measured size ranking. Membership is versioned in
+`earnings_ranking.FEATURED_MAJOR_SYMBOLS` (v1, November 7, 2026), alphabetically
+stored, and manually maintained. It is subjective, incomplete, and can age; changes
+require code review. No current valuation or membership in an index is asserted.
 
+Only authenticated provider events supplied to the calendar are partitioned.
+Featured matches come first across the entire week, then all remaining events;
+each group uses stable date/ticker ordering. No dates, sessions, companies, caps,
+or provider requests are added. Search/day filtering precedes pagination over
+this complete ordered universe. No matches produces the explicit message
+**No featured major companies in this week's provider events · Date, then ticker**.
+
+Matching trims whitespace, uppercases and equates dot/hyphen share-class notation
+(e.g. BRK-B/BRK.B); it does not strip exchange suffixes or equate different share
+classes. Original provider symbols and events remain unchanged for Research.
+The existing provider normalizer deduplicates by date/ticker and withholds
+contradictory sessions before ordering.
 ## Architecture and source investigation
 
 - `earnings_api_provider.py` normalizes symbol, name, date, session, EPS estimate
@@ -42,7 +55,8 @@ The first 10 are the first calendar events under that ordering.
 an enabled provider or an environment switch. A future licensed integration must
 supply complete issuer-equity USD values, resolved listing identities, attribution
 URLs and dates, after its public-display agreement is reviewed. There is no
-network call or quota spending in ordering. Current runtime passes no adapter.
+network call or quota spending in ordering. Current runtime uses `order_featured_events`, never calls this adapter, and
+keeps its licensed-cap contract available for a separately reviewed integration.
 
 The guard requires complete coverage of the entire weekly universe, positive
 finite values, explicit display authorization, named HTTPS provenance and a
@@ -67,3 +81,15 @@ coverage, invalid values, freshness, permission, provenance and adapter failure.
 Browser checks cover 1440px and 390px layouts, widget counts, paging, search,
 day filtering, overflow and Research routing. Screenshots are generated under
 `/tmp/qi-browser/earnings` and uploaded by the existing CI browser artifact step.
+
+
+## Featured ordering regression checks
+
+Tests cover cross-week priority, deterministic ordering, membership-only output,
+normalization/listing boundaries, combined filters, empty/no-match fallback,
+all 1,270 events through incremental paging, and no duplicate cards. Mocked
+provider/cache integration proves filtering, ranking and paging spend only the
+original seven requests, with an unchanged durable budget. Browser fixtures label
+all entries synthetic and assert a Friday featured event precedes Monday events,
+BMO/AMC dates, full-universe search, pagination resets, day counts, Research and
+no horizontal overflow at 1440 and 390 px. No live calendar or cap calls are made.

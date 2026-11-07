@@ -42,9 +42,9 @@ def _render_provider_calendar(today, key):
         return False
     from html import escape
 
-    from app.intelligence.earnings_ranking import order_events, select_page
+    from app.intelligence.earnings_ranking import order_featured_events, select_page
 
-    ordered, ordering = order_events(result.events, today)
+    ordered, ordering = order_featured_events(result.events)
     st.caption(ordering)
     days = sorted({e.day for e in ordered})
     chosen = st.selectbox("Reporting day", [None, *days],
@@ -80,7 +80,7 @@ def _render_provider_calendar(today, key):
         st.session_state["earnings_limit"] = len(rows) + 10
         st.rerun()
     with st.expander("Data source and limitations"):
-        st.write("Market-cap ranking is unavailable: no comparable, display-authorized feed is connected. The first 10 are calendar events, not the largest companies.")
+        st.write("Featured major companies uses a manually curated list of recognizable companies, not market-cap ranking or a complete list of large companies. Only tickers in this week’s provider events can appear. Featured matches come first across the full week, ordered by date then ticker; all remaining provider events follow by date then ticker. Search and day filters cover the entire week. If the list has no matches, all events use date then ticker. No market caps are calculated or fetched.")
         if result.retrieved_at:
             timestamp = datetime.fromtimestamp(result.retrieved_at, ZoneInfo("America/New_York"))
             st.caption(f"Retrieved {timestamp:%b %d, %Y at %I:%M %p} ET · Shared cache up to 24 hours")

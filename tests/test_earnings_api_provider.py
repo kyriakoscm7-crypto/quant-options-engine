@@ -162,3 +162,30 @@ def test_monthly_budget_and_failed_restart_are_durable(tmp_path):
             db.execute("UPDATE budget SET calls=245")
         assert EarningsAPIService(path).load_week('key', client=client, now=NOW+86400).error
         assert len(calls) == 1
+
+
+def test_featured_interactions_are_quota_neutral_and_deduplicated(tmp_path):
+    from app.intelligence.earnings_ranking import order_featured_events, select_page
+    calls = []
+    def respond(request):
+        calls.append(request)
+        payload = fixture(request.url.params['date'])
+        # Case/whitespace duplicates normalize to one verified listing per day.
+        payload['pre'] += [{'symbol': ' aapl ', 'name': 'Synthetic Apple'},
+                           {'symbol': 'AAPL', 'name': 'Synthetic Apple'}]
+        return httpx.Response(200, json=payload)
+    service = EarningsAPIService(tmp_path / 'featured.sqlite')
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        result = service.load_week('test', MONDAY, client=client, now=NOW)
+        for query, day, limit in [('', None, 10), ('AAPL', None, 20),
+                                  ('TEST', MONDAY, 30), ('absent', None, 40)]:
+            cached = service.load_week('test', MONDAY, client=client, now=NOW+1)
+            ordered, _ = order_featured_events(cached.events)
+            select_page(ordered, query, day, limit)
+        assert len(calls) == 7
+    assert len(result.events) == 21
+    assert len({(e.day, e.symbol) for e in ordered}) == len(ordered)
+    assert all(e.symbol == 'AAPL' for e in ordered[:7])
+    import sqlite3
+    with sqlite3.connect(tmp_path / 'featured.sqlite') as db:
+        assert db.execute('SELECT calls FROM budget').fetchone()[0] == 7

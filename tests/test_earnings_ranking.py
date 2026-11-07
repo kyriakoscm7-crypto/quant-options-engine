@@ -35,3 +35,46 @@ def test_complete_cap_order_and_fail_closed():
     assert order_events(events, TODAY, adapter) == order_events(events, TODAY)
     broken = SimpleNamespace(observations=lambda symbols: 1/0)
     assert order_events(events, TODAY, broken) == order_events(events, TODAY)
+
+
+def test_featured_cross_week_order_preserves_only_provider_events():
+    from app.intelligence.earnings_ranking import order_featured_events
+    events = (EarningsEvent('ZZTEST', 'Synthetic', TODAY, 'Before market'),
+              EarningsEvent('NVDA', 'Synthetic Nvidia', TODAY + timedelta(days=4), 'After market'),
+              EarningsEvent('AAPL', 'Synthetic Apple', TODAY + timedelta(days=4), 'Before market'),
+              EarningsEvent('AATEST', 'Synthetic', TODAY, 'Time not supplied'))
+    ordered, label = order_featured_events(reversed(events))
+    assert [e.symbol for e in ordered] == ['AAPL', 'NVDA', 'AATEST', 'ZZTEST']
+    assert set(ordered) == set(events) and len(ordered) == len(set(ordered))
+    assert 'Featured major companies' in label and 'not market-cap' in label
+    assert order_featured_events(ordered)[0] == ordered
+    assert select_page(ordered, 'synthetic apple')[0] == (events[2],)
+    assert select_page(ordered, day=TODAY)[0] == (events[3], events[0])
+    assert select_page(ordered, query='NVDA', day=TODAY) == ((), 0)
+
+
+def test_featured_normalization_preserves_listing_and_share_class():
+    from app.intelligence.earnings_ranking import (
+        normalize_featured_symbol,
+        order_featured_events,
+    )
+    assert normalize_featured_symbol(' brk-b ') == 'BRK.B'
+    symbols = ['AAPL.L', 'BRK.A', 'ZZTEST', ' brk-b ', ' aapl ']
+    events = tuple(EarningsEvent(s, s, TODAY, 'Time not supplied') for s in symbols)
+    ordered, _ = order_featured_events(events)
+    assert {e.symbol for e in ordered[:2]} == {' brk-b ', ' aapl '}
+    assert set(ordered) == set(events)  # no provider symbol rewritten
+
+
+def test_featured_full_universe_paging_and_clear_fallback():
+    from app.intelligence.earnings_ranking import order_featured_events
+    ordered, label = order_featured_events(EVENTS)
+    assert 'No featured major companies' in label and 'Date, then ticker' in label
+    assert order_featured_events(())[0] == ()
+    assert len(ordered) == 1270
+    assert select_page(ordered, 'T1269')[1] == 1
+    assert select_page(ordered, day=TODAY)[1] == 254
+    for limit in range(10, 1280, 10):
+        rows, count = select_page(ordered, limit=limit)
+        assert count == 1270 and len(rows) == min(limit, 1270)
+        assert len(rows) == len(set(rows))
