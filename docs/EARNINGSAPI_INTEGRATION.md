@@ -13,6 +13,19 @@ Research still passes the ticker to the existing Stock Explorer flow.
 
 ## Server configuration
 
+The November 8 hosted release defaults to the limited issuer-announcement
+fallback, as requested by the owner. `EARNINGSAPI_ENABLED` is false/unset by
+default. Even an existing API key and cache path cannot activate provider calls
+through the calendar UI without an explicit `EARNINGSAPI_ENABLED = true` opt-in.
+The fallback displays its limited coverage clearly and uses no provider quota.
+Leave the flag unset on Community Cloud until genuinely persistent shared
+storage is available. This is an operational release mode, not a data licence.
+
+For the full API-backed calendar on your Mac or an approved durable host, add
+`EARNINGSAPI_ENABLED = true` alongside the key/path in server environment or
+untracked Streamlit secrets, then restart. Existing cache and budget files remain
+valid. Do not enable it with a temporary cloud file merely to remove the fallback.
+
 Keep `EARNINGSAPI_API_KEY` in the server environment or untracked Streamlit
 secrets. Never put it in GitHub, client code, screenshots or URLs shown to users.
 The provider's documented authentication uses a query parameter; HTTP debug

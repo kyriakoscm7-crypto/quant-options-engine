@@ -50,3 +50,13 @@ No AWS resources, migration, paid source, merge or deployment is included.
 
 Restart Streamlit after pulling to reload imported modules. Do not delete the
 cache or change secrets to install this fix. The existing weekly cache remains valid.
+
+## Hosted release mode selected by owner
+
+On November 8 the owner selected release with the limited issuer fallback until
+durable cloud storage exists. The calendar UI therefore defaults API coverage
+off; `EARNINGSAPI_ENABLED = true` is a separate explicit opt-in for the full
+calendar on a durable host/local Mac. Existing credentials alone do not enable
+it. The limited schedule, source links, expiry and Research remain available.
+GitHub required review remains a separate deployment gate. No merge or deployed
+SHA is asserted by this note.

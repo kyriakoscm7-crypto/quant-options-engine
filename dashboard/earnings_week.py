@@ -133,13 +133,18 @@ def render_earnings_week():
     st.title("Earnings calendar")
     st.write("See who's reporting earnings, then open their financial research in one click.")
     today = datetime.now(ZoneInfo("America/New_York")).date()
-    key = _earnings_api_key()
+    # Release defaults to issuer-only coverage. Existing credentials/cache paths
+    # cannot activate a hosted feed without a deliberate separate opt-in.
+    enabled = _earnings_setting('EARNINGSAPI_ENABLED').casefold() == 'true'
+    key = _earnings_api_key() if enabled else ''
     if key and _render_provider_calendar(today, key):
         return
 
     from app.intelligence.issuer_calendar import EVENTS, REVIEWED, select_events
     st.caption(f"Company-announced schedule · {len(EVENTS)} curated entries · Last reviewed {REVIEWED:%B %d, %Y}")
-    if not key:
+    if not enabled:
+        st.info("Limited issuer-announcement calendar. Broader API coverage is paused for this release while persistent shared storage is arranged. This is not a complete earnings calendar.")
+    elif not key:
         st.info("The live calendar is not connected yet. Add EARNINGSAPI_API_KEY to Streamlit server secrets to enable weekly earnings coverage. The verified company-announcement list below works without a key.")
     if (today - REVIEWED).days > 7:
         st.warning("This manually reviewed schedule may be out of date. Check each issuer announcement.")

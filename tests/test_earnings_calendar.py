@@ -101,3 +101,18 @@ def test_public_earnings_page_is_educational(monkeypatch):
     assert not app.exception
     assert app.title[0].value == "Earnings calendar"
     assert not any("week" in b.label.lower() for b in app.button)
+
+
+@pytest.mark.parametrize('setting', ['', 'false', '0', 'no'])
+def test_release_fallback_never_reads_provider_key_or_fetches(monkeypatch, setting):
+    from dashboard import earnings_week
+
+    monkeypatch.setenv('EARNINGSAPI_API_KEY', 'synthetic-present-key')
+    monkeypatch.setenv('EARNINGSAPI_CACHE_PATH', '/tmp/synthetic-existing-cache.sqlite')
+    monkeypatch.setenv('EARNINGSAPI_ENABLED', setting)
+    monkeypatch.setattr(earnings_week, '_earnings_api_key', lambda: pytest.fail('Disabled UI read API key'))
+    monkeypatch.setattr(earnings_week, '_render_provider_calendar', lambda *a: pytest.fail('Disabled UI fetched provider'))
+    app = AppTest.from_string('from dashboard.earnings_week import render_earnings_week\nrender_earnings_week()').run()
+    assert not app.exception
+    assert any('Broader API coverage is paused' in message.value for message in app.info)
+    assert any('Company-announced schedule' in message.value for message in app.caption)
