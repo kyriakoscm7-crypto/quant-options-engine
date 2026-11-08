@@ -12,6 +12,7 @@ with sync_playwright() as p:
         page.goto('http://127.0.0.1:18525')
         page.get_by_text('Showing 10', exact=False).wait_for()
         expect(page.locator('.earnings-card')).to_have_count(10)
+        expect(page.get_by_text('Shared weekly snapshot', exact=False)).to_be_visible()
         expect(page.get_by_role('button', name='Research ')).to_have_count(10)
         expect(page.locator('.earnings-card').first).to_contain_text('#1 · AAPL')
         expect(page.locator('.earnings-card').first).to_contain_text('Fri, Nov 13, 2026 · BMO')

@@ -136,7 +136,7 @@ def test_durable_cache_and_concurrency_budget(tmp_path):
         assert len(calls) == 7
         assert not load(0).error
         EarningsAPIService(path).load_week("rotated", client=client, now=NOW+86400)
-        assert len(calls) == 14
+        assert len(calls) == 7
     assert b"rotated" not in path.read_bytes()
 
 
@@ -189,3 +189,144 @@ def test_featured_interactions_are_quota_neutral_and_deduplicated(tmp_path):
     import sqlite3
     with sqlite3.connect(tmp_path / 'featured.sqlite') as db:
         assert db.execute('SELECT calls FROM budget').fetchone()[0] == 7
+
+
+def test_thousands_of_visits_share_snapshot_across_restart_and_key_rotation(tmp_path):
+    import sqlite3
+
+    path = tmp_path / 'weekly.sqlite'
+    calls = []
+
+    def respond(request):
+        calls.append(request)
+        return httpx.Response(200, json=fixture(request.url.params['date']))
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        # Load the upcoming week on the preceding Saturday, then serve it through Friday.
+        first_at = NOW - 2 * 86400
+        first = EarningsAPIService(path).load_week('private-test', client=client, now=first_at)
+        assert not first.error
+        for visit in range(1000):
+            cached = EarningsAPIService(path).load_week('rotated-test', client=client,
+                                                       now=first_at + visit * 500)
+            assert cached == first
+        assert len(calls) == 7
+    with sqlite3.connect(path) as db:
+        assert db.execute('SELECT calls FROM budget').fetchone()[0] == 7
+    assert b'private-test' not in path.read_bytes()
+    assert b'rotated-test' not in path.read_bytes()
+
+
+def test_rollover_fetches_new_week_without_reusing_previous_snapshot(tmp_path):
+    import sqlite3
+
+    path = tmp_path / 'rollover.sqlite'
+    calls = []
+
+    def respond(request):
+        calls.append(request)
+        return httpx.Response(200, json=fixture(request.url.params['date']))
+
+    cutoff = datetime(2026, 11, 13, 16, tzinfo=ZoneInfo('America/New_York')).timestamp()
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        service = EarningsAPIService(path)
+        original = service.load_week('key', client=client, now=NOW)
+        assert original.cache_expires_at == cutoff
+        assert service.load_week('key', client=client, now=cutoff-1) == original
+        newer = service.load_week('key', client=client, now=cutoff)
+        assert not newer.error and len(calls) == 14
+        assert all(e.day >= MONDAY + timedelta(days=7) for e in newer.events)
+        with sqlite3.connect(path) as db:
+            assert db.execute('SELECT payload FROM weeks WHERE week=?', (MONDAY.isoformat(),)).fetchone()[0] is None
+            assert db.execute('SELECT calls FROM budget').fetchone()[0] == 14
+
+
+def test_failed_batch_retries_after_day_not_week(tmp_path):
+    path = tmp_path / 'retry.sqlite'
+    calls = []
+
+    def respond(request):
+        calls.append(request)
+        if len(calls) == 1:
+            return httpx.Response(503)
+        return httpx.Response(200, json=fixture(request.url.params['date']))
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        service = EarningsAPIService(path)
+        assert service.load_week('key', client=client, now=NOW).error
+        assert service.load_week('key', client=client, now=NOW+86399).error
+        assert len(calls) == 1
+        assert not service.load_week('key', client=client, now=NOW+86400).error
+        assert len(calls) == 8
+
+
+def test_weekly_cache_expiry_ceiling_and_dst():
+    from app.intelligence.earnings_api_provider import CACHE_SECONDS, cache_expiry
+
+    assert CACHE_SECONDS == 7 * 86400
+    # A malformed/older stored timestamp cannot prolong retention past seven days.
+    assert cache_expiry(NOW - 10 * 86400, MONDAY) == NOW - 3 * 86400
+    spring_monday = date(2026, 3, 9)
+    saturday = datetime.fromisoformat('2026-03-07T16:00:00-05:00').timestamp()
+    assert cache_expiry(saturday, spring_monday) == datetime.fromisoformat('2026-03-13T16:00:00-04:00').timestamp()
+
+
+def test_seven_day_expired_payload_is_not_served(tmp_path):
+    import sqlite3
+
+    path = tmp_path / 'expired.sqlite'
+    calls = []
+
+    def respond(request):
+        calls.append(request)
+        return httpx.Response(200, json=fixture(request.url.params['date']))
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        service = EarningsAPIService(path)
+        assert not service.load_week('key', client=client, now=NOW).error
+        with sqlite3.connect(path) as db:
+            db.execute('UPDATE weeks SET fetched=?', (NOW - 7*86400,))
+        # Cache data is expired; the already-reserved failure cooldown still applies.
+        assert service.load_week('key', client=client, now=NOW+1).error
+        assert len(calls) == 7
+        assert not service.load_week('key', client=client, now=NOW+86400).error
+        assert len(calls) == 14
+
+
+def test_cached_snapshot_available_even_when_monthly_budget_exhausted(tmp_path):
+    import sqlite3
+
+    path = tmp_path / 'exhausted.sqlite'
+    calls = []
+
+    def respond(request):
+        calls.append(request)
+        return httpx.Response(200, json=fixture(request.url.params['date']))
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        service = EarningsAPIService(path)
+        result = service.load_week('key', client=client, now=NOW)
+        with sqlite3.connect(path) as db:
+            db.execute('UPDATE budget SET calls=250')
+        assert service.load_week('key', client=client, now=NOW+86400) == result
+        assert len(calls) == 7
+        cutoff = datetime(2026, 11, 13, 16, tzinfo=ZoneInfo('America/New_York')).timestamp()
+        assert 'budget reached' in service.load_week('key', client=client, now=cutoff).error
+        assert len(calls) == 7
+
+
+def test_server_supplied_cache_path_and_missing_parent_fail_closed(tmp_path):
+    calls = []
+
+    def respond(request):
+        calls.append(request)
+        return httpx.Response(200, json=fixture(request.url.params['date']))
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        service = EarningsAPIService()
+        result = service.load_week('key', client=client, now=NOW,
+                                   cache_path=tmp_path / 'private' / 'cache.sqlite')
+        assert result.error and not calls
+        result = service.load_week('key', client=client, now=NOW,
+                                   cache_path=tmp_path / 'cache.sqlite')
+        assert not result.error and len(calls) == 7

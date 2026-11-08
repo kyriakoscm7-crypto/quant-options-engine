@@ -12,15 +12,19 @@ def week_bounds(day, offset=0):
     return start, start + timedelta(days=6)
 
 
-def _earnings_api_key():
-    """Read server-side only; do not show keys in the UI or link URLs."""
-    key = os.environ.get("EARNINGSAPI_API_KEY", "").strip()
+def _earnings_setting(name):
+    """Read server configuration without exposing values in the UI."""
+    key = os.environ.get(name, "").strip()
     if key:
         return key
     try:
-        return str(st.secrets.get("EARNINGSAPI_API_KEY", "")).strip()
+        return str(st.secrets.get(name, "")).strip()
     except Exception:  # Streamlit raises a custom error when no secrets file exists
         return ""
+
+
+def _earnings_api_key():
+    return _earnings_setting("EARNINGSAPI_API_KEY")
 
 
 def _render_provider_calendar(today, key):
@@ -33,9 +37,12 @@ def _render_provider_calendar(today, key):
     end = start + timedelta(days=6)
     query = st.text_input("Search earnings companies", placeholder="Company or ticker", max_chars=100).strip().lower()
     with st.spinner("Loading earnings dates…"):
-        result = earnings_api_service.load_week(key, start)
+        result = earnings_api_service.load_week(key, start, cache_path=_earnings_setting("EARNINGSAPI_CACHE_PATH"))
 
     st.caption(f"{start:%b %d} – {end:%b %d, %Y} · EarningsAPI.com · Provider-reported dates")
+    if result.retrieved_at and not result.error:
+        retrieved = datetime.fromtimestamp(result.retrieved_at, ZoneInfo("America/New_York"))
+        st.caption(f"Shared weekly snapshot · Retrieved {retrieved:%b %d, %Y at %I:%M %p} ET · Dates can change; check the issuer before acting.")
     if result.error:
         st.warning(result.error)
         st.info("The curated company-announcement schedule is available below.")
@@ -104,7 +111,10 @@ def _render_provider_calendar(today, key):
         st.caption('Editorial priority v2 (Nov 7, 2026): ' + ', '.join(EDITORIAL_PRIORITY) + '. Remaining curated companies: ticker order. This is editorial judgment, not a measured financial ranking.')
         if result.retrieved_at:
             timestamp = datetime.fromtimestamp(result.retrieved_at, ZoneInfo("America/New_York"))
-            st.caption(f"Retrieved {timestamp:%b %d, %Y at %I:%M %p} ET · Shared cache up to 24 hours")
+            st.caption(f"Retrieved {timestamp:%b %d, %Y at %I:%M %p} ET · Shared cache up to 7 days, replaced on reporting-week rollover")
+        if result.cache_expires_at:
+            expires = datetime.fromtimestamp(result.cache_expires_at, ZoneInfo("America/New_York"))
+            st.caption(f"Snapshot valid until {expires:%b %d, %Y at %I:%M %p} ET. The first later calendar visit loads the new reporting week; no visitor-triggered refresh before expiry.")
         st.write("EarningsAPI.com supplies the date and pre-market/after-market/unspecified category. It does not establish company confirmation, guarantee completeness, or supply an exact release time. The calendar is separate from SEC financial scores and is not investment advice. Provider results are displayed, not offered as a downloadable feed.")
         st.link_button("Provider documentation", "https://www.earningsapi.com/docs/calendar-earnings")
     return True

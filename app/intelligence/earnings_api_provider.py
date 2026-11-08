@@ -18,7 +18,10 @@ from zoneinfo import ZoneInfo
 import httpx
 
 API_URL = "https://api.earningsapi.com/v2/calendar/earnings"
-CACHE_SECONDS = 24 * 60 * 60
+CACHE_SECONDS = 7 * 24 * 60 * 60
+RETRY_SECONDS = 24 * 60 * 60
+MONTHLY_REQUEST_BUDGET = 250
+WEEK_REQUESTS = 7
 ET = ZoneInfo("America/New_York")
 SYMBOL = re.compile(r"[A-Z][A-Z0-9.\-]{0,14}\Z")
 SESSIONS = {
@@ -44,6 +47,7 @@ class WeekResult:
     error: str = ""
     retrieved_at: float | None = None
     rejected: int = 0
+    cache_expires_at: float | None = None
 
 
 def _optional_number(value):
@@ -107,6 +111,17 @@ def reporting_week(now=None):
     return monday
 
 
+def cache_expiry(fetched, monday):
+    """A snapshot lives at most seven days, and never beyond week rollover.
+
+    Construct Friday's local wall-clock cutoff rather than adding UTC seconds
+    across a DST transition. Previous-week payloads are never reused for a new week.
+    """
+    friday = monday + timedelta(days=4)
+    rollover = datetime(friday.year, friday.month, friday.day, 16, tzinfo=ET).timestamp()
+    return min(fetched + CACHE_SECONDS, rollover)
+
+
 class EarningsAPIService:
     """SQLite shared lease, durable precharged budget, and expiring display cache.
 
@@ -116,7 +131,7 @@ class EarningsAPIService:
     def __init__(self, cache_path=None):
         self.cache_path = cache_path
 
-    def load_week(self, api_key, monday=None, *, client=None, now=None):
+    def load_week(self, api_key, monday=None, *, client=None, now=None, cache_path=None):
         now = time.time() if now is None else now
         selected = reporting_week(datetime.fromtimestamp(now, UTC))
         if monday is not None and monday != selected:
@@ -124,7 +139,7 @@ class EarningsAPIService:
         monday = selected
         if not api_key or not api_key.strip():
             return WeekResult(error="Configure EARNINGSAPI_API_KEY on the server.")
-        path = self.cache_path or os.environ.get("EARNINGSAPI_CACHE_PATH")
+        path = self.cache_path or cache_path or os.environ.get("EARNINGSAPI_CACHE_PATH")
         if not path:
             return WeekResult(error="Persistent earnings cache is not configured; showing issuer announcements.")
         try:
@@ -139,29 +154,31 @@ class EarningsAPIService:
             db.execute("CREATE TABLE IF NOT EXISTS weeks (week TEXT PRIMARY KEY, next_attempt REAL, payload TEXT, fetched REAL)")
             db.execute("CREATE TABLE IF NOT EXISTS budget (month TEXT PRIMARY KEY, calls INTEGER)")
             db.execute("BEGIN IMMEDIATE")
-            db.execute("UPDATE weeks SET payload=NULL, fetched=NULL WHERE fetched <= ?", (now-CACHE_SECONDS,))
+            db.execute("UPDATE weeks SET payload=NULL, fetched=NULL WHERE fetched <= ? OR week <> ?",
+                       (now-CACHE_SECONDS, monday.isoformat()))
             row = db.execute("SELECT next_attempt, payload, fetched FROM weeks WHERE week=?", (monday.isoformat(),)).fetchone()
-            if row and row[1]:
+            if row and row[1] and row[2] is not None and now < cache_expiry(row[2], monday):
                 saved = json.loads(row[1])
                 events = tuple(EarningsEvent(**dict(e, day=date.fromisoformat(e["day"]))) for e in saved["events"])
-                return WeekResult(events=events, retrieved_at=row[2], rejected=saved["rejected"])
+                return WeekResult(events=events, retrieved_at=row[2], rejected=saved["rejected"],
+                                  cache_expires_at=cache_expiry(row[2], monday))
             if row and now < row[0]:
                 return WeekResult(error="Calendar refresh pending or unavailable; next automatic attempt after " + datetime.fromtimestamp(row[0], ET).strftime("%b %d, %Y %I:%M %p ET") + ".")
             month = datetime.fromtimestamp(now, ET).strftime("%Y-%m")
             db.execute("INSERT OR IGNORE INTO budget VALUES (?, 0)", (month,))
             used = db.execute("SELECT calls FROM budget WHERE month=?", (month,)).fetchone()[0]
-            if used + 7 > 250:
+            if used + WEEK_REQUESTS > MONTHLY_REQUEST_BUDGET:
                 return WeekResult(error="Calendar monthly request budget reached; showing issuer announcements.")
             # Charge the entire batch before HTTP. Crash, timeout, malformed data,
-            # and failed responses cannot reset the 24h cooldown or monthly cap.
-            db.execute("UPDATE budget SET calls=calls+7 WHERE month=?", (month,))
-            db.execute("INSERT OR REPLACE INTO weeks VALUES (?, ?, NULL, NULL)", (monday.isoformat(), now+CACHE_SECONDS))
+            # and failed responses cannot reset the retry cooldown or monthly cap.
+            db.execute("UPDATE budget SET calls=calls+? WHERE month=?", (WEEK_REQUESTS, month))
+            db.execute("INSERT OR REPLACE INTO weeks VALUES (?, ?, NULL, NULL)", (monday.isoformat(), now+RETRY_SECONDS))
             db.execute("DELETE FROM weeks WHERE week < ?", ((monday-timedelta(days=14)).isoformat(),))
             db.execute("DELETE FROM budget WHERE month < ?", (month,))
             db.commit()
             def fetch(http):
                 events, rejected = [], 0
-                for offset in range(7):
+                for offset in range(WEEK_REQUESTS):
                     day = monday + timedelta(days=offset)
                     response = http.get(API_URL, params={"date": day.isoformat(), "apikey": api_key}, timeout=12.0, follow_redirects=False)
                     if response.status_code != 200:
@@ -169,7 +186,8 @@ class EarningsAPIService:
                     found, invalid = normalize_day(response.json(), day)
                     events.extend(found)
                     rejected += invalid
-                return WeekResult(events=tuple(sorted(events, key=lambda e: (e.day, e.session, e.symbol))), retrieved_at=now, rejected=rejected)
+                return WeekResult(events=tuple(sorted(events, key=lambda e: (e.day, e.session, e.symbol))), retrieved_at=now, rejected=rejected,
+                                  cache_expires_at=cache_expiry(now, monday))
             try:
                 if client is None:
                     with httpx.Client() as http:
