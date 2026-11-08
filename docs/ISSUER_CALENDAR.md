@@ -1,6 +1,7 @@
 # Curated issuer earnings schedule
 
-Reviewed November 6, 2026. The seven records in
+Original schedule reviewed November 6, 2026; five release facts reviewed
+November 8, 2026. The eleven records in
 `app/intelligence/issuer_calendar.py` contain independently written factual
 company names, tickers, event dates, release-session descriptions and call times.
 Each record links to the primary issuer announcement/events page reviewed using
@@ -45,3 +46,28 @@ Finnhub remains disabled and TradingView is a separate broader-coverage link.
 Regression tests cover date windows, search, past-event exclusion, stale-snapshot
 withholding, source metadata, sorting and unknown release times. Targeted UI
 tests retain the public provider isolation checks and sidebar flow.
+
+## Release-date reconciliation (November 8 closeout)
+
+Five facts explicitly establish a results-release date/session, separately from
+call-only entries: CSCO (Nov 12 AMC), TDG (Nov 10 BMO), FERG (Nov 9 BMO),
+TTWO (Nov 9 AMC), TTD (Nov 9 AMC). Exact official source URLs are in each record.
+Cisco's newsroom announcement and Ferguson, Take-Two and Trade Desk releases
+were opened. TransDigm's issuer announcement was available in search, while its
+page returned 403 on direct retrieval; the date is also on its official event
+calendar and company-authored PR Newswire distribution. No Google AI overview
+was used as source authority.
+
+`reconcile_provider_events` applies these explicit release facts locally after
+loading a provider snapshot. A reviewed source replaces all conflicting weekly
+rows for that exact ticker, or adds a missing issuer-announced release. Thus the
+Nov 8 cached CSCO Nov 11 and TDG Nov 11 estimates become Nov 12 and Nov 10,
+respectively, while the missing TTD Nov 9 release is included. Corrections are
+counted and each affected card links the issuer announcement. Existing cache
+bytes and request ledger are unchanged; no cache purge or extra HTTP is needed.
+Only matching explicit week dates are admitted, for 30 days after RELEASE_REVIEWED.
+Call-only entries cannot replace a release date or imply a BMO/AMC session.
+
+This is a limited reviewed supplement, not automatic issuer verification of
+1,271 provider events. Other cards remain explicitly provider-reported and
+unverified. No claim of universal accuracy, completeness or ongoing human review.

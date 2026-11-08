@@ -50,8 +50,12 @@ def _render_provider_calendar(today, key):
     from html import escape
 
     from app.intelligence.earnings_ranking import order_featured_events, select_page
+    from app.intelligence.issuer_calendar import reconcile_provider_events
 
-    ordered, ordering = order_featured_events(result.events)
+    events, issuer_sources, corrections = reconcile_provider_events(result.events, start, today)
+    ordered, ordering = order_featured_events(events)
+    if corrections:
+        st.info(f'{corrections} provider schedules corrected using reviewed issuer announcements. Official sources are linked on the affected cards.')
     st.caption(ordering)
     from app.intelligence.earnings_ranking import (
         FEATURED_MAJOR_SYMBOLS,
@@ -77,7 +81,7 @@ def _render_provider_calendar(today, key):
         st.session_state['earnings_view'] = signature
         st.session_state['earnings_limit'] = 10
     rows, count = select_page(candidates, query, chosen, st.session_state.get('earnings_limit', 10))
-    st.markdown(f"**{count:,} matching earnings events** · {len(result.events):,} this week · Showing {len(rows):,}")
+    st.markdown(f"**{count:,} matching earnings events** · {len(events):,} this week · Showing {len(rows):,}")
     if result.rejected:
         st.caption(f"{result.rejected} inconsistent or invalid provider entries omitted.")
     if not rows:
@@ -99,16 +103,21 @@ def _render_provider_calendar(today, key):
                 session = {"Before market": "BMO · Before market", "After market": "AMC · After market"}.get(event.session, "Time not supplied")
                 st.markdown(f'<article class="earnings-card"><p class="earnings-meta">{event.day:%a, %b %d, %Y} · {session}</p>'
                             f'<h3>{("#" + str(position) + " · ") if top else ""}{escape(event.symbol)}</h3><p>{escape(event.name)}</p></article>', unsafe_allow_html=True)
-                st.caption("Source: EarningsAPI.com · Provider-reported")
+                fact = issuer_sources.get((event.day, event.symbol))
+                if fact:
+                    st.caption('Source: Issuer announcement · Reviewed Nov 8, 2026')
+                    st.link_button('Official announcement', fact['source'])
+                else:
+                    st.caption("Source: EarningsAPI.com · Provider-reported; not issuer-verified")
                 if st.button(f"Research {event.symbol}", key=f"ea_{event.day.isoformat()}_{event.symbol}", width="stretch"):
                     open_stock_explorer(event.symbol)
     if len(rows) < count and st.button("Show 10 more", width="stretch"):
         st.session_state["earnings_limit"] = len(rows) + 10
         st.rerun()
     with st.expander("Data source and limitations"):
-        st.write("Featured major companies uses a manually curated list of recognizable companies, not market-cap ranking or a complete list of large companies. Only tickers in this week’s provider events can appear. Featured matches use a published editorial priority sequence across the entire week, then ticker for the remaining curated membership. Other events follow by date then ticker. Top this week includes only featured matches; All week includes every provider event. Search and day filters cover the entire week. If the list has no matches, all events use date then ticker. True market-cap ranking is unavailable: no approved market-cap source is connected. No market caps are calculated or fetched.")
+        st.write("Featured major companies uses a manually curated list of recognizable companies, not market-cap ranking or a complete list of large companies. Only this week’s provider events and dated, reviewed issuer release announcements can appear. Reviewed issuer release facts take precedence, with their official source linked; call-only announcements do not override release dates. This is a limited manual verification layer, not automatic verification of every provider event. Featured matches use a published editorial priority sequence across the entire week, then ticker for the remaining curated membership. Other events follow by date then ticker. Top this week includes only featured matches; All week includes provider events reconciled with the reviewed issuer releases; conflicting duplicates are replaced. Search and day filters cover the entire week. If the list has no matches, all events use date then ticker. True market-cap ranking is unavailable: no approved market-cap source is connected. No market caps are calculated or fetched.")
         from app.intelligence.earnings_ranking import EDITORIAL_PRIORITY
-        st.caption('Editorial priority v2 (Nov 7, 2026): ' + ', '.join(EDITORIAL_PRIORITY) + '. Remaining curated companies: ticker order. This is editorial judgment, not a measured financial ranking.')
+        st.caption('Editorial priority v3 (Nov 8, 2026): ' + ', '.join(EDITORIAL_PRIORITY) + '. Remaining curated companies: ticker order. This is editorial judgment, not a measured financial ranking.')
         if result.retrieved_at:
             timestamp = datetime.fromtimestamp(result.retrieved_at, ZoneInfo("America/New_York"))
             st.caption(f"Retrieved {timestamp:%b %d, %Y at %I:%M %p} ET · Shared cache up to 7 days, replaced on reporting-week rollover")

@@ -52,12 +52,12 @@ def order_events(events, today, adapter: RankingAdapter | None = None):
         return fallback, "Date, then ticker · Market-cap ranking unavailable"
 
 
-# Editorial membership only, version 1 (2026-11-07). Alphabetical, deliberately
+# Editorial membership only, version 2 (2026-11-08). Alphabetical, deliberately
 # broad, manually maintained; neither a cap dataset nor a ranked size claim.
 # Exact listing matches only: do not strip exchange suffixes or alias share classes.
 FEATURED_MAJOR_SYMBOLS = frozenset({
     'AAPL', 'ABBV', 'ABNB', 'ABT', 'ADBE', 'ADI', 'ADP', 'ADSK', 'AEP', 'AFL',
-    'AIG', 'AMAT', 'AMD', 'AMGN', 'AMT', 'AMZN', 'ANET', 'AON', 'APD', 'APO',
+    'COIN', 'FERG', 'TDG', 'TTWO', 'AIG', 'AMAT', 'AMD', 'AMGN', 'AMT', 'AMZN', 'ANET', 'AON', 'APD', 'APO',
     'AVGO', 'AXP', 'AZN', 'BA', 'BABA', 'BAC', 'BDX', 'BIDU', 'BIIB', 'BK',
     'BKNG', 'BLK', 'BMY', 'BP', 'BRK.B', 'BSX', 'BX', 'C', 'CAT', 'CB',
     'CCI', 'CCL', 'CDNS', 'CEG', 'CHD', 'CI', 'CL', 'CMCSA', 'CME', 'CMG',
@@ -94,7 +94,7 @@ def normalize_featured_symbol(symbol):
     return symbol.strip().upper().replace('-', '.')
 
 
-# Editorial priority v2: broad investor recognition and earnings attention, not
+# Editorial priority v3: broad investor recognition and earnings attention, not
 # company size, expected returns or a live popularity measurement. Within the
 # remaining curated membership use ticker order, never reporting-day order.
 EDITORIAL_PRIORITY = (
@@ -102,6 +102,8 @@ EDITORIAL_PRIORITY = (
     'BRK.B', 'JPM', 'WMT', 'LLY', 'AVGO', 'TSM', 'V', 'MA', 'UNH',
     'XOM', 'COST', 'NFLX', 'HD', 'AMD', 'PLTR', 'CRM', 'ORCL',
     'DIS', 'UBER', 'SHOP', 'COIN', 'ABNB', 'PYPL', 'SOFI',
+    'CSCO', 'AMAT', 'CEG', 'KKR', 'OXY', 'TDG', 'FERG', 'TTWO',
+    'JD', 'SE', 'PBR', 'CRWV', 'TTD',
 )
 EDITORIAL_ORDER = {symbol: index for index, symbol in enumerate(EDITORIAL_PRIORITY)}
 

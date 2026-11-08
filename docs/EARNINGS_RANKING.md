@@ -7,17 +7,17 @@ Reviewed November 7, 2026. Applies to PR #12.
 **No market-cap source is connected. True market-cap ranking is unavailable.**
 The default is **Top earnings this week**: up to ten featured provider events,
 ranked across every reporting day by editorial prominence. Never pad a sparse
-week with companies absent from the provider schedule. Show 10 more reveals
+week with companies lacking a provider event or reviewed issuer release fact. Show 10 more reveals
 additional featured matches. All week includes the complete event universe,
 including weekends; Monday–Friday chips select individual days, even empty ones.
 Search covers the full weekly universe, within a chosen day when selected.
 
-Editorial priority v2 (November 7, 2026) is published in
+Editorial priority v3 (November 8, 2026) is published in
 `earnings_ranking.EDITORIAL_PRIORITY` and the UI limitations panel. It reflects
 subjective broad investor recognition and earnings attention, not size, returns,
 or a measured popularity score. Remaining members of the versioned
 `FEATURED_MAJOR_SYMBOLS` set use ticker order; nonfeatured events use date/ticker.
-No dates, sessions, companies, caps or provider requests are added.
+No unverified dates or invented companies/caps are added; reviewed issuer corrections and supplements are sourced per card. No provider requests are added.
 No featured matches leaves Top empty with All week available.
 
 Matching trims whitespace, uppercases and equates dot/hyphen share-class notation
@@ -112,3 +112,14 @@ Therefore no numbers are shown. The future adapter retains complete coverage,
 USD units, source URLs, authorization and common recent as-of requirements.
 A future integration must disclose coverage and individual value/provenance,
 resolve share classes, and use a bounded batch cache rather than per-card calls.
+
+## Closeout corrections
+
+Nov 8 review found CSCO and TDG provider estimates disagreed with their issuer
+announcements. The issuer reconciliation layer corrects them at presentation time,
+adds TTD's missing issuer-announced release, and displays official sources.
+See ISSUER_CALENDAR.md for evidence and expiry. Membership v2 adds FERG, TDG,
+TTWO and COIN. Priority v3 explicitly orders the common weekly names, so this
+week no longer silently uses alphabetical fallback for every featured company.
+The priority remains subjective editorial judgment, not measured company size.
+Provider-only cards are labeled unverified. Full-week coverage is not guaranteed.
