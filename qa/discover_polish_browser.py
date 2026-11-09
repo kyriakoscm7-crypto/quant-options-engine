@@ -36,11 +36,15 @@ with sync_playwright() as p:
     search.fill('')
     search.press('Enter')
     expect(open_alpha).to_be_visible()
+    # Cards can become visible before the rerun has finished reconciling the
+    # comparison widget. Opening it mid-rerun can close its option list.
+    expect(page.get_by_test_id('stStatusWidget')).to_be_hidden()
     compare = page.get_by_test_id('stMultiSelect').get_by_role('combobox')
     for ticker in ('QAALPHA', 'QABETA'):
         compare.click()
         compare.fill(ticker)
         page.get_by_role('option', name=f'{ticker} · Synthetic {ticker}', exact=True).click()
+        expect(page.get_by_test_id('stStatusWidget')).to_be_hidden()
     expect(page.get_by_text('Your comparison', exact=True)).to_be_visible()
     page.get_by_text('Your comparison', exact=True).click()
     open_alpha.click()

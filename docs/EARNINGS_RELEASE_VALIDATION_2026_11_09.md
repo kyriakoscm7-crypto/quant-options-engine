@@ -52,6 +52,12 @@ Release remains blocked. Keep PR #13 unmerged and `EARNINGSAPI_ENABLED=false`.
   exact exported-text assertion remain unchanged; no product behavior or
   acceptance condition was relaxed. Repeated fresh Chromium-session verification
   and latest-head CI outcomes are recorded on the PR.
+- A later duplicate push run passed that export check but timed out opening the
+  Discover comparison option list during a rerender. The factor browser check
+  now waits for Streamlit's running indicator to disappear before opening the
+  selector and after each selection. All required options, comparison, scenario
+  and evidence assertions remain in place. The parallel PR run had passed;
+  final CI must pass on the head containing both synchronization fixes.
 - Full local suite: **2,252 passed, one live integration test skipped**, 223
   existing dependency warnings, Python 3.11.17 plus psycopg 3.2.10. Ruff and
   whitespace checks passed. Existing dependencies were reused locally; clean
