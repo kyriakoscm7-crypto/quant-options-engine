@@ -50,7 +50,6 @@ def test_wrong_week_is_rejected_before_database_contact(monkeypatch):
     assert "automatic reporting week" in result.error
 
 
-@pytest.mark.integration
 def test_real_postgres_concurrent_reservation_if_test_database_provided():
     """Opt-in only: set EARNINGS_TEST_DATABASE_URL on an isolated test DB.
 
