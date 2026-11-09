@@ -49,13 +49,13 @@ def simulation_figure(level=30, skew=12, curvature=20, term=5, view='3D surface'
         template='plotly_dark', paper_bgcolor='#080D1D', plot_bgcolor='#080D1D',
         font={'color': '#DCE3F4', 'family': 'Arial', 'size': 12},
         title={'text': 'SIMULATION · Hypothetical volatility', 'font': {'size': 16}},
-        margin={'l': 10, 'r': 10, 't': 55, 'b': 30}, height=460,
+        margin={'l': 30, 'r': 20, 't': 55, 'b': 30}, height=460,
         uirevision='volatility-simulation',
         scene={'xaxis': dict(axis, title='Strike ratio'),
                'yaxis': dict(axis, title='Days'),
                'zaxis': dict(axis, title='Vol (%)', range=[max(0, float(z.min()) - 5), float(z.max()) + 5]),
                'bgcolor': '#080D1D', 'aspectratio': {'x': 1.3, 'y': 1.3, 'z': 0.8},
-               'camera': {'eye': {'x': 2.0, 'y': -2.1, 'z': 1.5}}},
+               'camera': {'eye': {'x': 2.3, 'y': -2.4, 'z': 1.7}}},
         xaxis_title='Strike / reference price', yaxis_title='Calendar days to expiry',
     )
     return figure
