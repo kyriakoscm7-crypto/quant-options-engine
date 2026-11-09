@@ -65,9 +65,10 @@ def test_real_postgres_concurrent_reservation_if_test_database_provided():
     import psycopg
 
     with psycopg.connect(dsn) as db:
-        db.execute("DELETE FROM earnings_weeks")
-        db.execute("DELETE FROM earnings_budget")
-        db.commit()
+        if db.execute(
+            "SELECT 1 FROM earnings_budget WHERE month='2026-11'"
+        ).fetchone():
+            pytest.skip("Test month already has budget history; use a fresh isolated test database")
     calls = []
     guard = Lock()
 
