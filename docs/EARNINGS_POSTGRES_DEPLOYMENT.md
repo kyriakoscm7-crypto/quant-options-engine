@@ -21,13 +21,40 @@ transactional ledger; every application replica must use that same database.
    `earnings_weeks`. It does not need DELETE, DROP or CREATE.
 4. Confirm records survive a database restart and an app redeployment.
 5. Run the isolated integration test with `EARNINGS_TEST_DATABASE_URL`
-   pointing to a disposable database that already has the schema.
-   The test writes synthetic budget/snapshot rows and skips if its test month
-   already has history. It never resets the ledger. Never use production
+   pointing to a disposable database that already has the schema. An operator
+   must first verify the Neon project/child branch identity, then put a unique
+   comment on that **isolated branch's database only**, for example
+   `COMMENT ON DATABASE neondb IS 'qi-isolated-earnings-test:YOUR_TEST_BRANCH_ID';`.
+   Set `EARNINGS_TEST_DATABASE_MARKER` to that exact comment. The test checks
+   this marker read-only before writing and skips if either ledger has history.
+   Set `EARNINGS_TEST_POOLED_DATABASE_URL` as well to exercise concurrent direct
+   and pooled connections to the same isolated branch, followed by cache reuse
+   in fresh Python processes. Without it, only one endpoint is tested.
+   Pass test-only credentials via a secure process environment; do not export
+   live production credentials to files, shell history, commands or logs.
+   Never mark production as a test database. It never resets the ledger. Never use production
    credentials or clear production history to make a test run.
 6. Check the provider's plan, display/caching permissions and quota. All
    other applications using the same key are outside the app's 250-request
    ledger.
+
+### Runtime role provisioning
+
+Use an operator account to create a dedicated LOGIN role through Neon's secure
+role interface, then grant CONNECT on the app database, USAGE on `public`, and
+SELECT/INSERT/UPDATE on `public.earnings_budget` and `public.earnings_weeks`.
+It needs no sequence privileges for this schema. Do not grant membership in
+`neondb_owner`, ownership of these tables, or CREATE/DELETE/TRUNCATE privileges.
+Check inherited/PUBLIC permissions and role attributes as well as direct grants.
+Validate the role on an isolated branch through both direct and pooled endpoints
+before replacing only the earnings database URL in Streamlit. Keep the enabled
+flag false and preserve every other secret. Credential entry/rotation must use
+the approved secret-handling workflow; do not copy browser-held live credentials
+to temporary files. No production role or credential is provisioned by this PR.
+
+The CI integration job provisions its own restricted local role with synthetic
+credentials and verifies that CREATE and DELETE are unavailable. Its results do
+not establish the privileges of the actual Streamlit role.
 
 ## Server-only Streamlit secrets
 
@@ -61,8 +88,12 @@ issuer announcements without making untracked provider calls.
   cooldown**, committed before any external HTTP call.
 - The monthly app ledger caps at **250 reserved requests**. A failed batch,
   crash or process termination still consumes its reservation.
-- Weekly snapshots expire after seven days or the Friday reporting-week
-  rollover, whichever comes first.
+- Weekly snapshots stop being served after seven days or the Friday
+  reporting-week rollover, whichever comes first. This is a serving TTL,
+  **not a physical deletion guarantee**: old payloads are cleared only on a
+  later reservation. An inactive/disabled app and Neon history/backups may
+  retain data longer. Obtain written permission for this retention, or implement
+  approved deletion and backup policies before activation.
 - A database outage fails closed, and the limited issuer calendar remains
   accessible. No automatic deletion of historical budget rows occurs.
 - This is not a provider-account-wide budget when separate clients use the
