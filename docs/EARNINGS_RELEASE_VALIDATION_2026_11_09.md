@@ -54,10 +54,14 @@ Release remains blocked. Keep PR #13 unmerged and `EARNINGSAPI_ENABLED=false`.
   and latest-head CI outcomes are recorded on the PR.
 - A later duplicate push run passed that export check but timed out opening the
   Discover comparison option list during a rerender. The factor browser check
-  now waits for Streamlit's running indicator to disappear before opening the
-  selector and after each selection. All required options, comparison, scenario
-  and evidence assertions remain in place. The parallel PR run had passed;
-  final CI must pass on the head containing both synchronization fixes.
+  first added idle-state waits, but a later CI run showed that was insufficient.
+  Local diagnostics reproduced a focused input with its menu closed. The check
+  now uses the widget's accessible Open button and can reopen a menu closed by
+  rerender at most twice. It never retries a selection, and a missing option in
+  an open menu still fails. Exact selected-chip, comparison, scenario and evidence
+  assertions remain, with synthetic-only failure diagnostics. Final verification
+  includes repeated fresh sessions and a CPU-throttled Chromium session; latest
+  outcomes are recorded on the PR. CI must pass on the head containing these fixes.
 - Full local suite: **2,252 passed, one live integration test skipped**, 223
   existing dependency warnings, Python 3.11.17 plus psycopg 3.2.10. Ruff and
   whitespace checks passed. Existing dependencies were reused locally; clean
