@@ -101,22 +101,45 @@ Release remains blocked. Keep PR #13 unmerged and `EARNINGSAPI_ENABLED=false`.
   Read-only login as that role succeeded; verified CONNECT/USAGE and table
   SELECT/INSERT/UPDATE, no CREATE/DELETE/TRUNCATE, no privileged role attributes,
   and no membership in `neon_superuser`. Both production ledgers remain empty.
-  Streamlit secrets still use the original owner role and were not changed.
+  Streamlit initially still used the original owner role; the subsequent secure
+  user handoff below completed the saved configuration change.
+
+## Final secure configuration handoff
+
+- The owner refreshed the main-branch owner and runtime credentials through
+  Neon's secure UI, then updated only the three existing Streamlit connection
+  values. The assistant did not enter, export or display production passwords.
+  Role metadata confirms owner refresh at `2026-11-09 19:37:49 UTC` and runtime
+  refresh at `2026-11-09 19:43:37 UTC`. The two isolated branches' inherited
+  owner credentials were also refreshed with explicit user approval; generated
+  values stayed inside Neon and were suppressed from outputs.
+- Reopened saved Streamlit secrets read-only and verified these non-secret
+  mappings on the main endpoint: `DATABASE_URL` = owner/pooled,
+  `DATABASE_URL_UNPOOLED` = owner/direct, `EARNINGSAPI_DATABASE_URL` =
+  `qi_earnings_runtime`/pooled. Each URL requires TLS and channel binding.
+  `EARNINGSAPI_ENABLED=false`; no provider key appears in that saved document.
+  The user reported preserving all other secret values; their original contents
+  were not exported for comparison.
+- A fresh read-only main-branch login as `qi_earnings_runtime` succeeded after
+  refresh; both production earnings tables remained empty. The actual Streamlit
+  application loaded its dashboard normally following the secret updates.
+  Saved mappings and general app health do not prove the disabled/unmerged
+  earnings path has opened a production database connection.
 
 ## Unresolved release gates
 
-1. Switch only the saved Streamlit earnings database URL to the new runtime
-   role's pooled connection via the secure Neon/Streamlit UI workflow, preserving
-   every other secret and keeping the enabled flag false. Credential entry is a
-   user handoff. The active deployment's new-role connection is not yet verified.
-2. Actual Streamlit redeployment/restart persistence is unverified. No production
-   restart was performed. Validate using an isolated staging deployment/branch.
-3. Obtain written provider permission for the intended display and retention.
+1. The new role is now selected in saved Streamlit secrets. Validate the actual
+   earnings path in an isolated Streamlit staging deployment before activation.
+   Real Neon compute restarts and fresh Python application processes passed;
+   end-to-end hosted earnings snapshot persistence remains unverified while
+   PR #13 is unmerged and the feature is disabled. The general dashboard health
+   check following the secret updates is not a substitute for that test.
+2. Obtain written provider permission for the intended display and retention.
    The seven-day cache TTL limits serving, not physical retention. If the answer
    requires hard deletion, implement/test retention and backup handling before
    enabling the integration. Account history access is not a caching licence.
    The official [backfill/sync example](https://www.earningsapi.com/docs/examples/calendar-backfill-sync)
    recommends storing calendar responses, supporting database use in principle,
    but gives no specific retention/backup or audience licence conditions.
-4. Configure the provider key securely only after rights and database validation;
+3. Configure the provider key securely only after rights and database validation;
    its absence from saved Streamlit secrets is not proof no other source exists.
