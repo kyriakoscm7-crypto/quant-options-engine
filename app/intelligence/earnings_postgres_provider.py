@@ -13,8 +13,16 @@ from datetime import UTC, date, datetime
 import httpx
 
 from app.intelligence.earnings_api_provider import (
-    API_URL, ET, MONTHLY_REQUEST_BUDGET, RETRY_SECONDS, WEEK_REQUESTS,
-    EarningsEvent, WeekResult, cache_expiry, normalize_day, reporting_week,
+    API_URL,
+    ET,
+    MONTHLY_REQUEST_BUDGET,
+    RETRY_SECONDS,
+    WEEK_REQUESTS,
+    EarningsEvent,
+    WeekResult,
+    cache_expiry,
+    normalize_day,
+    reporting_week,
 )
 
 
@@ -52,7 +60,7 @@ class PostgresEarningsAPIService:
 
         week = monday.isoformat()
         month = datetime.fromtimestamp(now, ET).strftime("%Y-%m")
-        with psycopg.connect(dsn, connect_timeout=4) as db:
+        with psycopg.connect(dsn, connect_timeout=4) as db:  # noqa: SIM117
             with db.transaction():
                 # Serialize all leases in a given calendar month. The later
                 # SELECT runs after a competing transaction commits.
@@ -119,7 +127,7 @@ class PostgresEarningsAPIService:
             "events": [dict(asdict(e), day=e.day.isoformat()) for e in result.events],
             "rejected": result.rejected,
         })
-        with psycopg.connect(dsn, connect_timeout=4) as db:
+        with psycopg.connect(dsn, connect_timeout=4) as db:  # noqa: SIM117
             with db.transaction():
                 updated = db.execute(
                     "UPDATE earnings_weeks SET payload=%s, fetched=%s "
