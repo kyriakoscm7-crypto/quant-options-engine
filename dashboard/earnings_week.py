@@ -41,7 +41,9 @@ def _render_provider_calendar(today, key):
     database_url = _earnings_setting("EARNINGSAPI_DATABASE_URL")
     with st.spinner("Loading earnings dates…"):
         if database_url:
-            from app.intelligence.earnings_postgres_provider import postgres_earnings_service
+            from app.intelligence.earnings_postgres_provider import (
+                postgres_earnings_service,
+            )
             result = postgres_earnings_service.load_week(key, start, database_url=database_url)
         else:
             result = earnings_api_service.load_week(
