@@ -206,6 +206,10 @@ def render_stock_explorer() -> None:
     else:
         st.info("Enable TradingView panels to see historical prices.")
 
+    from dashboard.volatility_intelligence import render_volatility_intelligence
+
+    render_volatility_intelligence(symbol)
+
     st.markdown("## Understanding the numbers")
 
     from dashboard.perp_market_size import render_perp_market_size
