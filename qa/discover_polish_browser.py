@@ -2,6 +2,7 @@
 import argparse
 from pathlib import Path
 
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import expect, sync_playwright
 
 parser = argparse.ArgumentParser()
@@ -36,11 +37,37 @@ with sync_playwright() as p:
     search.fill('')
     search.press('Enter')
     expect(open_alpha).to_be_visible()
-    compare = page.get_by_test_id('stMultiSelect').get_by_role('combobox')
+    # Cards can become visible before the rerun has finished reconciling the
+    # comparison widget. Opening it mid-rerun can close its option list.
+    expect(page.get_by_test_id('stStatusWidget')).to_be_hidden()
+    comparison_widget = page.get_by_test_id('stMultiSelect')
+    compare = comparison_widget.get_by_role('combobox')
     for ticker in ('QAALPHA', 'QABETA'):
-        compare.click()
-        compare.fill(ticker)
-        page.get_by_role('option', name=f'{ticker} · Synthetic {ticker}', exact=True).click()
+        try:
+            option = page.get_by_role('option', name=f'{ticker} · Synthetic {ticker}', exact=True)
+            # A pending Streamlit rerender can close an otherwise valid picker.
+            # Reopen only a closed menu; never retry a selection or overlook a
+            # missing option in an open list. Exact selected-chip and server-side
+            # comparison assertions below still have to pass.
+            for attempt in range(3):
+                if compare.get_attribute('aria-expanded') != 'true':
+                    comparison_widget.get_by_role('button', name='Open', exact=True).click()
+                try:
+                    expect(option).to_be_visible(timeout=2000)
+                    break
+                except AssertionError:
+                    if compare.get_attribute('aria-expanded') == 'true' or attempt == 2:
+                        raise
+            option.click()
+        except (PlaywrightTimeoutError, AssertionError):
+            page.screenshot(path=str(args.output / 'comparison-failure.png'), full_page=True)
+            print({'comparison_input': compare.input_value(),
+                   'expanded': compare.get_attribute('aria-expanded'),
+                   'visible_options': page.get_by_role('option').all_text_contents(),
+                   'widget': page.get_by_test_id('stMultiSelect').inner_text()}, flush=True)
+            raise
+        expect(comparison_widget.get_by_text(f'{ticker} · Synthetic {ticker}', exact=True)).to_be_visible()
+        expect(page.get_by_test_id('stStatusWidget')).to_be_hidden()
     expect(page.get_by_text('Your comparison', exact=True)).to_be_visible()
     page.get_by_text('Your comparison', exact=True).click()
     open_alpha.click()

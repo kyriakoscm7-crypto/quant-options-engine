@@ -56,6 +56,12 @@ def run(base, output, channel):
             "last_field_matches": True,
         }
         button("Investigate shortlisted company").click()
+        # Both routes render the same notebook fields. Waiting for a field's
+        # existing value can succeed on Discovery before navigation completes,
+        # so typing there can be discarded by the incoming Explorer rerender.
+        expect(
+            page.get_by_role("heading", name="Company overview", exact=True)
+        ).to_be_visible()
         expect(field("Next review trigger")).to_have_value(trigger)
         field("Thesis & valuation").fill("QA thesis from Explorer")
         button("Save & prepare export").click()

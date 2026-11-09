@@ -2,3 +2,6 @@
 -r requirements.lock
 
 streamlit-searchbox==0.1.24
+
+# PostgreSQL ledger driver for optional durable hosted earnings storage.
+psycopg[binary]==3.2.10
