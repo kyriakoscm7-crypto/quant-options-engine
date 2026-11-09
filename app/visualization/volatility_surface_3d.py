@@ -17,9 +17,8 @@ import math
 import pandas as pd
 import plotly.graph_objects as go
 
-from app.market_data.multi_expiration import (
-    fetch_multiple_expirations,
-)
+VOLATILITY_PALETTE = [[0, "#26365F"], [0.35, "#6765AF"], [0.7, "#FF78B7"], [1, "#FFD1E7"]]
+
 
 # ============================================================
 # PREPARE VOLATILITY DATA
@@ -178,7 +177,7 @@ def create_volatility_surface_chart(
                 marker=dict(
                     size=4,
                     color=df["ImpliedVolatility"],
-                    colorscale="Viridis",
+                    colorscale=VOLATILITY_PALETTE,
                     opacity=0.85,
                     colorbar=dict(
                         title="IV (%)"
@@ -230,6 +229,8 @@ def create_volatility_surface_chart(
 # ============================================================
 
 if __name__ == "__main__":
+
+    from app.market_data.multi_expiration import fetch_multiple_expirations
 
     # Retrieve options across six expiration dates.
     data = fetch_multiple_expirations(
