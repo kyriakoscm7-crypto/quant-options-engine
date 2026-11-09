@@ -121,15 +121,15 @@ class PostgresEarningsAPIService:
         })
         with psycopg.connect(dsn, connect_timeout=4) as db:
             with db.transaction():
-                db.execute(
+                updated = db.execute(
                     "UPDATE earnings_weeks SET payload=%s, fetched=%s "
                     "WHERE week=%s AND next_attempt=%s",
                     (payload, now, week, now + RETRY_SECONDS),
                 )
-                # A missing row indicates unexpected ledger mutation; do not
-                # claim that this snapshot was durably saved.
-                if db.execute("SELECT payload FROM earnings_weeks WHERE week=%s", (week,)).fetchone() is None:
-                    raise ValueError("Reservation disappeared")
+                # Do not claim a durable cache if the reservation was changed
+                # or removed by a competing process.
+                if updated.rowcount != 1:
+                    raise ValueError("Reservation changed")
         return result
 
     @staticmethod
