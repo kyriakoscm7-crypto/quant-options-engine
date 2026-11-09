@@ -11,7 +11,8 @@ Release remains blocked. Keep PR #13 unmerged and `EARNINGSAPI_ENABLED=false`.
   `dashboard/main.py`, Python 3.11. Saved secrets still select a Neon pooled
   endpoint and `neondb_owner`; enabled is false. No EarningsAPI key is present in
   that secrets document. Other runtime sources were not inspected. No settings,
-  secrets, access rules or production database rows were changed.
+  secrets or production ledger rows were changed. The approved role provisioning
+  described below changes database privileges only.
 - Authenticated EarningsAPI dashboard shows the Free plan. Its usage reset
   display is stale, so remaining quota was not inferred. No live API data
   endpoint was called and no provider quota was spent.
@@ -58,23 +59,64 @@ Release remains blocked. Keep PR #13 unmerged and `EARNINGSAPI_ENABLED=false`.
   test database's seven-event snapshot/calls=7 and the second database's
   failed-refresh cooldown/calls=14 without HTTP. No ledger resets were used.
 
+## Completed after Neon connector installation
+
+- Verified existing project `young-surf-61669228` / `quant-options-engine` in
+  organization `org-round-dew-16819540`. Production/main branch is
+  `br-withered-snow-bdyhly48`. Read-only production checks confirmed both earnings
+  tables remain empty and the deployed `neondb_owner` has the required table
+  privileges, plus excess CREATE/DELETE permissions.
+- Created child branch `br-aged-morning-bdoi29kq`, named
+  `pr13-driver-validation-20261109`, with compute `ep-flat-union-bdspru6n`.
+  All synthetic test writes and compute restart occurred on this child only.
+  The branch is retained for evidence; it was not reset or deleted.
+- Created a branch-local `qi_earnings_runtime_test` role: CONNECT/USAGE and
+  SELECT/INSERT/UPDATE on the two earnings tables. CREATE/DELETE/TRUNCATE,
+  superuser, database/role creation, replication and RLS bypass are unavailable.
+  Automatic future-table SELECT grants were removed.
+- Real psycopg 3.2.10 direct and `-pooler` connections passed **all five provider
+  tests** with mixed concurrent callers and fresh interpreter reuse. Sixteen
+  callers shared exactly seven mocked requests; a simulated failed batch's
+  charge/cooldown survived new processes. No real provider calls occurred.
+- Verified pooler behavior separately: four simultaneously open direct clients
+  had four distinct backend PIDs (1582–1585), while four open pooled clients
+  reused backend PID 1262 across committed queries.
+- Both client connections used TLS with `sslmode=verify-full`, the trusted
+  certifi CA bundle, and `channel_binding=require`. The local libpq system CA
+  lookup initially failed verification; selecting certifi fixed the trust store
+  without weakening verification. Credentials were generated for the isolated
+  test role and passed in process memory/environment only. No production
+  password was exported, displayed or written to temporary files.
+- Seeded one additional synthetic reporting week through the application service
+  (seven mocked requests), then restarted only the test compute. PostgreSQL
+  startup changed from `2026-11-09 19:21:17.314621+00` to
+  `2026-11-09 19:26:06.206583+00`. Fresh direct and pooled app connections read
+  seven saved events with identical payload MD5
+  `c627225eee1a0d7d2ba036abc6fe1c5e`, calls=21 and the prior failed-week cooldown
+  `1794934800`. **Zero HTTP requests** occurred after restart. These are synthetic
+  reservations only; no production ledger rows were inserted/updated/reset.
+- Created production `qi_earnings_runtime` with a provider-generated credential
+  retained by Neon. After explicit user approval, granted INSERT/UPDATE only on
+  the two earnings tables and removed automatic future-table SELECT grants.
+  Read-only login as that role succeeded; verified CONNECT/USAGE and table
+  SELECT/INSERT/UPDATE, no CREATE/DELETE/TRUNCATE, no privileged role attributes,
+  and no membership in `neon_superuser`. Both production ledgers remain empty.
+  Streamlit secrets still use the original owner role and were not changed.
+
 ## Unresolved release gates
 
-1. Neon is authenticated in the browser, but its dedicated connector was not
-   installed in this chat at validation time. Installation was requested. No
-   browser-held production credential export or alternative credential-copy
-   workaround was attempted. Actual psycopg direct/pooler tests, cross-endpoint
-   concurrency and isolated Neon restart/process persistence remain unverified
-   in this follow-up. Local PostgreSQL tests are not substitutes for those gates.
-2. The existing role remains `neondb_owner`. The earlier PR evidence reports
-   sufficient privileges but excess CREATE/DELETE rights. No new Neon runtime
-   credential/role was created and no production URL was changed. Provision and
-   validate a restricted runtime role through an approved secure workflow.
-3. Actual Streamlit redeployment/restart persistence is unverified. No production
+1. Switch only the saved Streamlit earnings database URL to the new runtime
+   role's pooled connection via the secure Neon/Streamlit UI workflow, preserving
+   every other secret and keeping the enabled flag false. Credential entry is a
+   user handoff. The active deployment's new-role connection is not yet verified.
+2. Actual Streamlit redeployment/restart persistence is unverified. No production
    restart was performed. Validate using an isolated staging deployment/branch.
-4. Obtain written provider permission for the intended display and retention.
+3. Obtain written provider permission for the intended display and retention.
    The seven-day cache TTL limits serving, not physical retention. If the answer
    requires hard deletion, implement/test retention and backup handling before
    enabling the integration. Account history access is not a caching licence.
-5. Configure the provider key securely only after rights and database validation;
+   The official [backfill/sync example](https://www.earningsapi.com/docs/examples/calendar-backfill-sync)
+   recommends storing calendar responses, supporting database use in principle,
+   but gives no specific retention/backup or audience licence conditions.
+4. Configure the provider key securely only after rights and database validation;
    its absence from saved Streamlit secrets is not proof no other source exists.
