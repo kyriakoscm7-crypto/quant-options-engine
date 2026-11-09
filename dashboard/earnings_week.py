@@ -36,8 +36,17 @@ def _render_provider_calendar(today, key):
     start = reporting_week()
     end = start + timedelta(days=6)
     query = st.text_input("Search earnings companies", placeholder="Company or ticker", max_chars=100).strip().lower()
+    # A shared PostgreSQL ledger is required for multi-instance cloud hosting.
+    # Local SQLite remains available for a single-host durable volume.
+    database_url = _earnings_setting("EARNINGSAPI_DATABASE_URL")
     with st.spinner("Loading earnings dates…"):
-        result = earnings_api_service.load_week(key, start, cache_path=_earnings_setting("EARNINGSAPI_CACHE_PATH"))
+        if database_url:
+            from app.intelligence.earnings_postgres_provider import postgres_earnings_service
+            result = postgres_earnings_service.load_week(key, start, database_url=database_url)
+        else:
+            result = earnings_api_service.load_week(
+                key, start, cache_path=_earnings_setting("EARNINGSAPI_CACHE_PATH")
+            )
 
     st.caption(f"{start:%b %d} – {end:%b %d, %Y} · EarningsAPI.com · Provider-reported dates")
     if result.retrieved_at and not result.error:
