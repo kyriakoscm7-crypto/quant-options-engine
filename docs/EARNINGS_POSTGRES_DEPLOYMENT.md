@@ -22,8 +22,9 @@ transactional ledger; every application replica must use that same database.
 4. Confirm records survive a database restart and an app redeployment.
 5. Run the isolated integration test with `EARNINGS_TEST_DATABASE_URL`
    pointing to a disposable database that already has the schema.
-   This test **deletes both earnings tables' test contents**, so never use
-   production credentials.
+   The test writes synthetic budget/snapshot rows and skips if its test month
+   already has history. It never resets the ledger. Never use production
+   credentials or clear production history to make a test run.
 6. Check the provider's plan, display/caching permissions and quota. All
    other applications using the same key are outside the app's 250-request
    ledger.
