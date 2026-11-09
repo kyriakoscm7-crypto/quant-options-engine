@@ -44,6 +44,14 @@ Release remains blocked. Keep PR #13 unmerged and `EARNINGSAPI_ENABLED=false`.
   because database error messages can contain credentials.
 - Added a CI job with disposable PostgreSQL 16 and a restricted runtime role.
   The existing unit/security/browser and Docker gates remain.
+- A subsequent documentation-head CI run exposed an existing browser test
+  synchronization race: the Explorer export's thesis was empty. Both routes
+  expose the same notebook field labels, so the test could type into Discovery
+  before the Explorer rerender arrived. The test now waits for the Explorer-only
+  Company overview heading before editing. Immediate form submission and the
+  exact exported-text assertion remain unchanged; no product behavior or
+  acceptance condition was relaxed. Repeated fresh Chromium-session verification
+  and latest-head CI outcomes are recorded on the PR.
 - Full local suite: **2,252 passed, one live integration test skipped**, 223
   existing dependency warnings, Python 3.11.17 plus psycopg 3.2.10. Ruff and
   whitespace checks passed. Existing dependencies were reused locally; clean
