@@ -3,8 +3,10 @@
 import os
 from datetime import date
 
-import requests
+import requests  # noqa: F401 - shared HTTP transport patched by offline tests
 import streamlit as st
+
+from app.intelligence.sec_access import sec_get
 
 COMPANYFACTS_URL = "https://data.sec.gov/api/xbrl/companyfacts/CIK{}.json"
 
@@ -40,7 +42,7 @@ def load_company_facts(cik: str, user_agent: str) -> dict:
     if not user_agent or "@" not in user_agent:
         raise ValueError("Configure a genuine SEC administrative contact.")
 
-    response = requests.get(
+    response = sec_get(
         COMPANYFACTS_URL.format(cik),
         headers={
             "User-Agent": user_agent,

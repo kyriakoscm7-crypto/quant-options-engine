@@ -69,7 +69,7 @@ def test_main_public_routes_cannot_reenable_legacy_feeds(route, monkeypatch):
         assert any('HYPOTHETICAL MODEL' in item.value for item in app.info)
         assert len(app.get('iframe')) == 2
     elif route in {'💎 Quant Discovery', '🔍 Market Scanner'}:
-        assert len(app.get('iframe')) == 1
+        assert len(app.get('iframe')) == 0
         assert not any('SYNTHETIC DEMO' in item.value for item in app.info)
     elif route != '📄 Legal & Privacy':
         assert any('SYNTHETIC DEMO' in item.value for item in app.info)
@@ -82,9 +82,7 @@ def test_direct_discovery_uses_official_display_even_with_legacy_flag(monkeypatc
     assert not app.exception
     assert len(app.get('iframe')) == 0
     assert not any('SYNTHETIC DEMO' in item.value for item in app.info)
-    app.toggle(key='qi_discovery_consent').set_value(True).run()
-    assert not app.exception
-    assert len(app.get('iframe')) == 1
+    assert not any(toggle.key == 'qi_discovery_consent' for toggle in app.toggle)
 
 
 def test_compact_menu_opens_policies_and_can_disable_charts():

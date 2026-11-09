@@ -183,7 +183,9 @@ def test_http_retrieval_uses_declared_contact(monkeypatch):
 
     responses = [Response(directory), Response(sample_submissions())]
 
-    def fake_get(url, headers, timeout):
+    def fake_get(url, headers, timeout, allow_redirects):
+        assert allow_redirects is False
+        assert timeout == (5, 20)
         calls.append((url, headers, timeout))
         return responses[len(calls) - 1]
 

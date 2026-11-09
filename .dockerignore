@@ -9,3 +9,13 @@ backups/
 *.html
 .env
 .env.*
+# Keep local credentials and provider caches out of build contexts.
+.streamlit/secrets.toml
+**/.streamlit/secrets.toml
+.aws/
+.ssh/
+*.sqlite*
+*.db
+*.db-journal
+*.db-shm
+*.db-wal

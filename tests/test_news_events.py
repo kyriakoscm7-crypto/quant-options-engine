@@ -86,3 +86,14 @@ def test_gdelt_is_optional_by_default(monkeypatch):
     result = get_company_news('Apple Inc.')
     assert result.status == 'unavailable'
     assert 'disabled' in result.message
+
+
+def test_public_providers_ignore_operator_rights_flags(monkeypatch):
+    from app.intelligence.news_events import configured_providers
+    from app.intelligence.news_service import get_company_news
+    for source in ("GOOGLE_NEWS", "GDELT"):
+        monkeypatch.setenv(f"QI_{source}_ENABLED", "true")
+        monkeypatch.setenv(f"QI_{source}_RIGHTS_REFERENCE", "unverified-claim")
+    assert all(not p.enabled and not p.rights_reference for p in configured_providers())
+    result = get_company_news("Example company")
+    assert result.status == "unavailable" and not result.articles

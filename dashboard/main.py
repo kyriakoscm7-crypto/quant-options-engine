@@ -168,7 +168,8 @@ with st.sidebar:
             ("Stock Explorer", "🔎 Stock Explorer"),
         ]),
         ("Discover", "💎 Quant Discovery", [
-            ("Scan & investigate", "💎 Quant Discovery"),
+            ("Find stocks", "💎 Quant Discovery"),
+            ("Earnings calendar", "📅 Earnings this week"),
         ]),
         ("Quant Lab", "💰 Options Lab", [
             ("Options Lab", "💰 Options Lab"),
@@ -291,9 +292,9 @@ with st.sidebar:
     render_navigation_ux()
 
     st.divider()
-    st.caption("PRIVATE RESEARCH BUILD")
+    st.caption("PUBLIC PORTFOLIO PREVIEW")
     st.caption(
-        "Access managed in Streamlit Sharing · "
+        "SEC evidence · Synthetic model examples · "
         "Independent research and education"
     )
 
@@ -339,7 +340,7 @@ if page == "🏠 Overview":
     if research_notes_enabled():
         st.caption(
             "Real-stock charts in Stock Explorer are provided by TradingView. "
-            "Discovery and Scanner use official provider displays. Simulation Lab uses independent assumptions; portfolio and forecast demos remain fictional."
+            "Discover screens annual SEC fundamentals inside the app. Simulation Lab uses independent assumptions; portfolio and forecast demos remain fictional."
         )
     render_premium_home()
 
@@ -377,6 +378,11 @@ elif page == "🔍 Market Scanner":
     st.session_state["_navigation_request"] = "💎 Quant Discovery"
     st.rerun()
 
+
+elif page == "📅 Earnings this week":
+    from dashboard.earnings_week import render_earnings_week
+
+    render_earnings_week()
 
 elif page == "💎 Quant Discovery":
     import runpy

@@ -1,0 +1,20 @@
+{
+  "late_field_download": {
+    "bytes": 580,
+    "revision": 1,
+    "last_field_matches": true
+  },
+  "shared_notebook": true,
+  "model_navigation": true,
+  "consented_panels": {
+    "mounted_widgets": 6,
+    "shared_notes_preserved": true
+  },
+  "responsive_widths": [
+    390,
+    400,
+    768,
+    1440
+  ],
+  "independent_session_empty": true
+}

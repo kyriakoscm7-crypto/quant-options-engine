@@ -1,4 +1,4 @@
-"""Private research workspace disclosures and draft website policies.
+"""Portfolio preview disclosures and draft website policies.
 
 These are operational transparency documents, not a substitute for
 professional legal review or required data licensing.
@@ -40,7 +40,7 @@ advice tailored to your circumstances.
 TERMS = """
 ### Terms of use
 
-**Status:** Private research workspace. Last revised November 4, 2026.
+**Status:** Public portfolio preview. Last revised November 6, 2026.
 
 By using this site, you agree to use it for lawful, personal research
 and educational purposes only. If you disagree with these terms,
@@ -91,10 +91,10 @@ continue to apply regardless of any disclaimer.
 PRIVACY = """
 ### Privacy notice
 
-**Status:** Private research workspace. Last revised November 4, 2026.
+**Status:** Public portfolio preview. Last revised November 6, 2026.
 
-This notice describes this private educational research build. Access restriction
-is configured in Streamlit Community Cloud, not enforced by this page.
+This notice describes the portfolio preview. Hosting access is configured in
+Streamlit Community Cloud, not enforced by this page.
 It does not certify the practices of an earlier deployed version. Hosting configuration and actual
 retention still require operator verification before release.
 
@@ -158,7 +158,7 @@ features are introduced.
 
 def render_legal_pages() -> None:
     st.title("About, Privacy & Legal")
-    st.caption("Quant Intelligence / restricted, independent engineering research workspace")
+    st.caption("Quant Intelligence / quantitative engineering portfolio preview")
     st.markdown(
         "Developed by **Kyriakos Margaritis** to teach financial concepts and "
         "demonstrate quantitative software engineering. Real-stock displays are "
@@ -166,6 +166,10 @@ def render_legal_pages() -> None:
         "use fictional inputs. No broker affiliation or provider endorsement is implied."
     )
     st.link_button("View source & methodology ↗", "https://github.com/kyriakoscm7-crypto/quant-options-engine")
+    with st.expander("Engineering & methodology", expanded=True):
+        st.markdown("**Evidence → analysis → explanation.** SEC company identities and annual US-GAAP facts feed disclosed accounting filters. Missing or incompatible observations are withheld; the filters do not predict stock returns.")
+        st.markdown("**Independent models.** Vectorized Black–Scholes–Merton pricing, Greeks, scenario analysis and synthetic strategy experiments share tested Python calculations. European exercise, constant volatility and hypothetical execution assumptions limit what these models establish.")
+        st.markdown("**System design.** Streamlit interface, modular FastAPI services, bounded source requests, provenance checks and automated regression/CI gates. External chart displays stay separate from calculations and require visitor consent. Finnhub is disabled in this public build, including backend requests and cached results.")
     disclosure, terms, privacy = st.tabs(
         ["Financial disclosure", "Terms of use", "Privacy"]
     )
@@ -179,7 +183,7 @@ def render_legal_pages() -> None:
         "Your viewer list and sign-in requirements are administered in "
         "Streamlit Community Cloud → Sharing. This application does not "
         "implement its own account management or revoke hosting access. "
-        "Keep the list restricted to your approved collaborators."
+        "Review the actual viewer settings before sharing this preview."
     )
     st.caption(
         "Outstanding operator review: verify hosting terms, market-data "
