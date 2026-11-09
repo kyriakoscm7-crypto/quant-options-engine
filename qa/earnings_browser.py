@@ -55,7 +55,11 @@ with sync_playwright() as p:
         search.fill('CSCO')
         search.press('Enter')
         expect(page.locator('.earnings-card')).to_have_count(1)
-        expect(page.locator('.earnings-card')).to_contain_text('Thu, Nov 12, 2026 · AMC')
+        # Streamlit may briefly render the previous results during a search rerun.
+        # Wait for the intended company instead of treating a transient count as ready.
+        issuer_card = page.locator('.earnings-card').filter(has_text='CSCO')
+        expect(issuer_card).to_have_count(1)
+        expect(issuer_card).to_contain_text('Thu, Nov 12, 2026 · AMC')
         expect(page.get_by_role('link', name='Official announcement', exact=True)).to_have_attribute('href', 'https://example.com/synthetic-issuer')
         page.get_by_text('Wed', exact=True).click()
         expect(page.locator('.earnings-card')).to_have_count(0)
