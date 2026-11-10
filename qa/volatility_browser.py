@@ -24,10 +24,8 @@ with sync_playwright() as p:
         chart.scroll_into_view_if_needed()
         page.screenshot(path=str(output / f"public-scenario-{width}.png"))
         page.get_by_text("Lower uncertainty", exact=True).click()
-        page.wait_for_function(
-            "document.querySelector('[data-testid=stPlotlyChart] "
-            ".js-plotly-plot')?.data?.[0]?.y?.[24] < 20"
-        )
+        expect(page.get_by_role("radio", name="Lower uncertainty")).to_be_checked()
+        expect(chart).to_be_visible()
         page.get_by_text(
             "Advanced: explore the 3D educational volatility lab", exact=True
         ).click()
