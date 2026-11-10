@@ -2,8 +2,8 @@
 
 No market-data fetching. IV cannot be derived from stock prices alone.
 """
-from io import BytesIO
 import math
+from io import BytesIO
 
 import numpy as np
 import pandas as pd
