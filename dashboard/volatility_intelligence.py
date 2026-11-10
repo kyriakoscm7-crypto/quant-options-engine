@@ -1,6 +1,4 @@
 """Interactive, simulation-only volatility education for any selected symbol."""
-from html import escape
-
 import plotly.graph_objects as go
 import streamlit as st
 
@@ -152,9 +150,9 @@ Hypothetical assumptions, not data from this security.</p></div>""",
             )
 
 
-def render_volatility_intelligence(symbol: str) -> None:
-    """Shareable volatility research without redistributing licensed data."""
-    st.markdown("## Volatility Intelligence")
+def render_volatility_lab() -> None:
+    """Independent, shareable quant lab without licensed market-data access."""
+    st.title("Volatility Lab")
     st.caption(
         "Learn what volatility measures. Explore an illustrative scenario, or "
         "calculate historical volatility using daily prices you supply."
@@ -172,8 +170,8 @@ def render_volatility_intelligence(symbol: str) -> None:
         )
         st.caption(
             "**Illustrative only.** Scenarios below are entirely synthetic, "
-            f"not actual data or implied volatility for {symbol}. "
-            "The selected ticker is research context only."
+            "not actual data or implied volatility for any company. "
+            "No ticker is needed for this learning model."
         )
         scenarios = {
             "Lower uncertainty": (15, 6, 12, 1),
@@ -206,7 +204,7 @@ def render_volatility_intelligence(symbol: str) -> None:
                 "The file is processed in your session, without an external market-data feed."
             )
             selected = st.checkbox(
-                f"The CSV belongs to {symbol} and its closing prices are adjusted for stock splits",
+                "I confirm I may analyze these adjusted closing prices and the data is from one security",
                 key="qi_hv_confirm",
             )
             uploaded = st.file_uploader(
@@ -253,4 +251,4 @@ def render_volatility_intelligence(symbol: str) -> None:
         with st.expander("Advanced: explore the 3D educational volatility lab"):
             st.caption("The 3D surface, heatmap, and controls are hypothetical teaching tools.")
             if st.toggle("Open advanced simulation", key="qi_vol_lab_enabled", value=False):
-                _render_simulation_lab(symbol)
+                _render_simulation_lab("SYNTHETIC")
