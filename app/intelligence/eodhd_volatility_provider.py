@@ -111,7 +111,7 @@ class PostgresEODHDService:
         import psycopg
 
         today = now.astimezone(UTC).date()
-        with psycopg.connect(dsn, connect_timeout=4) as db:
+        with psycopg.connect(dsn, connect_timeout=4) as db:  # noqa: SIM117
             with db.transaction():
                 db.execute(
                     "INSERT INTO eodhd_daily_budget(utc_day,calls) VALUES (%s,0) "
@@ -177,7 +177,7 @@ class PostgresEODHDService:
             {"date": d.strftime("%Y-%m-%d"), "adjusted_close": float(c)}
             for d, c in zip(frame["Date"], frame["Close"])
         ]
-        with psycopg.connect(dsn, connect_timeout=4) as db:
+        with psycopg.connect(dsn, connect_timeout=4) as db:  # noqa: SIM117
             with db.transaction():
                 updated = db.execute(
                     "UPDATE eodhd_prices_cache "
