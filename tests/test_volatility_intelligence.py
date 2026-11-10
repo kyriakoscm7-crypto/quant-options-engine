@@ -34,9 +34,13 @@ def test_extreme_inputs_remain_bounded():
 def test_chart_labels_and_shape(view, kind):
     fig = simulation_figure(view=view)
     assert fig.data[0].type == kind
-    assert 'SIMULATION' in fig.layout.title.text
+    assert fig.layout.title.text is None
     assert 'SIMULATION' in fig.data[0].hovertemplate
-    assert fig.layout.paper_bgcolor == '#080D1D'
+    assert fig.layout.paper_bgcolor == '#0B1226'
+    if view == '3D surface':
+        assert fig.layout.scene.camera.eye.x < 1.6
+        assert fig.layout.scene.domain.x == (0, 1)
+        assert fig.layout.scene.aspectratio.x > 1.5
     with pytest.raises(ValueError):
         simulation_figure(view='invalid')
 
@@ -50,7 +54,7 @@ def test_ui_controls_for_any_company_without_market_requests(symbol, monkeypatch
     app = AppTest.from_string('from dashboard.volatility_intelligence import render_volatility_intelligence\n'
                               f'render_volatility_intelligence({symbol!r})').run()
     assert not app.exception
-    assert 'not observed' in app.info[0].value
+    assert 'SIMULATION ONLY' in str(app.caption[0].value)
     app.slider(key='qi_vol_level').set_value(55).run()
     app.radio(key='qi_vol_view').set_value('2D heatmap').run()
     assert not app.exception
