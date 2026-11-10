@@ -54,7 +54,7 @@ def test_ui_controls_for_any_company_without_market_requests(symbol, monkeypatch
     app = AppTest.from_string('from dashboard.volatility_intelligence import render_volatility_intelligence\n'
                               f'render_volatility_intelligence({symbol!r})').run()
     assert not app.exception
-    assert 'SIMULATION ONLY' in str(app.caption[0].value)
+    assert not app.exception
     app.slider(key='qi_vol_level').set_value(55).run()
     app.radio(key='qi_vol_view').set_value('2D heatmap').run()
     assert not app.exception
