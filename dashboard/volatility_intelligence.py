@@ -4,6 +4,7 @@ from html import escape
 import plotly.graph_objects as go
 import streamlit as st
 
+from app.intelligence.eodhd_volatility_provider import eodhd_service, eodhd_symbol
 from app.visualization.historical_volatility import (
     historical_volatility_from_csv,
     latest_hv,
@@ -168,11 +169,79 @@ def render_volatility_intelligence(symbol: str) -> None:
         with b:
             st.markdown("**Implied volatility**")
             st.caption("Not available · Requires authorized options quotes")
-        st.info(
-            "Company volatility is **not connected**. The historical price chart above "
-            "is a display-only TradingView widget, not an authorized data feed. "
-            "No company-specific volatility values will be invented."
-        )
+        # Provider use is deliberately disabled by default. A real,
+        # authenticated Streamlit identity must match the owner allowlist.
+        # A private deployment setting alone is NOT an identity proof.
+        def secret(name, fallback=None):
+            try:
+                return st.secrets.get(name, fallback)
+            except Exception:
+                return fallback
+
+        provider_enabled = secret("EODHD_ENABLED", False) is True
+        owner_email = str(secret("EODHD_OWNER_EMAIL", "")).strip().casefold()
+        try:
+            user = st.user
+            authenticated_owner = (
+                bool(user.is_logged_in)
+                and bool(owner_email)
+                and str(user.email).strip().casefold() == owner_email
+            )
+        except (AttributeError, KeyError, RuntimeError):
+            authenticated_owner = False
+
+        result = None
+        if provider_enabled and authenticated_owner:
+            try:
+                provider_symbol = eodhd_symbol(symbol)
+                result = eodhd_service.load(
+                    provider_symbol,
+                    api_key=str(secret("EODHD_API_KEY", "")),
+                    database_url=secret("EODHD_DATABASE_URL"),
+                )
+            except ValueError:
+                pass
+
+        if result is not None and result.prices is not None:
+            frame = result.prices
+            hv20 = latest_hv(frame, 20)
+            hv60 = latest_hv(frame, 60)
+            left, right = st.columns(2)
+            left.metric("20-day historical volatility", f"{hv20:.1f}%" if hv20 is not None else "—")
+            right.metric("60-day historical volatility", f"{hv60:.1f}%" if hv60 is not None else "—")
+            st.caption(
+                f"EODHD adjusted daily closing prices · Last session: "
+                f"{frame['Date'].iloc[-1].strftime('%Y-%m-%d')} · "
+                f"Retrieved: {result.fetched_at.strftime('%Y-%m-%d %H:%M UTC')} "
+                f"· {'Neon cache' if result.cached else 'New fetch'}."
+            )
+            trend = go.Figure()
+            for field, name, color in (
+                ("HV20", "20-day realized volatility", "#FF78B7"),
+                ("HV60", "60-day realized volatility", "#79B8FF"),
+            ):
+                trend.add_trace(go.Scatter(
+                    x=frame["Date"], y=frame[field], mode="lines",
+                    name=name, line={"color": color, "width": 3},
+                ))
+            trend.update_layout(
+                template="plotly_dark", paper_bgcolor="#0B1226",
+                plot_bgcolor="#0B1226", height=350,
+                margin={"l": 30, "r": 16, "t": 25, "b": 40},
+                yaxis_title="Annualized historical volatility (%)",
+                legend={"orientation": "h", "y": 1.15},
+            )
+            st.plotly_chart(trend, width="stretch", key="qi_eodhd_vol_chart")
+            st.caption("Measured historical volatility, NOT options-implied volatility or a forecast.")
+        else:
+            st.info(
+                "Company historical volatility is not connected for this session. "
+                "Live provider results require the owner's authenticated account, "
+                "an EODHD key, provisioned Neon cache and explicit activation. "
+                "No company-specific volatility is invented."
+            )
+            if result is not None and result.error:
+                st.caption(result.error)
 
         with st.expander("Calculate historical volatility from your own daily prices"):
             st.write(
