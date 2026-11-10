@@ -18,7 +18,9 @@ from dashboard.diversification_lesson import render_diversification
 from dashboard.etf_lesson import render_etf_lesson
 from dashboard.financial_labs import render_compound_growth, render_credit_card
 from dashboard.inflation_lesson import render_inflation_lesson
+from dashboard.learn_design import enable_learn_style, featured_lesson, hero
 from dashboard.market_expectations_lesson import render_market_expectations
+from dashboard.options_premium_lesson import render_options_premium_lesson
 from dashboard.paycheque_lesson import render_paycheque
 from dashboard.rrsp_lesson import render_rrsp_comparison
 from dashboard.visual_icons import icon_svg
@@ -215,11 +217,15 @@ LESSON_RENDERERS = {
 def _render_lesson(pathway: dict, lesson_id: str, lesson_title: str) -> None:
     if st.button("← Back to pathway", key="qi_learn_lesson_back"):
         _navigate(pathway["id"])
-    st.caption(f"QUANT LEARN  /  {pathway['title'].upper()}  /  INTERACTIVE LESSON")
-    st.title(lesson_title)
-    st.write(LESSON_SUMMARIES[lesson_id])
-    st.divider()
-    LESSON_RENDERERS[lesson_id]()
+    if lesson_id == "options_premium":
+        render_options_premium_lesson()
+    else:
+        hero(
+            f"QUANT LEARN · {pathway['title'].upper()} · INTERACTIVE LESSON",
+            lesson_title, LESSON_SUMMARIES[lesson_id], icon=pathway["icon"],
+        )
+        with st.container(key="qi_learn_existing_lesson"):
+            LESSON_RENDERERS[lesson_id]()
     st.divider()
     st.caption("Educational information only. Not personalized financial, tax, or investment advice.")
 
@@ -227,9 +233,10 @@ def _render_lesson(pathway: dict, lesson_id: str, lesson_title: str) -> None:
 def _render_pathway(pathway: dict) -> None:
     if st.button("← All learning paths", key="qi_learn_path_back"):
         _navigate()
-    st.caption("QUANT LEARN  /  LEARNING PATH")
-    _pathway_heading(pathway)
-    st.write(pathway["description"])
+    hero(
+        "QUANT LEARN · LEARNING PATH",
+        pathway["title"], pathway["description"], icon=pathway["icon"],
+    )
     st.markdown("### Lessons")
     for number, (lesson_id, title) in enumerate(pathway["lessons"], start=1):
         with st.container(border=True):
@@ -245,6 +252,7 @@ def _render_pathway(pathway: dict) -> None:
 def render_learn_page() -> None:
     """Render the Learn homepage, pathways, or one interactive lesson."""
     st.html(_LEARN_ICON_STYLE)
+    enable_learn_style()
     st.session_state.setdefault("qi_learn_pathway", None)
     st.session_state.setdefault("qi_learn_lesson", None)
     chosen_path = st.session_state["qi_learn_pathway"]
@@ -261,11 +269,28 @@ def render_learn_page() -> None:
         _render_pathway(pathway)
         return
 
-    st.caption("QUANT INTELLIGENCE  /  LEARN")
-    st.title("Make sense of your money and the markets.")
-    st.write("Practical financial education in plain language. Choose a topic, try an interactive example, and explore at your own pace.")
-    st.caption("Choose a pathway, or search for a practical question. Lessons with interactive examples are ready to explore.")
-    search = st.text_input("Search learning topics", placeholder="Try TFSA, earnings, interest rates, taxes, ETFs...").strip().lower()
+    hero(
+        "QUANT INTELLIGENCE · LEARN",
+        "Understand money. Think like an analyst.",
+        "Build lasting financial understanding with clear explanations, "
+        "beautiful visual examples and interactive lessons. Start from the "
+        "basics, then explore how real financial relationships work.",
+        icon="book-open",
+    )
+    featured_lesson()
+    if st.button(
+        "Start featured options masterclass →",
+        key="qi_learn_featured_masterclass_v2", type="primary",
+    ):
+        _navigate("advanced", "options_premium")
+    st.caption(
+        "Learn the concepts first; independent recall and deeper challenges "
+        "come afterward. Educational examples are clearly identified."
+    )
+    search = st.text_input(
+        "Search learning topics",
+        placeholder="Try option premiums, TFSA, earnings, inflation, ETFs...",
+    ).strip().lower()
     if search:
         matches = [
             (pathway, lesson_id, title)

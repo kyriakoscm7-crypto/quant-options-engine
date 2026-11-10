@@ -19,6 +19,15 @@ _SHAPES = {
     "building": '<rect x="4" y="3" width="16" height="18" rx="1"/><path d="M9 21v-4h6v4M8 7h2M14 7h2M8 11h2M14 11h2"/>',
     "newspaper": '<path d="M4 4h14v16H6a2 2 0 0 1-2-2V4Z"/><path d="M18 8h2v10a2 2 0 0 1-2 2"/><path d="M8 9h6M8 13h6M8 17h4"/><path d="M8 6h6"/>',
     "flask": '<path d="M9 3h6M10 3v7l-6 9a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3l-6-9V3"/><path d="M7 16h10"/>',
+    "gem": '<path d="M6 3h12l4 6-10 12L2 9l4-6Z"/><path d="M2 9h20M6 3l3 6 3 12 3-12 3-6"/>',
+    "hourglass": '<path d="M5 3h14M5 21h14M7 3v4l5 5-5 5v4M17 3v4l-5 5 5 5v4"/>',
+    "clock": '<circle cx="12" cy="12" r="9"/><path d="M12 7v6l4 2"/>',
+    "lightbulb": '<path d="M9 18h6M10 21h4M8 15a7 7 0 1 1 8 0l-1 3H9l-1-3Z"/>',
+    "shield": '<path d="m12 2 9 4v5c0 6-4 9-9 11-5-2-9-5-9-11V6l9-4Z"/><path d="m8 12 3 3 5-6"/>',
+    "target": '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+    "calculator": '<rect x="5" y="2" width="14" height="20" rx="2"/><path d="M8 6h8v4H8zM8 14h1M12 14h1M16 14h1M8 18h1M12 18h1M16 18h1"/>',
+    "layers": '<path d="m12 2 9 5-9 5-9-5 9-5ZM3 12l9 5 9-5M3 17l9 5 9-5"/>',
+    "waves": '<path d="M2 7c3-4 5 4 8 0s5 4 8 0 4 0 4 0M2 14c3-4 5 4 8 0s5 4 8 0 4 0 4 0M2 21c3-4 5 4 8 0s5 4 8 0 4 0 4 0"/>',
     "sparkles": '<path d="m12 3 1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z"/><path d="m20 17 .7 2.3L23 20l-2.3.7L20 23l-.7-2.3L17 20l2.3-.7L20 17Z"/><path d="M4 2v4M2 4h4"/>',
 }
 
