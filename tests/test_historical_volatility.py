@@ -1,5 +1,5 @@
 """Historical volatility computation uses uploaded prices, never live feeds."""
-from datetime import date, timedelta
+from io import BytesIO
 
 import numpy as np
 import pandas as pd
@@ -46,11 +46,11 @@ def test_rejects_invalid_csv(contents):
 
 
 def test_duplicate_and_out_of_order_dates_rejected():
-    frame = pd.read_csv(pd.io.common.BytesIO(sample_csv()))
+    frame = pd.read_csv(BytesIO(sample_csv()))
     frame.loc[20, "Date"] = frame.loc[19, "Date"]
     with pytest.raises(ValueError, match="Duplicate"):
         historical_volatility_from_csv(frame.to_csv(index=False).encode())
-    frame = pd.read_csv(pd.io.common.BytesIO(sample_csv()))
+    frame = pd.read_csv(BytesIO(sample_csv()))
     frame.loc[20, "Date"] = "2025-12-30"
     with pytest.raises(ValueError, match="Sort"):
         historical_volatility_from_csv(frame.to_csv(index=False).encode())
