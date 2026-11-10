@@ -18,8 +18,8 @@ from dashboard.diversification_lesson import render_diversification
 from dashboard.etf_lesson import render_etf_lesson
 from dashboard.financial_labs import render_compound_growth, render_credit_card
 from dashboard.inflation_lesson import render_inflation_lesson
-from dashboard.market_expectations_lesson import render_market_expectations
 from dashboard.learn_design import enable_learn_style, featured_lesson, hero
+from dashboard.market_expectations_lesson import render_market_expectations
 from dashboard.options_premium_lesson import render_options_premium_lesson
 from dashboard.paycheque_lesson import render_paycheque
 from dashboard.rrsp_lesson import render_rrsp_comparison
