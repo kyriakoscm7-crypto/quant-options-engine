@@ -102,7 +102,10 @@ def test_ui_controls_for_any_company_without_market_requests(symbol, monkeypatch
         f"render_volatility_intelligence({symbol!r})"
     ).run()
     assert not app.exception
-    assert not [m for m in app.metric if m.label == "Reference strike"]
+    assert len(app.metric) == 0
+    assert app.radio(key="qi_vol_scenario").value == "Higher uncertainty"
+    app.radio(key="qi_vol_scenario").set_value("Lower uncertainty").run()
+    assert not app.exception
     assert app.toggle(key="qi_vol_lab_enabled").value is False
     app.toggle(key="qi_vol_lab_enabled").set_value(True).run()
     assert not app.exception
