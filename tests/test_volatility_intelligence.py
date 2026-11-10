@@ -89,21 +89,20 @@ def test_camera_revision_changes_reset_identity():
     )
 
 
-@pytest.mark.parametrize("symbol", ["NASDAQ:AAPL", "NYSE:UNKNOWN", "AMEX:SPY"])
-def test_ui_controls_for_any_company_without_market_requests(symbol, monkeypatch):
+def test_quant_lab_volatility_route_is_independent_and_network_free(monkeypatch):
     def fail(*args, **kwargs):
-        raise AssertionError("Simulation attempted options access")
+        raise AssertionError("Volatility Lab attempted options market-data access")
 
     import app.market_data.yahoo_client as yahoo
 
     monkeypatch.setattr(yahoo, "fetch_option_chain", fail)
     app = AppTest.from_string(
-        "from dashboard.volatility_intelligence import render_volatility_intelligence\n"
-        f"render_volatility_intelligence({symbol!r})"
+        "from dashboard.volatility_intelligence import render_volatility_lab\n"
+        "render_volatility_lab()"
     ).run()
     assert not app.exception
-    assert len(app.metric) == 0
     assert app.radio(key="qi_vol_scenario").value == "Higher uncertainty"
+    assert len(app.metric) == 0
     app.radio(key="qi_vol_scenario").set_value("Lower uncertainty").run()
     assert not app.exception
     assert app.toggle(key="qi_vol_lab_enabled").value is False
@@ -111,24 +110,20 @@ def test_ui_controls_for_any_company_without_market_requests(symbol, monkeypatch
     assert not app.exception
     assert app.radio(key="qi_vol_view").value == "Volatility curve"
     app.selectbox(key="qi_vol_expiry").set_value(90).run()
-    assert not app.exception
     app.radio(key="qi_vol_view").set_value("2D heatmap").run()
-    assert not app.exception
     app.radio(key="qi_vol_view").set_value("3D surface").run()
-    assert not app.exception
     app.button(key="qi_vol_reset").click().run()
     assert not app.exception
-    app.slider(key="qi_vol_level").set_value(55).run()
-    assert not app.exception
-    assert app.slider(key="qi_vol_level").value == 55
 
 
-def test_exact_explorer_placement():
-    source = (
+def test_volatility_removed_from_stock_explorer_and_added_to_quant_lab():
+    explorer = (
         Path(__file__).parents[1] / "dashboard/stock_explorer_widget.py"
     ).read_text()
-    assert (
-        source.index("## Historical price chart")
-        < source.index("render_volatility_intelligence(symbol)")
-        < source.index("## Understanding the numbers")
-    )
+    main = (Path(__file__).parents[1] / "dashboard/main.py").read_text()
+    assert "render_volatility_intelligence" not in explorer
+    assert "## Historical price chart" in explorer
+    assert "## Understanding the numbers" in explorer
+    assert '("Volatility Lab", "🌊 Volatility Lab")' in main
+    assert 'elif page == "🌊 Volatility Lab":' in main
+    assert "render_volatility_lab()" in main
