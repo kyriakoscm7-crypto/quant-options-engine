@@ -16,8 +16,6 @@ import httpx
 import numpy as np
 import pandas as pd
 
-from app.visualization.historical_volatility import latest_hv
-
 API_BASE = "https://eodhd.com/api/eod/"
 DAILY_BUDGET = 18  # Under provider's 20/day Free allowance.
 CACHE_HOURS = 24
@@ -100,7 +98,7 @@ class PostgresEODHDService:
         dsn = self.database_url or database_url
         if not dsn:
             return EODHDResult(error="Persistent EODHD storage is not configured.")
-        now = now or datetime.now(UTC)
+        now = now if now is not None else datetime.now(UTC)
         if now.tzinfo is None:
             return EODHDResult(error="Timezone-aware clock required.")
         try:
@@ -135,7 +133,7 @@ class PostgresEODHDService:
                         return EODHDResult(
                             prices=calculate_eodhd_hv(frame), fetched_at=row[1], cached=True,
                         )
-                if row and now < row[2]:
+                if row and row[2] is not None and now < row[2]:
                     return EODHDResult(error="Volatility data refresh cooling down.")
                 if used >= DAILY_BUDGET:
                     return EODHDResult(error="EODHD daily request budget reached.")
