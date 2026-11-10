@@ -34,12 +34,42 @@ def render_volatility_intelligence(symbol: str) -> None:
                        'These controls persist across tickers for comparison.')
         st.markdown('<div style="color:#FF9ACA;font-size:11px;letter-spacing:1.8px;font-weight:700;margin:14px 0 4px">INTERACTIVE VOLATILITY LANDSCAPE · SIMULATION</div>',
                     unsafe_allow_html=True)
-        st.plotly_chart(simulation_figure(level, skew, curvature, term, view),
-                        width='stretch', key='qi_vol_chart', config={
-                            'displaylogo': False, 'scrollZoom': False,
-                            'modeBarButtonsToRemove': ['toImage'], 'responsive': True})
-        st.caption('**Explore:** Drag to rotate · Hover for modeled IV · Double-click to reset. '
-                   'The height indicates volatility, **not** the direction of a future price move.')
+        if view == '3D surface':
+            if st.button('Reset 3D view', key='qi_vol_reset',
+                         help='Restore the original camera after rotating the surface.'):
+                st.session_state['qi_vol_camera_revision'] = (
+                    st.session_state.get('qi_vol_camera_revision', 0) + 1
+                )
+            heatmap_mode = 'IV level'
+            st.caption('Rotate with a controlled turntable. Zoom and pan are disabled to keep the model in view.')
+        else:
+            heatmap_mode = st.radio(
+                'Show on the heatmap', ['IV level', 'Strike effect'],
+                horizontal=True, key='qi_vol_heatmap_mode',
+                help='Strike effect compares each strike with the reference strike at the same expiry.'
+            )
+            if heatmap_mode == 'Strike effect':
+                st.caption('**Strike effect** shows volatility-point differences from the 1.00× reference '
+                           'at each expiry. Pink is higher, cyan is lower, and zero means no difference.')
+            else:
+                st.caption('**IV level** shows hypothetical annualized volatility (%) across strike and expiry.')
+        st.plotly_chart(
+            simulation_figure(
+                level, skew, curvature, term, view,
+                heatmap_mode=heatmap_mode,
+                camera_revision=st.session_state.get('qi_vol_camera_revision', 0),
+            ),
+            width='stretch', key='qi_vol_chart', config={
+                'displaylogo': False, 'scrollZoom': False, 'doubleClick': False,
+                'modeBarButtonsToRemove': [
+                    'toImage', 'pan3d', 'zoom3d', 'orbitRotation', 'zoomIn2d',
+                    'zoomOut2d', 'autoScale2d', 'select2d', 'lasso2d',
+                ],
+                'responsive': True,
+            },
+        )
+        st.caption('**Explore:** Hover for modeled values. '
+                   'Higher volatility does **not** predict an upward price move.')
         with st.expander('How to read this visualization'):
             a, b, c = st.columns(3)
             with a:
