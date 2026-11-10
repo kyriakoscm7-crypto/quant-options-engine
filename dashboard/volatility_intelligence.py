@@ -1,4 +1,4 @@
-"""Interactive, simulation-only volatility education for any selected symbol."""
+"""Independent, simulation-only volatility education within Quant Lab."""
 import plotly.graph_objects as go
 import streamlit as st
 
@@ -13,16 +13,15 @@ from app.visualization.volatility_simulation import (
 )
 
 
-def _render_simulation_lab(symbol: str) -> None:
+def _render_simulation_lab() -> None:
     with st.container(border=True):
         st.markdown(
-            f"""<div style="background:linear-gradient(115deg,#111A31,#29203C 70%,#42233B);
+            """<div style="background:linear-gradient(115deg,#111A31,#29203C 70%,#42233B);
 padding:18px 22px;border-radius:13px;border-top:2px solid #FF78B7">
 <div style="color:#FF9ACA;font-size:11px;font-weight:700;letter-spacing:1.8px">
 VOLATILITY INTELLIGENCE · EDUCATIONAL SIMULATION</div>
 <h3 style="margin:8px 0 6px;color:white;font-size:24px">See how volatility changes across strikes and time</h3>
-<p style="margin:0;color:#CCD8EB;font-size:13px">Research context: {escape(symbol)} ·
-Hypothetical assumptions, not data from this security.</p></div>""",
+<p style="margin:0;color:#CCD8EB;font-size:13px">No ticker required · Hypothetical assumptions, not data from any security.</p></div>""",
             unsafe_allow_html=True,
         )
 
@@ -251,4 +250,4 @@ def render_volatility_lab() -> None:
         with st.expander("Advanced: explore the 3D educational volatility lab"):
             st.caption("The 3D surface, heatmap, and controls are hypothetical teaching tools.")
             if st.toggle("Open advanced simulation", key="qi_vol_lab_enabled", value=False):
-                _render_simulation_lab("SYNTHETIC")
+                _render_simulation_lab()
