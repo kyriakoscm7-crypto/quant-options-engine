@@ -38,16 +38,38 @@ def test_chart_labels_and_shape(view, kind):
     assert 'SIMULATION' in fig.data[0].hovertemplate
     assert fig.layout.paper_bgcolor == '#0B1226'
     if view == '3D surface':
+        assert fig.layout.scene.dragmode == 'turntable'
         assert 1.7 < fig.layout.scene.camera.eye.x < 2.2
         assert fig.layout.scene.domain.x[0] > 0
         assert fig.layout.scene.domain.x[1] < 1
         assert fig.layout.scene.domain.y[0] > 0
         assert fig.layout.scene.aspectratio.x > 1.2
+    else:
+        assert fig.data[0].showscale
+        assert len(fig.data) >= 2
     with pytest.raises(ValueError):
         simulation_figure(view='invalid')
 
 
 @pytest.mark.parametrize('symbol', ['NASDAQ:AAPL', 'NYSE:UNKNOWN', 'AMEX:SPY'])
+def test_heatmap_strike_effect_is_bounded_and_reference_is_zero():
+    fig = simulation_figure(view='2D heatmap', heatmap_mode='Strike effect')
+    assert fig.data[0].type == 'heatmap'
+    assert fig.data[0].zmid == 0
+    np.testing.assert_allclose(np.asarray(fig.data[0].z)[:, 24], 0)
+    assert 'vol points' in fig.data[0].hovertemplate
+    assert float(np.asarray(fig.data[0].z).max()) > 0
+    assert float(np.asarray(fig.data[0].z).min()) < 0
+    with pytest.raises(ValueError):
+        simulation_figure(view='2D heatmap', heatmap_mode='unsupported')
+
+
+def test_camera_reset_revision_changes_ui_revision():
+    first = simulation_figure(camera_revision=0)
+    reset = simulation_figure(camera_revision=1)
+    assert first.layout.uirevision != reset.layout.uirevision
+
+
 def test_ui_controls_for_any_company_without_market_requests(symbol, monkeypatch):
     def fail(*args, **kwargs):
         raise AssertionError('Simulation attempted options access')
@@ -57,7 +79,11 @@ def test_ui_controls_for_any_company_without_market_requests(symbol, monkeypatch
                               f'render_volatility_intelligence({symbol!r})').run()
     assert not app.exception
     app.slider(key='qi_vol_level').set_value(55).run()
+    app.button(key='qi_vol_reset').click().run()
+    assert not app.exception
     app.radio(key='qi_vol_view').set_value('2D heatmap').run()
+    assert not app.exception
+    app.radio(key='qi_vol_heatmap_mode').set_value('Strike effect').run()
     assert not app.exception
     assert app.slider(key='qi_vol_level').value == 55
 
