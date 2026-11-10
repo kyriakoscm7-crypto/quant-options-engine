@@ -35,7 +35,6 @@ with sync_playwright() as p:
             "Array.from(document.querySelectorAll('[data-testid=stPlotlyChart] "
             ".js-plotly-plot')).some(el => el.data?.[0]?.type === 'surface')"
         )
-        page.get_by_role("button", name="Reset camera").click()
         page.get_by_text("2D heatmap", exact=True).click()
         page.wait_for_function(
             "Array.from(document.querySelectorAll('[data-testid=stPlotlyChart] "
