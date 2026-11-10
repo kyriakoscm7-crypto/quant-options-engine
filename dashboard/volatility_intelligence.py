@@ -1,14 +1,13 @@
 """Interactive, simulation-only volatility education for any selected symbol."""
 from html import escape
 
-import streamlit as st
 import plotly.graph_objects as go
+import streamlit as st
 
 from app.visualization.historical_volatility import (
     historical_volatility_from_csv,
     latest_hv,
 )
-
 from app.visualization.volatility_simulation import (
     EXPIRIES,
     simulated_slice,
