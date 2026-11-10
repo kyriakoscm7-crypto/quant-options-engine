@@ -17,10 +17,10 @@ from app.education.options_premium import (
 from dashboard.learn_design import (
     chapter,
     concept_pair,
+    forces,
     hero,
     insight,
     premium_bar,
-    forces,
 )
 
 CHAPTER_TITLES = (
