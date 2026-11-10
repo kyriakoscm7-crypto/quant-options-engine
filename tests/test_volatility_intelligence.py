@@ -51,7 +51,6 @@ def test_chart_labels_and_shape(view, kind):
         simulation_figure(view='invalid')
 
 
-@pytest.mark.parametrize('symbol', ['NASDAQ:AAPL', 'NYSE:UNKNOWN', 'AMEX:SPY'])
 def test_heatmap_strike_effect_is_bounded_and_reference_is_zero():
     fig = simulation_figure(view='2D heatmap', heatmap_mode='Strike effect')
     assert fig.data[0].type == 'heatmap'
@@ -70,6 +69,7 @@ def test_camera_reset_revision_changes_ui_revision():
     assert first.layout.uirevision != reset.layout.uirevision
 
 
+@pytest.mark.parametrize('symbol', ['NASDAQ:AAPL', 'NYSE:UNKNOWN', 'AMEX:SPY'])
 def test_ui_controls_for_any_company_without_market_requests(symbol, monkeypatch):
     def fail(*args, **kwargs):
         raise AssertionError('Simulation attempted options access')
