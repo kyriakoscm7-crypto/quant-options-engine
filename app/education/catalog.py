@@ -86,6 +86,7 @@ PATHWAYS = (
         "title": "Advanced Finance",
         "description": "Options, risk models, backtesting, and research methods.",
         "lessons": (
+            ("options_premium", "Why do option premiums change?"),
             ("options", "What are options and the Greeks?"),
             ("backtesting", "What makes a backtest trustworthy?"),
             ("valuation", "How analysts think about valuation"),
@@ -96,6 +97,7 @@ PATHWAYS = (
 
 READY_LESSONS = frozenset({
     "inflation",
+    "options_premium",
     "etfs",
     "rrsp",
     "paycheque",
@@ -104,6 +106,7 @@ READY_LESSONS = frozenset({
 
 
 LESSON_SUMMARIES = {
+    "options_premium": "An eight-chapter guided course with large visual explanations, interactive theoretical option pricing, time-decay diagrams and real risk lessons.",
     "inflation": "Learn how inflation changes prices, savings and purchasing power through interactive examples.",
     "etfs": "Understand ETF holdings, fund overlap, diversification and costs with fictional portfolios.",
     "rrsp": "Compare TFSA and RRSP tax treatment, growth and withdrawals using equal after-tax savings.",
