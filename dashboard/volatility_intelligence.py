@@ -246,7 +246,7 @@ def render_volatility_lab() -> None:
                         "× √252; not a prediction or options-implied volatility."
                     )
             elif uploaded is not None:
-                st.warning("Confirm the symbol and adjusted prices to calculate.")
+                st.warning("Confirm your right to analyze this adjusted-price dataset before calculating.")
         with st.expander("Advanced: explore the 3D educational volatility lab"):
             st.caption("The 3D surface, heatmap, and controls are hypothetical teaching tools.")
             if st.toggle("Open advanced simulation", key="qi_vol_lab_enabled", value=False):
