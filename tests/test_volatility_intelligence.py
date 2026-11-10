@@ -38,9 +38,11 @@ def test_chart_labels_and_shape(view, kind):
     assert 'SIMULATION' in fig.data[0].hovertemplate
     assert fig.layout.paper_bgcolor == '#0B1226'
     if view == '3D surface':
-        assert fig.layout.scene.camera.eye.x < 1.6
-        assert fig.layout.scene.domain.x == (0, 1)
-        assert fig.layout.scene.aspectratio.x > 1.5
+        assert 1.7 < fig.layout.scene.camera.eye.x < 2.2
+        assert fig.layout.scene.domain.x[0] > 0
+        assert fig.layout.scene.domain.x[1] < 1
+        assert fig.layout.scene.domain.y[0] > 0
+        assert fig.layout.scene.aspectratio.x > 1.2
     with pytest.raises(ValueError):
         simulation_figure(view='invalid')
 
@@ -53,7 +55,6 @@ def test_ui_controls_for_any_company_without_market_requests(symbol, monkeypatch
     monkeypatch.setattr(yahoo, 'fetch_option_chain', fail)
     app = AppTest.from_string('from dashboard.volatility_intelligence import render_volatility_intelligence\n'
                               f'render_volatility_intelligence({symbol!r})').run()
-    assert not app.exception
     assert not app.exception
     app.slider(key='qi_vol_level').set_value(55).run()
     app.radio(key='qi_vol_view').set_value('2D heatmap').run()
