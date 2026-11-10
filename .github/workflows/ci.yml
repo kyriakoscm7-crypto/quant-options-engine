@@ -113,6 +113,12 @@ jobs:
             sleep 1
           done
           python qa/volatility_browser.py
+          python -m streamlit run qa/learn_preview.py --server.address 127.0.0.1 --server.port 18527 --server.headless true > /tmp/learn-preview.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            curl --fail --silent http://127.0.0.1:18527/_stcore/health && break
+            sleep 1
+          done
+          python qa/learn_browser.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
