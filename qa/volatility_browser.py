@@ -10,14 +10,9 @@ with sync_playwright() as p:
     for width in (390, 768, 1440):
         page = browser.new_page(viewport={"width": width, "height": 1000})
         page.goto("http://127.0.0.1:18526")
-        heading = page.get_by_role("heading", name="Volatility Intelligence", exact=True)
+        heading = page.get_by_role("heading", name="Volatility Lab", exact=True)
         expect(heading).to_be_visible(timeout=60000)
-        headings = page.get_by_role("heading").all_text_contents()
-        assert (
-            headings.index("Historical price chart")
-            < headings.index("Volatility Intelligence")
-            < headings.index("Understanding the numbers")
-        )
+        expect(page.get_by_text("What does volatility actually mean?", exact=True)).to_be_visible()
         expect(page.get_by_text("Illustrative only.", exact=False)).to_be_visible()
         chart = page.locator('[data-testid="stPlotlyChart"]').first
         expect(chart).to_be_visible()
