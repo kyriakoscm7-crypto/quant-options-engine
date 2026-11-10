@@ -180,9 +180,9 @@ def render_volatility_intelligence(symbol: str) -> None:
             "Higher uncertainty": (55, 12, 20, 5),
             "Stronger downside skew": (35, 27, 25, 3),
         }
-        choice = st.segmented_control(
+        choice = st.radio(
             "Explore a scenario", list(scenarios),
-            default="Higher uncertainty", key="qi_vol_scenario",
+            index=1, key="qi_vol_scenario", horizontal=True,
         )
         level, skew, curvature, term = scenarios[choice or "Higher uncertainty"]
         st.plotly_chart(
