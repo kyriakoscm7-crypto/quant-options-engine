@@ -26,7 +26,7 @@ def simulate_surface(level=30, skew=12, curvature=20, term=5):
     return money, days, z
 
 
-def simulation_figure(level=30, skew=12, curvature=20, term=5, view='3D surface'):
+def simulation_figure(level=30, skew=12, curvature=20, term=5, view='3D surface', *, heatmap_mode='IV level', camera_revision=0):
     """Plotly companion to the existing observed-quote visualization."""
     money, days, z = simulate_surface(level, skew, curvature, term)
     hover = ('SIMULATION<br>Strike / reference: %{x:.2f}×'
@@ -39,8 +39,36 @@ def simulation_figure(level=30, skew=12, curvature=20, term=5, view='3D surface'
                                            'highlightcolor': '#FFFFFF', 'width': 1}},
                            lighting={'ambient': 0.7, 'diffuse': 0.8, 'roughness': 0.5})
     elif view == '2D heatmap':
-        trace = go.Heatmap(x=money, y=days, z=z, colorscale=PALETTE,
-                           hovertemplate=hover, showscale=False)
+        if heatmap_mode == 'Strike effect':
+            # Compare each strike against the 1.00x reference at the SAME
+            # expiration. This removes term-structure changes rather than
+            # implying the full IV level varies strongly across strikes.
+            chart_values = z - z[:, [len(money) // 2]]
+            bound = max(1.0, float(np.abs(chart_values).max()))
+            color_options = {
+                'colorscale': [[0, '#64C9DF'], [0.5, '#17223F'], [1, '#FF78B7']],
+                'zmin': -bound, 'zmax': bound, 'zmid': 0,
+            }
+            heatmap_hover = (
+                'SIMULATION<br>Strike / reference: %{x:.2f}×'
+                '<br>Expiry: %{y:.0f} days'
+                '<br>Difference from 1.00× strike: %{z:+.1f} vol points<extra></extra>'
+            )
+            legend = 'Δ IV (pp)'
+        elif heatmap_mode == 'IV level':
+            chart_values = z
+            color_options = {'colorscale': PALETTE,
+                             'zmin': float(z.min()), 'zmax': float(z.max())}
+            heatmap_hover = hover
+            legend = 'IV (%)'
+        else:
+            raise ValueError('Unsupported heatmap mode')
+        trace = go.Heatmap(
+            x=money, y=days, z=chart_values, hovertemplate=heatmap_hover,
+            showscale=True, zsmooth='best', **color_options,
+            colorbar={'title': {'text': legend}, 'thickness': 13, 'len': 0.82,
+                      'tickfont': {'color': '#CBD5EB'}, 'outlinewidth': 0},
+        )
     else:
         raise ValueError('Unsupported view')
     figure = go.Figure(trace)
@@ -66,6 +94,7 @@ def simulation_figure(level=30, skew=12, curvature=20, term=5, view='3D surface'
                     range=[max(0, float(z.min()) - 4), float(z.max()) + 4],
                 ),
                 'bgcolor': '#0B1226',
+                'dragmode': 'turntable',
                 'aspectmode': 'manual',
                 'aspectratio': {'x': 1.38, 'y': 1.12, 'z': 0.58},
                 'camera': {
@@ -84,11 +113,20 @@ def simulation_figure(level=30, skew=12, curvature=20, term=5, view='3D surface'
             lightposition={'x': -40, 'y': -20, 'z': 100},
         )
     else:
-        figure.update_traces(
-            colorbar={'title': 'IV (%)', 'thickness': 12, 'len': 0.78,
-                      'tickfont': {'color': '#CBD5EB'}},
-            showscale=True,
-        )
+        # Reference strike is marked; isolines expose structure that a smooth
+        # heatmap can obscure at its default color scale.
+        if heatmap_mode == 'IV level':
+            lo, hi = float(z.min()), float(z.max())
+            if hi - lo > 1:
+                figure.add_trace(go.Contour(
+                    x=money, y=days, z=z, showscale=False,
+                    contours={'start': lo, 'end': hi, 'size': max(2, (hi - lo) / 7),
+                              'coloring': 'none', 'showlabels': True},
+                    line={'color': 'rgba(235,241,255,0.53)', 'width': 1},
+                    hoverinfo='skip', showlegend=False,
+                ))
+        figure.add_vline(x=1.0, line_color='#EFF4FF', line_dash='dot',
+                         line_width=1, opacity=0.8)
         figure.update_layout(
             xaxis={'title': 'Strike / reference price', 'gridcolor': '#23334F',
                    'tickfont': {'color': '#CBD5EB'}},
@@ -103,6 +141,7 @@ def simulation_figure(level=30, skew=12, curvature=20, term=5, view='3D surface'
         title=None,
         margin={'l': 4, 'r': 4, 't': 8, 'b': 8},
         height=515 if view == '3D surface' else 425,
-        uirevision='volatility-simulation',
+        uirevision=f'volatility-simulation-{camera_revision}',
+        dragmode='pan' if view == '2D heatmap' else False,
     )
     return figure
