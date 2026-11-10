@@ -232,11 +232,9 @@ def test_open_research_dashboard_never_requests_backend_data(
         assert any(heading in item for item in headings), heading
 
     assert len(app.get("iframe")) == (5 if enabled else 0)
-    # These are explicitly hypothetical volatility teaching metrics, not
-    # fetched prices or company financial performance data.
-    assert [metric.label for metric in app.metric] == [
-        "80% strike", "Reference strike", "120% strike",
-    ]
+    # No company-specific volatility is invented without uploaded prices;
+    # the optional education lab starts closed.
+    assert len(app.metric) == 0
     assert len(app.get("download_button")) == 0
 
 
