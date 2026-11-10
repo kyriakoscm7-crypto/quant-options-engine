@@ -1,61 +1,253 @@
-"""Company-context educational volatility explorer, without market-data access."""
-from html import escape
-
+"""Independent, simulation-only volatility education within Quant Lab."""
+import plotly.graph_objects as go
 import streamlit as st
 
-from app.visualization.volatility_simulation import simulation_figure
+from app.visualization.historical_volatility import (
+    historical_volatility_from_csv,
+    latest_hv,
+)
+from app.visualization.volatility_simulation import (
+    EXPIRIES,
+    simulated_slice,
+    simulation_figure,
+)
 
 
-def render_volatility_intelligence(symbol: str) -> None:
-    st.markdown('## Volatility Intelligence')
+def _render_simulation_lab() -> None:
     with st.container(border=True):
-        st.markdown(f'''<div style="background:radial-gradient(ellipse at top right,#42233F,#0D1424 70%);padding:24px;border-radius:14px;border-top:2px solid #FF78B7">
-<div style="color:#FF78B7;font-size:12px;letter-spacing:2px">SIMULATION · VOLATILITY LAB</div>
-<h3 style="margin:10px 0;color:white">Explore the shape of uncertainty</h3>
-<p style="color:#DCE3F4;margin:0">Research context: {escape(symbol)} · A hypothetical landscape across strikes and time.</p></div>''', unsafe_allow_html=True)
-        st.info('SIMULATION — These are invented educational assumptions, not observed '
-                'company-specific implied volatility, live option quotes or a forecast. '
-                'Every symbol starts with the same model. No options data is fetched.')
-        view = st.radio('Explore the landscape', ['3D surface', '2D heatmap'],
-                        horizontal=True, key='qi_vol_view',
-                        help='Use the heatmap for easier touch navigation or if 3D is unavailable.')
-        with st.expander('Shape your simulation', expanded=False):
+        st.markdown(
+            """<div style="background:linear-gradient(115deg,#111A31,#29203C 70%,#42233B);
+padding:18px 22px;border-radius:13px;border-top:2px solid #FF78B7">
+<div style="color:#FF9ACA;font-size:11px;font-weight:700;letter-spacing:1.8px">
+VOLATILITY INTELLIGENCE · EDUCATIONAL SIMULATION</div>
+<h3 style="margin:8px 0 6px;color:white;font-size:24px">See how volatility changes across strikes and time</h3>
+<p style="margin:0;color:#CCD8EB;font-size:13px">No ticker required · Hypothetical assumptions, not data from any security.</p></div>""",
+            unsafe_allow_html=True,
+        )
+
+        st.caption(
+            "**SIMULATION — NOT LIVE IMPLIED VOLATILITY.** All tickers use the same "
+            "illustrative model. No option quotes are fetched or estimated."
+        )
+
+        view = st.radio(
+            "Explore the model",
+            ["Volatility curve", "3D surface", "2D heatmap"],
+            horizontal=True, key="qi_vol_view",
+            help="Start with a volatility curve for a clear comparison. Rotate the optional 3D chart.",
+        )
+        expiry = st.selectbox(
+            "Time until expiration",
+            EXPIRIES, index=1,
+            format_func=lambda d: f"{d} days",
+            key="qi_vol_expiry",
+            help="Select the hypothetical expiry to inspect in the curve or heatmap.",
+        )
+
+        with st.expander("Adjust the hypothetical assumptions"):
             a, b = st.columns(2)
             with a:
-                level = st.slider('Baseline volatility (%)', 5, 100, 30, key='qi_vol_level',
-                                  help='Annualized modeled volatility at reference strike and 30 days.')
-                skew = st.slider('Downside skew', -30, 30, 12, key='qi_vol_skew',
-                                 help='Positive values lift modeled volatility at lower strikes; negative reverses it.')
+                level = st.slider(
+                    "Baseline volatility (%)", 5, 100, 30, key="qi_vol_level",
+                    help="Annualized modeled volatility at reference strike and 30 days.",
+                )
+                skew = st.slider(
+                    "Downside skew", -30, 30, 12, key="qi_vol_skew",
+                    help="Positive skew lifts volatility for lower strikes.",
+                )
             with b:
-                curvature = st.slider('Smile curvature', 0, 60, 20, key='qi_vol_curve',
-                                      help='Higher values lift the wings away from the reference strike.')
-                term = st.slider('Expiry slope', -15, 15, 5, key='qi_vol_term',
-                                 help='Positive values lift longer expiries. Negative values invert the slope.')
-            st.caption('Manual assumptions persist across symbols so you can compare shapes. '
-                       'Reference price is normalized to 1.00×; no stock price is assumed.')
-        st.plotly_chart(simulation_figure(level, skew, curvature, term, view),
-                        width='stretch', key='qi_vol_chart', config={
-                            'displaylogo': False, 'scrollZoom': False,
-                            'modeBarButtonsToRemove': ['toImage'], 'responsive': True})
-        st.caption('Drag to rotate · Hover to inspect · Use the chart toolbar to reset the camera. '
-                   'On touch screens, try the 2D heatmap. Higher does not mean a stock will rise.')
+                curvature = st.slider(
+                    "Smile curvature", 0, 60, 20, key="qi_vol_curve",
+                    help="Curvature raises modeled volatility away from the reference strike.",
+                )
+                term = st.slider(
+                    "Expiry slope", -15, 15, 5, key="qi_vol_term",
+                    help="Positive values raise modeled volatility for longer expiries.",
+                )
+            def restore_example():
+                for key, value in (
+                    ("qi_vol_level", 30), ("qi_vol_skew", 12),
+                    ("qi_vol_curve", 20), ("qi_vol_term", 5),
+                ):
+                    st.session_state[key] = value
+
+            st.button(
+                "Restore example assumptions",
+                key="qi_vol_defaults", on_click=restore_example,
+            )
+            st.caption(
+                "All controls are hypothetical. No stock price or company fundamentals "
+                "are used to calculate these curves."
+            )
+
+        x, values = simulated_slice(level, skew, curvature, term, expiry)
+        low_iv = float(values[8])  # 0.80x strike
+        at_iv = float(values[len(x) // 2])
+        high_iv = float(values[-9])  # 1.20x strike
         a, b, c = st.columns(3)
-        with a:
-            st.markdown('**01 · Strike**')
-            st.write('1.00× is the reference price. 0.90× is a strike 10% below it; 1.10× is 10% above.')
-        with b:
-            st.markdown('**02 · Time**')
-            st.write('Expiry runs from 7 to 365 calendar days. The slope shows how your assumptions vary across time.')
-        with c:
-            st.markdown('**03 · Volatility**')
-            st.write('Height and color show annualized modeled volatility, in percent. This measures uncertainty, not direction.')
-        with st.expander('What would real implied volatility tell me?'):
-            st.write('Implied volatility is inferred from an observed option price using a pricing model. '
-                     'It can differ by strike and expiry. A smile describes higher volatility in the wings; '
-                     'skew describes an asymmetric shape. Neither guarantees future returns.')
-            st.write('This simulation is a visual teaching model, not a calibrated or arbitrage-free '
-                     'options surface. Values are bounded at 1%–200%. No earnings dates, prices, '
-                     'company fundamentals or historical volatility enter the model. '
-                     'Actual company IV requires appropriately authorized option quotes and quality checks.')
-            st.code('vol % = clip(baseline − skew × ln(K/S) + curvature × ln(K/S)²\n'
-                    '             + expiry slope × ln(days / 30), 1, 200)', language=None)
+        a.metric("80% strike", f"{low_iv:.1f}%")
+        b.metric("Reference strike", f"{at_iv:.1f}%")
+        c.metric("120% strike", f"{high_iv:.1f}%")
+        st.caption(
+            f"Modeled {expiry}-day annualized volatility at three strikes, "
+            "not a stock forecast. Compare the values to understand skew."
+        )
+
+        if view == "3D surface":
+            if st.button("Reset camera", key="qi_vol_reset"):
+                st.session_state["qi_vol_camera_revision"] = (
+                    st.session_state.get("qi_vol_camera_revision", 0) + 1
+                )
+            st.caption("Drag to rotate the 3D landscape. Zoom and pan are disabled.")
+        elif view == "Volatility curve":
+            st.caption(
+                "**How to read it:** The pink line compares modeled implied volatility "
+                f"across strike ratios at {expiry} days. The dashed vertical line is "
+                "the reference strike. It is not a predicted price path."
+            )
+        else:
+            st.caption(
+                f"**How to read it:** Each color represents the modeled annualized "
+                f"volatility (%) for a strike and expiry. The dashed horizontal line "
+                f"marks your selected {expiry}-day slice."
+            )
+
+        st.plotly_chart(
+            simulation_figure(
+                level, skew, curvature, term, view,
+                expiry_days=expiry,
+                camera_revision=st.session_state.get("qi_vol_camera_revision", 0),
+            ),
+            width="stretch", key="qi_vol_chart", config={
+                "displaylogo": False, "scrollZoom": False,
+                "doubleClick": False, "responsive": True,
+                "modeBarButtonsToRemove": [
+                    "toImage", "pan3d", "zoom3d", "orbitRotation",
+                    "zoomIn2d", "zoomOut2d", "autoScale2d",
+                    "select2d", "lasso2d",
+                ],
+            },
+        )
+
+        with st.expander("What does this teach me?"):
+            st.write(
+                "**Skew:** lower strikes sometimes have higher IV than higher strikes. "
+                "**Smile:** implied volatility can increase away from the reference "
+                "strike in either direction. **Term structure:** volatility can "
+                "change with time to expiration."
+            )
+            st.write(
+                "Real implied volatility is backed out from observed option prices. "
+                "These curves are invented demonstrations, not calibrated, arbitrage-free "
+                "surfaces or predictions. Their height does not tell you whether a "
+                "stock will rise. Real company IV would require licensed, valid quotes."
+            )
+            st.code(
+                "vol % = clip(baseline − skew × ln(K/S) + curvature × ln(K/S)²\n"
+                "             + expiry slope × ln(days / 30), 1, 200)",
+                language=None,
+            )
+
+
+def render_volatility_lab() -> None:
+    """Independent, shareable quant lab without licensed market-data access."""
+    st.title("Volatility Lab")
+    st.caption(
+        "Learn what volatility measures. Explore an illustrative scenario, or "
+        "calculate historical volatility using daily prices you supply."
+    )
+    with st.container(border=True):
+        st.markdown(
+            '<div style="background:linear-gradient(110deg,#111B32,#26203B 75%,#40233B);'
+            'border-top:2px solid #FF78B7;border-radius:12px;padding:18px 22px">'
+            '<span style="color:#FF9ACA;font-size:11px;letter-spacing:1.6px">'
+            'EDUCATIONAL MARKET SCENARIOS · SIMULATION</span>'
+            '<h3 style="margin:9px 0 6px;color:#FFF">What does volatility actually mean?</h3>'
+            '<p style="color:#C8D3E9;margin:0;font-size:13px">'
+            'Volatility describes how widely prices vary, not whether a stock will rise.'
+            '</p></div>', unsafe_allow_html=True,
+        )
+        st.caption(
+            "**Illustrative only.** Scenarios below are entirely synthetic, "
+            "not actual data or implied volatility for any company. "
+            "No ticker is needed for this learning model."
+        )
+        scenarios = {
+            "Lower uncertainty": (15, 6, 12, 1),
+            "Higher uncertainty": (55, 12, 20, 5),
+            "Stronger downside skew": (35, 27, 25, 3),
+        }
+        choice = st.radio(
+            "Explore a scenario", list(scenarios),
+            index=1, key="qi_vol_scenario", horizontal=True,
+        )
+        level, skew, curvature, term = scenarios[choice or "Higher uncertainty"]
+        st.plotly_chart(
+            simulation_figure(level, skew, curvature, term, "Volatility curve",
+                              expiry_days=30),
+            key="qi_vol_scenario_chart", width="stretch",
+            config={"displaylogo": False, "scrollZoom": False,
+                    "displayModeBar": False, "responsive": True},
+        )
+        st.caption(
+            "**How to read this:** Left = options with a lower strike than the "
+            "reference price; right = higher strikes. The line illustrates how "
+            "assumed option volatility can differ by strike. **No market prices "
+            "or option quotes were used.**"
+        )
+        with st.expander("Calculate actual historical volatility from my own prices"):
+            st.write(
+                "For **actual historical volatility**, upload adjusted daily closing "
+                "prices you are authorized to analyze. This is not implied volatility. "
+                "CSV: `Date,Close`, sorted oldest to newest, one trading day per row. "
+                "The file is processed in your session, without an external market-data feed."
+            )
+            selected = st.checkbox(
+                "I confirm I may analyze these adjusted closing prices and the data is from one security",
+                key="qi_hv_confirm",
+            )
+            uploaded = st.file_uploader(
+                "Adjusted daily closes CSV (max 2 MB)",
+                type=["csv"], key="qi_hv_upload",
+            )
+            if uploaded is not None and selected:
+                try:
+                    calculated = historical_volatility_from_csv(uploaded.getvalue())
+                except ValueError as exc:
+                    st.error(str(exc))
+                else:
+                    hv20, hv60 = latest_hv(calculated, 20), latest_hv(calculated, 60)
+                    a, b = st.columns(2)
+                    a.metric("20-day realized volatility", f"{hv20:.1f}%" if hv20 is not None else "—")
+                    b.metric("60-day realized volatility", f"{hv60:.1f}%" if hv60 is not None else "Insufficient data")
+                    fig = go.Figure()
+                    for window, label, color in (
+                        ("HV20", "20-day realized", "#FF78B7"),
+                        ("HV60", "60-day realized", "#83B9F6"),
+                    ):
+                        if calculated[window].notna().any():
+                            fig.add_trace(go.Scatter(
+                                x=calculated["Date"], y=calculated[window],
+                                name=label, mode="lines",
+                                line={"color": color, "width": 3},
+                            ))
+                    fig.update_layout(
+                        template="plotly_dark", paper_bgcolor="#0B1226",
+                        plot_bgcolor="#0B1226", height=320,
+                        yaxis_title="Annualized historical volatility (%)",
+                        xaxis_title="Trading date",
+                        margin={"l": 40, "r": 12, "t": 28, "b": 40},
+                    )
+                    st.plotly_chart(fig, width="stretch", key="qi_hv_chart")
+                    st.caption(
+                        f"Uploaded price history through "
+                        f"{calculated['Date'].iloc[-1].strftime('%Y-%m-%d')}. "
+                        "Annualized rolling standard deviation of daily log returns "
+                        "× √252; not a prediction or options-implied volatility."
+                    )
+            elif uploaded is not None:
+                st.warning("Confirm your right to analyze this adjusted-price dataset before calculating.")
+        with st.expander("Advanced: explore the 3D educational volatility lab"):
+            st.caption("The 3D surface, heatmap, and controls are hypothetical teaching tools.")
+            if st.toggle("Open advanced simulation", key="qi_vol_lab_enabled", value=False):
+                _render_simulation_lab()

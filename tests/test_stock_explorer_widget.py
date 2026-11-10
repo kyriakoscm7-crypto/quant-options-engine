@@ -232,6 +232,8 @@ def test_open_research_dashboard_never_requests_backend_data(
         assert any(heading in item for item in headings), heading
 
     assert len(app.get("iframe")) == (5 if enabled else 0)
+    # No company-specific volatility is invented without uploaded prices;
+    # the optional education lab starts closed.
     assert len(app.metric) == 0
     assert len(app.get("download_button")) == 0
 

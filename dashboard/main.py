@@ -175,6 +175,7 @@ with st.sidebar:
             ("Options Lab", "💰 Options Lab"),
             ("Greeks Analysis", "📊 Greeks Analysis"),
             ("Scenario Explorer", "📈 Scenario Explorer"),
+            ("Volatility Lab", "🌊 Volatility Lab"),
         ]),
         ("Model testing", "🧠 Strategy Research", [
             ("Strategy Research · hypothetical", "🧠 Strategy Research"),
@@ -367,6 +368,11 @@ elif page == "📊 Greeks Analysis":
 elif page == "📈 Scenario Explorer":
     from dashboard.scenario_workspace import render_scenario_workspace
     render_scenario_workspace()
+
+elif page == "🌊 Volatility Lab":
+    from dashboard.volatility_intelligence import render_volatility_lab
+
+    render_volatility_lab()
 
 
 # ============================================================
