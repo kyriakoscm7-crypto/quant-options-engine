@@ -4,7 +4,6 @@ from html import escape
 import plotly.graph_objects as go
 import streamlit as st
 
-from app.intelligence.eodhd_volatility_provider import eodhd_service, eodhd_symbol
 from app.visualization.historical_volatility import (
     historical_volatility_from_csv,
     latest_hv,
@@ -154,109 +153,64 @@ Hypothetical assumptions, not data from this security.</p></div>""",
 
 
 def render_volatility_intelligence(symbol: str) -> None:
-    """Company-context volatility that never fabricates market measurements."""
+    """Shareable volatility research without redistributing licensed data."""
     st.markdown("## Volatility Intelligence")
     st.caption(
-        "See how much a stock has actually fluctuated, when you have daily "
-        "price data. Historical volatility is not a prediction."
+        "Learn what volatility measures. Explore an illustrative scenario, or "
+        "calculate historical volatility using daily prices you supply."
     )
     with st.container(border=True):
-        st.markdown("### Volatility overview")
-        a, b = st.columns(2)
-        with a:
-            st.markdown("**Historical volatility**")
-            st.caption("Past price fluctuations · Calculated only from uploaded data")
-        with b:
-            st.markdown("**Implied volatility**")
-            st.caption("Not available · Requires authorized options quotes")
-        # Provider use is deliberately disabled by default. A real,
-        # authenticated Streamlit identity must match the owner allowlist.
-        # A private deployment setting alone is NOT an identity proof.
-        def secret(name, fallback=None):
-            try:
-                return st.secrets.get(name, fallback)
-            except Exception:
-                return fallback
-
-        provider_enabled = secret("EODHD_ENABLED", False) is True
-        owner_email = str(secret("EODHD_OWNER_EMAIL", "")).strip().casefold()
-        try:
-            user = st.user
-            authenticated_owner = (
-                bool(user.is_logged_in)
-                and bool(owner_email)
-                and str(user.email).strip().casefold() == owner_email
-            )
-        except (AttributeError, KeyError, RuntimeError):
-            authenticated_owner = False
-
-        result = None
-        if provider_enabled and authenticated_owner:
-            try:
-                provider_symbol = eodhd_symbol(symbol)
-                result = eodhd_service.load(
-                    provider_symbol,
-                    api_key=str(secret("EODHD_API_KEY", "")),
-                    database_url=secret("EODHD_DATABASE_URL"),
-                )
-            except ValueError:
-                pass
-
-        if result is not None and result.prices is not None:
-            frame = result.prices
-            hv20 = latest_hv(frame, 20)
-            hv60 = latest_hv(frame, 60)
-            left, right = st.columns(2)
-            left.metric("20-day historical volatility", f"{hv20:.1f}%" if hv20 is not None else "—")
-            right.metric("60-day historical volatility", f"{hv60:.1f}%" if hv60 is not None else "—")
-            st.caption(
-                f"EODHD adjusted daily closing prices · Last session: "
-                f"{frame['Date'].iloc[-1].strftime('%Y-%m-%d')} · "
-                f"Retrieved: {result.fetched_at.strftime('%Y-%m-%d %H:%M UTC')} "
-                f"· {'Neon cache' if result.cached else 'New fetch'}."
-            )
-            trend = go.Figure()
-            for field, name, color in (
-                ("HV20", "20-day realized volatility", "#FF78B7"),
-                ("HV60", "60-day realized volatility", "#79B8FF"),
-            ):
-                trend.add_trace(go.Scatter(
-                    x=frame["Date"], y=frame[field], mode="lines",
-                    name=name, line={"color": color, "width": 3},
-                ))
-            trend.update_layout(
-                template="plotly_dark", paper_bgcolor="#0B1226",
-                plot_bgcolor="#0B1226", height=350,
-                margin={"l": 30, "r": 16, "t": 25, "b": 40},
-                yaxis_title="Annualized historical volatility (%)",
-                legend={"orientation": "h", "y": 1.15},
-            )
-            st.plotly_chart(trend, width="stretch", key="qi_eodhd_vol_chart")
-            st.caption("Measured historical volatility, NOT options-implied volatility or a forecast.")
-        else:
-            st.info(
-                "Company historical volatility is not connected for this session. "
-                "Live provider results require the owner's authenticated account, "
-                "an EODHD key, provisioned Neon cache and explicit activation. "
-                "No company-specific volatility is invented."
-            )
-            if result is not None and result.error:
-                st.caption(result.error)
-
-        with st.expander("Calculate historical volatility from your own daily prices"):
+        st.markdown(
+            '<div style="background:linear-gradient(110deg,#111B32,#26203B 75%,#40233B);'
+            'border-top:2px solid #FF78B7;border-radius:12px;padding:18px 22px">'
+            '<span style="color:#FF9ACA;font-size:11px;letter-spacing:1.6px">'
+            'EDUCATIONAL MARKET SCENARIOS · SIMULATION</span>'
+            '<h3 style="margin:9px 0 6px;color:#FFF">What does volatility actually mean?</h3>'
+            '<p style="color:#C8D3E9;margin:0;font-size:13px">'
+            'Volatility describes how widely prices vary, not whether a stock will rise.'
+            '</p></div>', unsafe_allow_html=True,
+        )
+        st.caption(
+            "**Illustrative only.** Scenarios below are entirely synthetic, "
+            f"not actual data or implied volatility for {symbol}. "
+            "The selected ticker is research context only."
+        )
+        scenarios = {
+            "Lower uncertainty": (15, 6, 12, 1),
+            "Higher uncertainty": (55, 12, 20, 5),
+            "Stronger downside skew": (35, 27, 25, 3),
+        }
+        choice = st.segmented_control(
+            "Explore a scenario", list(scenarios),
+            default="Higher uncertainty", key="qi_vol_scenario",
+        )
+        level, skew, curvature, term = scenarios[choice or "Higher uncertainty"]
+        st.plotly_chart(
+            simulation_figure(level, skew, curvature, term, "Volatility curve",
+                              expiry_days=30),
+            key="qi_vol_scenario_chart", width="stretch",
+            config={"displaylogo": False, "scrollZoom": False,
+                    "displayModeBar": False, "responsive": True},
+        )
+        st.caption(
+            "**How to read this:** Left = options with a lower strike than the "
+            "reference price; right = higher strikes. The line illustrates how "
+            "assumed option volatility can differ by strike. **No market prices "
+            "or option quotes were used.**"
+        )
+        with st.expander("Calculate actual historical volatility from my own prices"):
             st.write(
-                "Upload **adjusted daily closing prices** for the selected symbol. "
-                "The CSV must contain columns `Date` and `Close`, sorted oldest "
-                "to newest, with one row per trading day. Use a source you are "
-                "authorized to analyze. Data stays in this session; it is not "
-                "written to Neon or sent to any external API by this feature."
+                "For **actual historical volatility**, upload adjusted daily closing "
+                "prices you are authorized to analyze. This is not implied volatility. "
+                "CSV: `Date,Close`, sorted oldest to newest, one trading day per row. "
+                "The file is processed in your session, without an external market-data feed."
             )
             selected = st.checkbox(
-                f"I confirm the CSV is for {symbol} and is adjusted for stock splits",
+                f"The CSV belongs to {symbol} and its closing prices are adjusted for stock splits",
                 key="qi_hv_confirm",
             )
             uploaded = st.file_uploader(
-                "Daily price CSV (maximum 2 MB)",
+                "Adjusted daily closes CSV (max 2 MB)",
                 type=["csv"], key="qi_hv_upload",
             )
             if uploaded is not None and selected:
@@ -265,56 +219,38 @@ def render_volatility_intelligence(symbol: str) -> None:
                 except ValueError as exc:
                     st.error(str(exc))
                 else:
-                    hv20 = latest_hv(calculated, 20)
-                    hv60 = latest_hv(calculated, 60)
+                    hv20, hv60 = latest_hv(calculated, 20), latest_hv(calculated, 60)
                     a, b = st.columns(2)
-                    a.metric("20-day historical volatility", f"{hv20:.1f}%" if hv20 is not None else "—")
-                    b.metric("60-day historical volatility", f"{hv60:.1f}%" if hv60 is not None else "Not enough observations")
-                    first = calculated["Date"].iloc[0].strftime("%b %d, %Y")
-                    last = calculated["Date"].iloc[-1].strftime("%b %d, %Y")
-                    st.caption(
-                        f"Uploaded data: {first} – {last}, {len(calculated)} trading sessions. "
-                        "Annualized standard deviation of daily log returns × √252. "
-                        "Results depend on the accuracy and freshness of the uploaded prices."
-                    )
-                    figure = go.Figure()
-                    for key, name, color in (
-                        ("HV20", "20-day realized volatility", "#FF78B7"),
-                        ("HV60", "60-day realized volatility", "#79B8FF"),
+                    a.metric("20-day realized volatility", f"{hv20:.1f}%" if hv20 is not None else "—")
+                    b.metric("60-day realized volatility", f"{hv60:.1f}%" if hv60 is not None else "Insufficient data")
+                    fig = go.Figure()
+                    for window, label, color in (
+                        ("HV20", "20-day realized", "#FF78B7"),
+                        ("HV60", "60-day realized", "#83B9F6"),
                     ):
-                        if calculated[key].notna().any():
-                            figure.add_trace(go.Scatter(
-                                x=calculated["Date"], y=calculated[key],
-                                mode="lines", name=name,
+                        if calculated[window].notna().any():
+                            fig.add_trace(go.Scatter(
+                                x=calculated["Date"], y=calculated[window],
+                                name=label, mode="lines",
                                 line={"color": color, "width": 3},
-                                hovertemplate="%{x|%Y-%m-%d}<br>%{y:.1f}%<extra>%{fullData.name}</extra>",
                             ))
-                    figure.update_layout(
+                    fig.update_layout(
                         template="plotly_dark", paper_bgcolor="#0B1226",
-                        plot_bgcolor="#0B1226", height=340,
-                        margin={"l": 35, "r": 15, "t": 20, "b": 35},
-                        xaxis_title="Trading date",
+                        plot_bgcolor="#0B1226", height=320,
                         yaxis_title="Annualized historical volatility (%)",
-                        legend={"orientation": "h", "y": 1.12},
+                        xaxis_title="Trading date",
+                        margin={"l": 40, "r": 12, "t": 28, "b": 40},
                     )
-                    st.plotly_chart(figure, width="stretch", key="qi_hv_chart")
+                    st.plotly_chart(fig, width="stretch", key="qi_hv_chart")
                     st.caption(
-                        "**Interpretation:** Higher values mean larger past daily price "
-                        "changes, not that the share price will go up. This is "
-                        "**historical** volatility, not options-implied volatility."
+                        f"Uploaded price history through "
+                        f"{calculated['Date'].iloc[-1].strftime('%Y-%m-%d')}. "
+                        "Annualized rolling standard deviation of daily log returns "
+                        "× √252; not a prediction or options-implied volatility."
                     )
             elif uploaded is not None:
-                st.warning("Confirm the symbol and adjustment before calculating.")
-
-        st.divider()
-        st.markdown("**Want to explore how options volatility shapes work?**")
-        st.caption(
-            "Optional educational demonstration — its numbers are invented "
-            "and never represent the selected company's real volatility."
-        )
-        if st.toggle(
-            "Open educational volatility simulation",
-            key="qi_vol_lab_enabled",
-            value=False,
-        ):
-            _render_simulation_lab(symbol)
+                st.warning("Confirm the symbol and adjusted prices to calculate.")
+        with st.expander("Advanced: explore the 3D educational volatility lab"):
+            st.caption("The 3D surface, heatmap, and controls are hypothetical teaching tools.")
+            if st.toggle("Open advanced simulation", key="qi_vol_lab_enabled", value=False):
+                _render_simulation_lab(symbol)
