@@ -63,13 +63,17 @@ Hypothetical assumptions, not data from this security.</p></div>""",
                     "Expiry slope", -15, 15, 5, key="qi_vol_term",
                     help="Positive values raise modeled volatility for longer expiries.",
                 )
-            if st.button("Restore example assumptions", key="qi_vol_defaults"):
+            def restore_example():
                 for key, value in (
                     ("qi_vol_level", 30), ("qi_vol_skew", 12),
                     ("qi_vol_curve", 20), ("qi_vol_term", 5),
                 ):
                     st.session_state[key] = value
-                st.rerun()
+
+            st.button(
+                "Restore example assumptions",
+                key="qi_vol_defaults", on_click=restore_example,
+            )
             st.caption(
                 "All controls are hypothetical. No stock price or company fundamentals "
                 "are used to calculate these curves."
