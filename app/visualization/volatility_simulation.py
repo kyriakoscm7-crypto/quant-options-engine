@@ -44,18 +44,66 @@ def simulation_figure(level=30, skew=12, curvature=20, term=5, view='3D surface'
     else:
         raise ValueError('Unsupported view')
     figure = go.Figure(trace)
-    axis = {'gridcolor': '#26324A', 'zeroline': False, 'showbackground': False}
+    axis = {
+        'gridcolor': '#27334B',
+        'gridwidth': 2,
+        'linecolor': '#61708E',
+        'tickfont': {'color': '#ACBEDA', 'size': 11},
+        'zeroline': False,
+        'showbackground': False,
+        'showspikes': False,
+    }
+    # The default Plotly 3D eye makes the model appear like a tiny island in
+    # the center of an otherwise empty widget. Bring the camera close, claim
+    # the whole scene domain and give the axes a purposeful perspective.
+    if view == '3D surface':
+        figure.update_layout(
+            scene={
+                'domain': {'x': [0, 1], 'y': [0, 1]},
+                'xaxis': dict(axis, title={'text': 'Strike / price', 'font': {'size': 12}}),
+                'yaxis': dict(axis, title={'text': 'Days to expiry', 'font': {'size': 12}}),
+                'zaxis': dict(
+                    axis, title={'text': 'IV (%)', 'font': {'size': 12}},
+                    range=[max(0, float(z.min()) - 4), float(z.max()) + 4],
+                ),
+                'bgcolor': '#0B1226',
+                'aspectmode': 'manual',
+                'aspectratio': {'x': 1.65, 'y': 1.35, 'z': 0.72},
+                'camera': {
+                    'eye': {'x': 1.30, 'y': -1.53, 'z': 0.96},
+                    'center': {'x': 0, 'y': 0, 'z': 0},
+                    'up': {'x': 0, 'y': 0, 'z': 1},
+                    'projection': {'type': 'perspective'},
+                },
+            },
+        )
+        figure.update_traces(
+            contours={'z': {'show': True, 'usecolormap': True, 'project_z': True,
+                            'highlightcolor': '#F4D9EC', 'width': 1}},
+            lighting={'ambient': 0.8, 'diffuse': 0.75, 'specular': 0.16,
+                      'roughness': 0.65, 'fresnel': 0.08},
+            lightposition={'x': -40, 'y': -20, 'z': 100},
+        )
+    else:
+        figure.update_traces(
+            colorbar={'title': 'IV (%)', 'thickness': 12, 'len': 0.78,
+                      'tickfont': {'color': '#CBD5EB'}},
+            showscale=True,
+        )
+        figure.update_layout(
+            xaxis={'title': 'Strike / reference price', 'gridcolor': '#23334F',
+                   'tickfont': {'color': '#CBD5EB'}},
+            yaxis={'title': 'Days to expiry', 'gridcolor': '#23334F',
+                   'tickfont': {'color': '#CBD5EB'}},
+        )
     figure.update_layout(
-        template='plotly_dark', paper_bgcolor='#080D1D', plot_bgcolor='#080D1D',
+        template='plotly_dark',
+        paper_bgcolor='#0B1226',
+        plot_bgcolor='#0B1226',
         font={'color': '#DCE3F4', 'family': 'Arial', 'size': 12},
-        title={'text': 'SIMULATION · Hypothetical volatility', 'font': {'size': 16}},
-        margin={'l': 30, 'r': 20, 't': 55, 'b': 30}, height=460,
+        title=None,
+        margin={'l': 4, 'r': 4, 't': 8, 'b': 8},
+        height=475 if view == '3D surface' else 425,
         uirevision='volatility-simulation',
-        scene={'xaxis': dict(axis, title='Strike ratio'),
-               'yaxis': dict(axis, title='Days'),
-               'zaxis': dict(axis, title='Vol (%)', range=[max(0, float(z.min()) - 5), float(z.max()) + 5]),
-               'bgcolor': '#080D1D', 'aspectratio': {'x': 1.3, 'y': 1.3, 'z': 0.8},
-               'camera': {'eye': {'x': 2.3, 'y': -2.4, 'z': 1.7}}},
-        xaxis_title='Strike / reference price', yaxis_title='Calendar days to expiry',
     )
     return figure
