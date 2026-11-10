@@ -53,13 +53,12 @@ def simulation_figure(level=30, skew=12, curvature=20, term=5, view='3D surface'
         'showbackground': False,
         'showspikes': False,
     }
-    # The default Plotly 3D eye makes the model appear like a tiny island in
-    # the center of an otherwise empty widget. Bring the camera close, claim
-    # the whole scene domain and give the axes a purposeful perspective.
+    # Frame the full surface and its axis labels within Plotly's scene. A very
+    # close camera makes the front corners and tick labels clip on wide screens.
     if view == '3D surface':
         figure.update_layout(
             scene={
-                'domain': {'x': [0, 1], 'y': [0, 1]},
+                'domain': {'x': [0.08, 0.92], 'y': [0.09, 0.93]},
                 'xaxis': dict(axis, title={'text': 'Strike / price', 'font': {'size': 12}}),
                 'yaxis': dict(axis, title={'text': 'Days to expiry', 'font': {'size': 12}}),
                 'zaxis': dict(
@@ -68,9 +67,9 @@ def simulation_figure(level=30, skew=12, curvature=20, term=5, view='3D surface'
                 ),
                 'bgcolor': '#0B1226',
                 'aspectmode': 'manual',
-                'aspectratio': {'x': 1.65, 'y': 1.35, 'z': 0.72},
+                'aspectratio': {'x': 1.38, 'y': 1.12, 'z': 0.58},
                 'camera': {
-                    'eye': {'x': 1.30, 'y': -1.53, 'z': 0.96},
+                    'eye': {'x': 1.85, 'y': -2.15, 'z': 1.35},
                     'center': {'x': 0, 'y': 0, 'z': 0},
                     'up': {'x': 0, 'y': 0, 'z': 1},
                     'projection': {'type': 'perspective'},
@@ -103,7 +102,7 @@ def simulation_figure(level=30, skew=12, curvature=20, term=5, view='3D surface'
         font={'color': '#DCE3F4', 'family': 'Arial', 'size': 12},
         title=None,
         margin={'l': 4, 'r': 4, 't': 8, 'b': 8},
-        height=475 if view == '3D surface' else 425,
+        height=515 if view == '3D surface' else 425,
         uirevision='volatility-simulation',
     )
     return figure
