@@ -22,7 +22,6 @@ from dashboard.learn_design import (
     premium_bar,
     forces,
 )
-from dashboard.visual_icons import icon_svg
 
 CHAPTER_TITLES = (
     "What are you buying?",
@@ -492,10 +491,9 @@ def _chapter_eight() -> None:
             "Pink = payoff minus initial premium, not the call's market value "
             "before expiration. Blue dot = selected ending stock price."
         )
-    premium_bar(6, 0)
     st.caption(
-        "The $6 is the original paid premium, not a current quote or time value "
-        "at the chosen expiration date. At expiration, time value is zero."
+        "The $6 is the original premium paid, not a current quote or time value. "
+        "At expiration, option time value is zero."
     )
     insight(
         "A correct prediction about direction is not enough.",
