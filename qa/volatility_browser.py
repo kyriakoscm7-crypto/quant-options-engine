@@ -1,4 +1,4 @@
-"""Browser checks: no invented stock IV; opt-in education stays functional."""
+"""Chromium checks for a shareable, clearly simulated volatility explorer."""
 from pathlib import Path
 
 from playwright.sync_api import expect, sync_playwright
@@ -18,34 +18,38 @@ with sync_playwright() as p:
             < headings.index("Volatility Intelligence")
             < headings.index("Understanding the numbers")
         )
-        expect(page.get_by_text("Company volatility is", exact=False)).to_be_visible()
-        expect(page.locator('[data-testid="stMetric"]')).to_have_count(0)
-        heading.scroll_into_view_if_needed()
-        page.screenshot(path=str(output / f"no-data-{width}.png"))
-
-        page.get_by_text(
-            "Open educational volatility simulation", exact=True
-        ).click()
+        expect(page.get_by_text("Illustrative only.", exact=False)).to_be_visible()
+        chart = page.locator('[data-testid="stPlotlyChart"]').first
+        expect(chart).to_be_visible()
         page.wait_for_function(
             "document.querySelector('[data-testid=stPlotlyChart] "
             ".js-plotly-plot')?.data?.[0]?.type === 'scatter'"
         )
-        chart = page.locator('[data-testid="stPlotlyChart"]')
+        expect(page.locator('[data-testid="stMetric"]')).to_have_count(0)
         chart.scroll_into_view_if_needed()
-        page.screenshot(path=str(output / f"optional-curve-{width}.png"))
-        page.get_by_text("3D surface", exact=True).click()
+        page.screenshot(path=str(output / f"public-scenario-{width}.png"))
+        page.get_by_text("Lower uncertainty", exact=True).click()
         page.wait_for_function(
             "document.querySelector('[data-testid=stPlotlyChart] "
-            ".js-plotly-plot')?.data?.[0]?.type === 'surface'"
+            ".js-plotly-plot')?.data?.[0]?.y?.[24] < 20"
+        )
+        page.get_by_text(
+            "Advanced: explore the 3D educational volatility lab", exact=True
+        ).click()
+        page.get_by_text("Open advanced simulation", exact=True).click()
+        page.get_by_text("3D surface", exact=True).click()
+        page.wait_for_function(
+            "Array.from(document.querySelectorAll('[data-testid=stPlotlyChart] "
+            ".js-plotly-plot')).some(el => el.data?.[0]?.type === 'surface')"
         )
         page.get_by_role("button", name="Reset camera").click()
         page.get_by_text("2D heatmap", exact=True).click()
         page.wait_for_function(
-            "document.querySelector('[data-testid=stPlotlyChart] "
-            ".js-plotly-plot')?.data?.[0]?.type === 'heatmap'"
+            "Array.from(document.querySelectorAll('[data-testid=stPlotlyChart] "
+            ".js-plotly-plot')).some(el => el.data?.[0]?.type === 'heatmap')"
         )
         assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
         expect(page.locator('[data-testid="stException"]')).to_have_count(0)
         page.close()
     browser.close()
-print("Volatility truthful default and optional simulator browser QA passed")
+print("Public scenario and optional advanced simulation browser QA passed")
