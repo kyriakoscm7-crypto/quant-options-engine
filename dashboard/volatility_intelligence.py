@@ -32,13 +32,13 @@ def render_volatility_intelligence(symbol: str) -> None:
                                  help='Positive values lift longer expiries. Negative values invert the slope.')
             st.caption('The reference stock price is normalized to 1.00×. '
                        'These controls persist across tickers for comparison.')
-        st.markdown('<div style="color:#FF9ACA;font-size:11px;letter-spacing:1.8px;font-weight:700;margin:4px 0 -12px">INTERACTIVE VOLATILITY LANDSCAPE · SIMULATION</div>',
+        st.markdown('<div style="color:#FF9ACA;font-size:11px;letter-spacing:1.8px;font-weight:700;margin:14px 0 4px">INTERACTIVE VOLATILITY LANDSCAPE · SIMULATION</div>',
                     unsafe_allow_html=True)
         st.plotly_chart(simulation_figure(level, skew, curvature, term, view),
                         width='stretch', key='qi_vol_chart', config={
                             'displaylogo': False, 'scrollZoom': False,
                             'modeBarButtonsToRemove': ['toImage'], 'responsive': True})
-        st.caption('**Explore:** Drag to rotate · Hover for precise modeled IV · Double-click to reset. '
+        st.caption('**Explore:** Drag to rotate · Hover for modeled IV · Double-click to reset. '
                    'The height indicates volatility, **not** the direction of a future price move.')
         with st.expander('How to read this visualization'):
             a, b, c = st.columns(3)
