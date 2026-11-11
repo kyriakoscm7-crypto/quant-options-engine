@@ -58,7 +58,8 @@ with sync_playwright() as p:
         # Return home, then test advanced options has guided examples, no
         # volatility slider requiring prior options knowledge.
         page.get_by_role("button", name="Back to pathway").click()
-        page.get_by_role("button", name="All learning paths").click()
+        page.get_by_role("button", name="Return to Learn home").click()
+        expect(page.get_by_role("heading", name="Understand money. Think like an analyst.")).to_be_visible()
         page.get_by_role("button", name="Open advanced options course").click()
         expect(page.get_by_role(
             "heading", name="Why do option premiums change?"
