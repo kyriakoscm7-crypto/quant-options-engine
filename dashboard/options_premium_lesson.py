@@ -14,7 +14,6 @@ from app.education.options_premium import (
     expiration_profit,
     theoretical_option,
 )
-from dashboard.learn_navigation import request_top
 from dashboard.learn_design import (
     chapter,
     concept_grid,
@@ -25,6 +24,7 @@ from dashboard.learn_design import (
     lesson_journey,
     premium_bar,
 )
+from dashboard.learn_navigation import request_top
 
 CHAPTER_TITLES = (
     "What are you buying?",
