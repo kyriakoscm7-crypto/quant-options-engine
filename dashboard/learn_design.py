@@ -54,6 +54,14 @@ LEARN_CSS = """
 .qi-lesson-v2 .chapter-caption{font-size:12px;color:#aab9d2;letter-spacing:.02em}
 .qi-lesson-v2 .pair-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin:12px 0 17px}
 .qi-lesson-v2 .four-grid{row-gap:13px}
+.st-key-qi_learn_start_foundations{margin:12px 0 22px}
+.st-key-qi_foundations_reading{max-width:1120px;margin-left:auto;margin-right:auto}
+.st-key-qi_foundations_reading [data-testid="stMarkdownContainer"] p{
+  font-size:clamp(.97rem,1.43vw,1.09rem);line-height:1.72
+}
+.st-key-qi_foundations_reading [data-testid="stMarkdownContainer"] h3{
+  font-size:clamp(1.26rem,1.9vw,1.52rem)!important;margin-top:1.15rem!important
+}
 .qi-lesson-v2 .journey-map{
   list-style:none;padding:0;margin:13px 0 18px;
   display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;
@@ -70,12 +78,16 @@ LEARN_CSS = """
 .qi-lesson-v2 .journey-map strong{display:block;color:#fff;font-size:.96rem;line-height:1.3}
 .qi-lesson-v2 .journey-map small{display:block;color:#b9c8df;font-size:.8rem;line-height:1.48;margin-top:5px}
 .qi-lesson-v2 .section-caption{font-size:.84rem;color:#9daecb}
+.st-key-qi_learn_start_foundations button,
+.st-key-qi_foundations_start_button button,
 .st-key-qi_opt_course_start_hero button,
 .st-key-qi_opt_course_start_bottom button{
   min-height:66px!important;font-size:1.18rem!important;font-weight:800!important;
   border-radius:15px!important;background:#ff78b7!important;color:#091123!important;
   border:1px solid #ff9acc!important;box-shadow:0 8px 24px rgba(255,120,183,.19)!important;
 }
+.st-key-qi_learn_start_foundations button:hover,
+.st-key-qi_foundations_start_button button:hover,
 .st-key-qi_opt_course_start_hero button:hover,
 .st-key-qi_opt_course_start_bottom button:hover{
   background:#ffa0ce!important;transform:translateY(-1px);
