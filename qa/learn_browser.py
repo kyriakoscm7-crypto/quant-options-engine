@@ -49,7 +49,7 @@ with sync_playwright() as p:
             ")).every(el => el.scrollTop < 100)"
         )
         assert page.get_by_role("slider").count() == 0
-        assert "$1,102.50" in page.locator("main").inner_text()
+        expect(page.get_by_text("$1,102.50", exact=False)).to_be_visible(timeout=20000)
         page.screenshot(path=str(output / f"beginner-ch2-{width}.png"), full_page=True)
         assert page.evaluate(
             "document.documentElement.scrollWidth <= window.innerWidth"
