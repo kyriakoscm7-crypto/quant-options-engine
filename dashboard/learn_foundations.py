@@ -34,7 +34,7 @@ LEVELS = (
     "BUILD A PORTFOLIO", "MEASURE RESULTS", "THINK ABOUT RISK",
     "RESEARCH WITH CONFIDENCE",
 )
-ICONS = ("wallet", "clock", "building", "activity", "layers",
+ICONS = ("credit-card", "clock", "building", "activity", "layers",
          "calculator", "shield", "target")
 
 
@@ -51,7 +51,7 @@ def _one() -> None:
         "Some might support a goal years away."
     )
     concept_pair(
-        ("wallet", "Money for today",
+        ("credit-card", "Money for today",
          "Pays for housing, food, transport, recurring bills and things you enjoy.",
          "Spending and daily life"),
         ("shield", "Money for later",
@@ -60,7 +60,7 @@ def _one() -> None:
     )
     _p("### Three uses of money")
     forces((
-        ("wallet", "Spending", "You exchange money for something useful or enjoyable now.",
+        ("credit-card", "Spending", "You exchange money for something useful or enjoyable now.",
          "Buying groceries or a bus pass."),
         ("shield", "Saving", "You set money aside, often where it stays readily accessible.",
          "An emergency expense or a purchase next month."),
@@ -103,7 +103,7 @@ def _two() -> None:
         "purchasing power."
     )
     concept_pair(
-        ("wallet", "Nominal money",
+        ("credit-card", "Nominal money",
          "The number written on an account balance. A cash balance of "
          "$100 is still $100 if nothing changes.", "Amount on the statement"),
         ("activity", "Purchasing power",
@@ -314,7 +314,7 @@ def _six() -> None:
         ("chart-line", "Price return",
          "Measures only the change from $100 to $108: 8%.",
          "Stock price alone"),
-        ("wallet", "Total return",
+        ("credit-card", "Total return",
          "Combines the price gain and cash distribution: 10%.",
          "A fuller comparison"),
     )
@@ -350,7 +350,7 @@ def _seven() -> None:
         ("layers", "Concentration risk",
          "One company, sector or overlapping fund can dominate results.",
          "Several tickers may share the same risk."),
-        ("wallet", "Liquidity and borrowing risk",
+        ("credit-card", "Liquidity and borrowing risk",
          "Some products are hard to sell; leverage can magnify losses.",
          "Margin creates obligations beyond price volatility."),
         ("shield", "Information and fraud risk",
@@ -455,7 +455,7 @@ def render_foundations_lesson() -> None:
             )
             st.caption("8 beginner chapters · Guided demonstrations · No sliders · No trading")
             concept_grid((
-                ("wallet", "Start with money",
+                ("credit-card", "Start with money",
                  "Spending, saving, inflation and goals.", "Plain English first"),
                 ("chart-line", "Learn stocks",
                  "Companies, shares and how markets operate.", "No jargon assumed"),
@@ -470,7 +470,7 @@ def render_foundations_lesson() -> None:
             chapter(
                 page, len(TITLES), LEVELS[page - 1],
                 TITLES[page - 1], DESCRIPTIONS[page - 1],
-                icon=("wallet","clock","building","activity","layers",
+                icon=("credit-card","clock","building","activity","layers",
                       "calculator","shield","target")[page - 1],
             )
             RENDERERS[page - 1]()
