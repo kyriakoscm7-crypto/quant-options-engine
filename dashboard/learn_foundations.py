@@ -426,6 +426,52 @@ def _eight() -> None:
         )
 
 
+# Existing interactive lessons are optional deep dives after full explanations.
+# Every route below already exists in the original eight learning pathways.
+RELATED = {
+    1: (("How paycheques work", "everyday", "paycheque"),),
+    2: (("Try a compound-growth example", "everyday", "growth"),
+        ("Understand inflation in more depth", "economy", "inflation")),
+    3: (("Read a simplified earnings report", "companies", "earnings"),),
+    4: (("Explore why prices react to expectations", "markets", "prices"),
+        ("Study earnings surprises", "companies", "earnings")),
+    5: (("Try a portfolio diversification case", "investing", "diversification"),
+        ("Learn more about ETFs", "investing", "etfs")),
+    6: (("See how savings can grow", "everyday", "growth"),
+        ("Understand basic tax brackets", "taxes", "tax_brackets")),
+    7: (("See how credit-card interest works", "everyday", "credit"),
+        ("Compare the effect of diversification", "investing", "diversification")),
+    8: (("Explore earnings and market expectations", "companies", "earnings"),
+        ("Understand ETFs and their holdings", "investing", "etfs")),
+}
+
+
+def _related(page: int) -> None:
+    with st.container(border=True):
+        st.markdown("#### Explore this topic further · Optional")
+        st.caption(
+            "You've already been taught the basics in this chapter. "
+            "These are existing standalone learning labs, not requirements "
+            "for continuing your course."
+        )
+        for label, path, lesson in RELATED[page]:
+            st.button(
+                label + " ↗",
+                key=f"qi_foundations_related_{page}_{lesson}",
+                on_click=_open_related,
+                args=(path, lesson),
+                use_container_width=True,
+            )
+
+
+def _open_related(path: str, lesson: str) -> None:
+    st.session_state["qi_learn_pathway"] = path
+    st.session_state["qi_learn_lesson"] = lesson
+    st.session_state["qi_learn_scroll_serial"] = (
+        st.session_state.get("qi_learn_scroll_serial", 0) + 1
+    )
+
+
 RENDERERS = (_one, _two, _three, _four, _five, _six, _seven, _eight)
 
 
@@ -474,6 +520,7 @@ def render_foundations_lesson() -> None:
                       "calculator","shield","target")[page - 1],
             )
             RENDERERS[page - 1]()
+            _related(page)
     st.divider()
     if page == 0:
         with st.container(key="qi_foundations_start_button"):
