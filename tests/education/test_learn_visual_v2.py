@@ -94,7 +94,7 @@ def test_currency_is_escaped_in_real_markdown_components():
     """Reproduce screenshots where paired $ symbols turned prose into LaTeX."""
     app = AppTest.from_string(
         "import streamlit as st\n"
-        "st.session_state['qi_options_premium_chapter_v2'] = 1\n"
+        "st.session_state.setdefault('qi_options_premium_chapter_v2', 1)\n"
         "from dashboard.options_premium_lesson import render_options_premium_lesson\n"
         "render_options_premium_lesson()"
     ).run()
