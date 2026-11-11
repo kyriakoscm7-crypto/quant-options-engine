@@ -29,6 +29,17 @@ def test_full_guided_lesson_has_eight_chapters_before_any_quiz():
     ).run()
     assert not app.exception
     assert app.session_state["qi_options_premium_chapter_v2"] == 0
+    assert app.button(key="qi_opt_course_start_hero")
+    assert app.button(key="qi_opt_course_start_hero").label == "Start learning — Chapter 1 →"
+    assert not any(button.label == "← Previous chapter" for button in app.button)
+
+    # The large hero start button and the bottom start action both lead to chapter 1.
+    app.button(key="qi_opt_course_start_hero").click().run()
+    assert not app.exception
+    assert app.session_state["qi_options_premium_chapter_v2"] == 1
+    assert app.button(key="qi_opt_course_previous_v2").label == "← Back to lesson overview"
+    app.button(key="qi_opt_course_previous_v2").click().run()
+    assert app.session_state["qi_options_premium_chapter_v2"] == 0
 
     for expected in range(1, 9):
         app.button(key="qi_opt_course_next_v2").click().run()
@@ -76,3 +87,43 @@ def test_learn_home_and_existing_lesson_links_remain_available():
     assert 'if lesson_id == "options_premium":' in source
     assert 'LESSON_RENDERERS[lesson_id]()' in source
     assert 'for i in range(0, len(PATHWAYS), 2)' in source
+
+
+
+def test_currency_is_escaped_in_real_markdown_components():
+    """Reproduce screenshots where paired $ symbols turned prose into LaTeX."""
+    app = AppTest.from_string(
+        "import streamlit as st\n"
+        "st.session_state['qi_options_premium_chapter_v2'] = 1\n"
+        "from dashboard.options_premium_lesson import render_options_premium_lesson\n"
+        "render_options_premium_lesson()"
+    ).run()
+    assert not app.exception
+    rendered = [element.value for element in app.markdown]
+    assert any(r"\$100" in value and r"\$10,000" in value for value in rendered)
+    assert any(r"\$3.50" in value and r"\$350" in value for value in rendered)
+
+    app.session_state["qi_options_premium_chapter_v2"] = 2
+    app.run()
+    assert not app.exception
+    rendered = [element.value for element in app.markdown]
+    assert any(r"\$100" in value and r"\$105" in value for value in rendered)
+    assert any(r"\$8" in value and r"\$3" in value for value in rendered)
+
+
+def test_overview_is_compact_and_all_chapters_have_optional_depth():
+    design = Path("dashboard/learn_design.py").read_text()
+    course = Path("dashboard/options_premium_lesson.py").read_text()
+    depth = Path("dashboard/options_premium_depth.py").read_text()
+    assert 'class="journey-map"' in design
+    assert 'grid-template-columns:repeat(2,minmax(0,1fr))' in design
+    assert 'key="qi_opt_course_start_hero"' in course
+    assert "lesson_journey(CHAPTER_TITLES, CHAPTER_DESCRIPTIONS)" in course
+    assert "render_chapter_depth(page)" in course
+    assert "r\"\\$\"" in depth
+    for concept in (
+        "Exercise cost", "Intrinsic is not profit", "Bid–ask spread",
+        "Change one input", "Theta isn't a fixed daily fee",
+        "Implied volatility", "Greek estimate", "full contract",
+    ):
+        assert concept in depth
