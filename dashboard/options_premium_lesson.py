@@ -55,11 +55,11 @@ def _prose(markdown_text: str) -> None:
 
     All inputs here are authored lesson text, not user-provided HTML.
     """
-    st.markdown(markdown_text.replace("$", r"\\$"))
+    st.markdown(markdown_text.replace("$", r"\$"))
 
 
 def _caption(markdown_text: str) -> None:
-    st.caption(markdown_text.replace("$", r"\\$"))
+    st.caption(markdown_text.replace("$", r"\$"))
 
 
 def _set_chapter(value: int) -> None:
