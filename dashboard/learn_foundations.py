@@ -4,8 +4,14 @@ from __future__ import annotations
 import streamlit as st
 
 from dashboard.learn_design import (
-    chapter, concept_grid, concept_pair, forces, hero, insight,
-    lesson_journey, lesson_timeline,
+    chapter,
+    concept_grid,
+    concept_pair,
+    forces,
+    hero,
+    insight,
+    lesson_journey,
+    lesson_timeline,
 )
 
 KEY = "qi_foundations_chapter"
