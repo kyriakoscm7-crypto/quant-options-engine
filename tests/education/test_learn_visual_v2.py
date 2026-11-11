@@ -103,9 +103,9 @@ def test_currency_is_escaped_in_real_markdown_components():
     assert any(r"\$100" in value and r"\$10,000" in value for value in rendered)
     assert any(r"\$3.50" in value and r"\$350" in value for value in rendered)
 
-    app.session_state["qi_options_premium_chapter_v2"] = 2
-    app.run()
+    app.button(key="qi_opt_course_next_v2").click().run()
     assert not app.exception
+    assert app.session_state["qi_options_premium_chapter_v2"] == 2
     rendered = [element.value for element in app.markdown]
     assert any(r"\$100" in value and r"\$105" in value for value in rendered)
     assert any(r"\$8" in value and r"\$3" in value for value in rendered)
