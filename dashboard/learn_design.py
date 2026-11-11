@@ -52,7 +52,41 @@ LEARN_CSS = """
 }
 .qi-lesson-v2 .progress-track>span.passed{background:#ff78b7}
 .qi-lesson-v2 .chapter-caption{font-size:12px;color:#aab9d2;letter-spacing:.02em}
-.qi-lesson-v2 .pair-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin:14px 0 18px}
+.qi-lesson-v2 .pair-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin:12px 0 17px}
+.qi-lesson-v2 .four-grid{row-gap:13px}
+.qi-lesson-v2 .journey-map{
+  list-style:none;padding:0;margin:13px 0 18px;
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;
+}
+.qi-lesson-v2 .journey-map li{
+  border-radius:13px;background:#111c31;border:1px solid #32405c;
+  padding:14px;display:flex;align-items:flex-start;gap:12px;min-width:0;
+}
+.qi-lesson-v2 .journey-map .num{
+  flex:0 0 auto;background:rgba(255,120,183,.11);color:#ff95c6;
+  border:1px solid rgba(255,120,183,.3);border-radius:10px;
+  padding:8px 9px;font-size:.83rem;font-weight:800;font-variant-numeric:tabular-nums;
+}
+.qi-lesson-v2 .journey-map strong{display:block;color:#fff;font-size:.96rem;line-height:1.3}
+.qi-lesson-v2 .journey-map small{display:block;color:#b9c8df;font-size:.8rem;line-height:1.48;margin-top:5px}
+.qi-lesson-v2 .section-caption{font-size:.84rem;color:#9daecb}
+.st-key-qi_opt_course_start_hero button,
+.st-key-qi_opt_course_start_bottom button{
+  min-height:66px!important;font-size:1.18rem!important;font-weight:800!important;
+  border-radius:15px!important;background:#ff78b7!important;color:#091123!important;
+  border:1px solid #ff9acc!important;box-shadow:0 8px 24px rgba(255,120,183,.19)!important;
+}
+.st-key-qi_opt_course_start_hero button:hover,
+.st-key-qi_opt_course_start_bottom button:hover{
+  background:#ffa0ce!important;transform:translateY(-1px);
+}
+.st-key-qi_opt_course_reading{max-width:1120px;margin-left:auto;margin-right:auto}
+.st-key-qi_opt_course_reading [data-testid="stMarkdownContainer"] p{
+  line-height:1.72;font-size:clamp(.99rem,1.42vw,1.10rem);
+}
+.st-key-qi_opt_course_reading [data-testid="stMarkdownContainer"] h3{
+  margin-top:1.25rem!important;font-size:clamp(1.22rem,2vw,1.55rem)!important
+}
 .qi-lesson-v2 .concept{
   border-radius:18px;padding:clamp(16px,2.5vw,22px);
   min-width:0;border:1px solid transparent;
@@ -116,7 +150,8 @@ LEARN_CSS = """
   color:#ffaad1;margin-top:1.2rem
 }
 @media(max-width:680px){
-  .qi-lesson-v2 .pair-grid{grid-template-columns:1fr}
+  .qi-lesson-v2 .pair-grid,.qi-lesson-v2 .journey-map{grid-template-columns:1fr}
+  .qi-lesson-v2 .journey-map li{padding:12px}
   .qi-lesson-v2 .force{gap:10px}
   .qi-lesson-v2 .force-icon{min-width:34px;width:34px}
   .qi-lesson-v2 .timeline .arrow{display:none}
@@ -234,4 +269,62 @@ def featured_lesson() -> None:
         '<span>Interactive graphs</span><span>Beginner to advanced</span>'
         '<span>Entirely hypothetical prices</span></div>'
         '</section>'
+    )
+
+def concept_grid(items: tuple[tuple[str, str, str, str], ...]) -> None:
+    """Compact four-card overview, avoiding oversized Streamlit section gaps."""
+    if len(items) != 4:
+        raise ValueError("Overview requires four concept cards")
+    cards = []
+    for index, (icon, title, description, foot) in enumerate(items):
+        color = "pink" if index % 2 == 0 else "blue"
+        cards.append(
+            f'<li class="concept {color}">'
+            f'<div class="concept-head">{icon_svg(icon, 27)}'
+            f'<strong>{_safe(title)}</strong></div>'
+            f'<p>{_safe(description)}</p>'
+            f'<div class="foot">{_safe(foot)}</div></li>'
+        )
+    st.html(
+        '<section class="qi-lesson-v2">'
+        '<ul class="pair-grid four-grid" style="list-style:none;padding:0">'
+        + "".join(cards) + '</ul></section>'
+    )
+
+
+def lesson_journey(titles: tuple[str, ...], descriptions: tuple[str, ...]) -> None:
+    """A compact two-column, accessible curriculum map."""
+    if len(titles) != len(descriptions) or not 1 <= len(titles) <= 12:
+        raise ValueError("Lesson journey metadata must match")
+    rows = []
+    for index, (title, detail) in enumerate(zip(titles, descriptions), 1):
+        rows.append(
+            f'<li><span class="num">{index:02d}</span><div>'
+            f'<strong>{_safe(title)}</strong>'
+            f'<small>{_safe(detail)}</small></div></li>'
+        )
+    st.html(
+        '<section class="qi-lesson-v2">'
+        '<ol class="journey-map" aria-label="Eight-chapter course roadmap">'
+        + "".join(rows) + '</ol></section>'
+    )
+
+
+def lesson_timeline(stages: tuple[tuple[str, str], ...]) -> None:
+    """Clear chronology for financial contracts and outcomes."""
+    if not 2 <= len(stages) <= 4:
+        raise ValueError("A timeline must have two to four stages")
+    nodes = []
+    for index, (name, detail) in enumerate(stages):
+        if index:
+            nodes.append('<span class="arrow" aria-hidden="true">→</span>')
+        nodes.append(
+            f'<div class="node"><strong>{_safe(name)}</strong>'
+            f'<span>{_safe(detail)}</span></div>'
+        )
+    st.html(
+        '<section class="qi-lesson-v2"><div class="large-example">'
+        '<div class="eyebrow">FOLLOW THE CONTRACT</div>'
+        '<div class="timeline">' + "".join(nodes)
+        + '</div></div></section>'
     )
