@@ -260,6 +260,10 @@ def _render_pathway(pathway: dict) -> None:
             else:
                 st.caption("Planned lesson · Coming in a later update")
 
+    st.divider()
+    if st.button("← Return to Learn home", key="qi_learn_path_back_bottom"):
+        _navigate()
+
 
 def render_learn_page() -> None:
     """Render the Learn homepage, pathways, or one interactive lesson."""
