@@ -18,11 +18,16 @@ from dashboard.diversification_lesson import render_diversification
 from dashboard.etf_lesson import render_etf_lesson
 from dashboard.financial_labs import render_compound_growth, render_credit_card
 from dashboard.inflation_lesson import render_inflation_lesson
+from dashboard.learn_design import (
+    enable_learn_style,
+    featured_lesson,
+    hero,
+    lesson_journey,
+)
 from dashboard.learn_foundations import DESCRIPTIONS as FOUNDATION_DESCRIPTIONS
 from dashboard.learn_foundations import TITLES as FOUNDATION_TITLES
 from dashboard.learn_foundations import render_foundations_lesson
 from dashboard.learn_navigation import request_top, scroll_to_top_after_navigation
-from dashboard.learn_design import enable_learn_style, featured_lesson, hero, lesson_journey
 from dashboard.market_expectations_lesson import render_market_expectations
 from dashboard.options_premium_lesson import render_options_premium_lesson
 from dashboard.paycheque_lesson import render_paycheque
