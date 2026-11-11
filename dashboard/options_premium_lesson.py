@@ -22,7 +22,6 @@ from dashboard.learn_design import (
     hero,
     insight,
     lesson_journey,
-    lesson_timeline,
     premium_bar,
 )
 
@@ -601,12 +600,11 @@ def render_options_premium_lesson() -> None:
                 type="primary", use_container_width=True,
             )
     else:
-        if st.button(
+        st.button(
             "← Previous chapter",
             on_click=_set_chapter, args=(COUNT - 1,),
             key="qi_opt_course_previous_v2", use_container_width=True,
-        ):
-            pass
+        )
         st.success(
             "All eight chapters viewed. You're ready for independent practice. "
             "Reading completion is not a mastery score."
