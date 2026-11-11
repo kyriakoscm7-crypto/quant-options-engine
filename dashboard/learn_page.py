@@ -18,7 +18,11 @@ from dashboard.diversification_lesson import render_diversification
 from dashboard.etf_lesson import render_etf_lesson
 from dashboard.financial_labs import render_compound_growth, render_credit_card
 from dashboard.inflation_lesson import render_inflation_lesson
-from dashboard.learn_design import enable_learn_style, featured_lesson, hero
+from dashboard.learn_foundations import DESCRIPTIONS as FOUNDATION_DESCRIPTIONS
+from dashboard.learn_foundations import TITLES as FOUNDATION_TITLES
+from dashboard.learn_foundations import render_foundations_lesson
+from dashboard.learn_navigation import request_top, scroll_to_top_after_navigation
+from dashboard.learn_design import enable_learn_style, featured_lesson, hero, lesson_journey
 from dashboard.market_expectations_lesson import render_market_expectations
 from dashboard.options_premium_lesson import render_options_premium_lesson
 from dashboard.paycheque_lesson import render_paycheque
@@ -81,6 +85,7 @@ def _pathway_heading(pathway: dict, *, card: bool = False) -> None:
 def _navigate(pathway: str | None = None, lesson: str | None = None) -> None:
     st.session_state["qi_learn_pathway"] = pathway
     st.session_state["qi_learn_lesson"] = lesson
+    request_top()
     st.rerun()
 
 
@@ -217,7 +222,9 @@ LESSON_RENDERERS = {
 def _render_lesson(pathway: dict, lesson_id: str, lesson_title: str) -> None:
     if st.button("← Back to pathway", key="qi_learn_lesson_back"):
         _navigate(pathway["id"])
-    if lesson_id == "options_premium":
+    if lesson_id == "foundations":
+        render_foundations_lesson()
+    elif lesson_id == "options_premium":
         render_options_premium_lesson()
     else:
         hero(
@@ -263,10 +270,12 @@ def render_learn_page() -> None:
         lesson = next(((lid, title) for lid, title in pathway["lessons"] if lid == chosen_lesson), None)
         if lesson:
             _render_lesson(pathway, *lesson)
+            scroll_to_top_after_navigation()
             return
 
     if pathway is not None:
         _render_pathway(pathway)
+        scroll_to_top_after_navigation()
         return
 
     hero(
@@ -277,15 +286,22 @@ def render_learn_page() -> None:
         "basics, then explore how real financial relationships work.",
         icon="book-open",
     )
-    featured_lesson()
-    if st.button(
-        "Start featured options masterclass →",
-        key="qi_learn_featured_masterclass_v2", type="primary",
-    ):
-        _navigate("advanced", "options_premium")
+    st.markdown("### Start here: your first eight chapters")
     st.caption(
-        "Learn the concepts first; independent recall and deeper challenges "
-        "come afterward. Educational examples are clearly identified."
+        "A complete guided journey, from your first financial decisions "
+        "to understanding companies and investment risk. No prior knowledge "
+        "or technical sliders needed."
+    )
+    lesson_journey(FOUNDATION_TITLES, FOUNDATION_DESCRIPTIONS)
+    if st.button(
+        "Start learning from zero →",
+        key="qi_learn_start_foundations",
+        type="primary", use_container_width=True,
+    ):
+        _navigate("foundations", "foundations")
+    st.caption(
+        "Chapters build on one another. Detailed topic lessons remain below "
+        "for when you're ready to learn more."
     )
     search = st.text_input(
         "Search learning topics",
@@ -312,10 +328,11 @@ def render_learn_page() -> None:
                     st.caption("Coming soon")
         return
 
-    st.markdown("### Explore learning paths")
-    for i in range(0, len(PATHWAYS), 2):
+    st.markdown("### Explore specific topics")
+    optional_paths = [path for path in PATHWAYS if path["id"] != "foundations"]
+    for i in range(0, len(optional_paths), 2):
         columns = st.columns(2, gap="medium")
-        for col, pathway in zip(columns, PATHWAYS[i:i + 2]):
+        for col, pathway in zip(columns, optional_paths[i:i + 2]):
             with col, st.container(border=True):
                 _pathway_heading(pathway, card=True)
                 st.write(pathway["description"])
@@ -324,4 +341,16 @@ def render_learn_page() -> None:
                 if st.button("Explore path", key=f"qi_learn_path_{pathway['id']}", use_container_width=True):
                     _navigate(pathway["id"])
 
-    st.caption("Built to educate, not to recommend specific investments or financial products.")
+    st.markdown("### Continue to Advanced Finance")
+    featured_lesson()
+    if st.button(
+        "Open advanced options course →",
+        key="qi_learn_featured_masterclass_v2",
+    ):
+        _navigate("advanced", "options_premium")
+    st.caption(
+        "Learn core money and investing concepts first. Older interactive "
+        "topic lessons are available above as optional deeper practice. "
+        "Educational material only; no investment recommendations."
+    )
+    scroll_to_top_after_navigation()
