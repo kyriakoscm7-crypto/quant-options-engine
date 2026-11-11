@@ -23,7 +23,7 @@ def scroll_to_top_after_navigation() -> None:
     # Streamlit 1.66 supports first-party st.html JS. This is a constant,
     # local script: no external imports, user text, eval or navigation URLs.
     st.html(
-        '<div data-qi-learn-scroll="{serial}" aria-hidden="true"></div>'
+        f'<div data-qi-learn-scroll="{serial}" aria-hidden="true"></div>'
         '<script>'
         '(function(){'
         'function top(){'
@@ -36,6 +36,6 @@ def scroll_to_top_after_navigation() -> None:
         'requestAnimationFrame(function(){top();requestAnimationFrame(top);});'
         'setTimeout(top,80);'
         '})();'
-        '</script>'.replace('{serial}', str(serial)),
+        '</script>',
         unsafe_allow_javascript=True,
     )
