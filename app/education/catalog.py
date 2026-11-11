@@ -2,6 +2,13 @@
 
 PATHWAYS = (
     {
+        "id": "foundations",
+        "icon": "book-open",
+        "title": "Money and Investing: From Zero",
+        "description": "The complete beginner-first introduction to money, stocks, markets, diversification and risk.",
+        "lessons": (("foundations", "Money and Investing: From Zero"),),
+    },
+    {
         "id": "everyday",
         "icon": "credit-card",
         "title": "Everyday Money",
@@ -96,6 +103,7 @@ PATHWAYS = (
 
 
 READY_LESSONS = frozenset({
+    "foundations",
     "inflation",
     "options_premium",
     "etfs",
@@ -106,6 +114,7 @@ READY_LESSONS = frozenset({
 
 
 LESSON_SUMMARIES = {
+    "foundations": "Eight carefully guided chapters covering money, saving, stocks, markets, funds, returns, risk and company research. No technical settings needed.",
     "options_premium": "An eight-chapter guided course with large visual explanations, interactive theoretical option pricing, time-decay diagrams and real risk lessons.",
     "inflation": "Learn how inflation changes prices, savings and purchasing power through interactive examples.",
     "etfs": "Understand ETF holdings, fund overlap, diversification and costs with fictional portfolios.",

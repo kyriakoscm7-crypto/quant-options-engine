@@ -3,8 +3,8 @@
 from app.education.catalog import LESSON_SUMMARIES, PATHWAYS, READY_LESSONS
 
 
-def test_eight_unique_learning_pathways():
-    assert len(PATHWAYS) == 8
+def test_nine_unique_learning_pathways_including_beginner_course():
+    assert len(PATHWAYS) == 9
     ids = [p["id"] for p in PATHWAYS]
     assert len(ids) == len(set(ids))
 

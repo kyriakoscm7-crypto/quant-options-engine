@@ -52,27 +52,23 @@ def test_full_guided_lesson_has_eight_chapters_before_any_quiz():
     assert app.session_state["qi_options_premium_chapter_v2"] == 7
 
 
-def test_interactive_option_value_changes_without_market_feed(monkeypatch):
+def test_guided_options_use_preset_examples_without_market_feed(monkeypatch):
     import app.market_data.yahoo_client as yahoo
 
     def forbidden(*args, **kwargs):
         raise AssertionError("Learn attempted live option chain request")
 
     monkeypatch.setattr(yahoo, "fetch_option_chain", forbidden)
-
     app = AppTest.from_string(
         "import streamlit as st\n"
-        "st.session_state['qi_options_premium_chapter_v2'] = 4\n"
+        "st.session_state.setdefault('qi_options_premium_chapter_v2', 4)\n"
         "from dashboard.options_premium_lesson import render_options_premium_lesson\n"
         "render_options_premium_lesson()"
     ).run()
     assert not app.exception
-    assert app.slider(key="qi_opt_course_stock_v2").value == 100
-    assert app.slider(key="qi_opt_course_vol_v2").value == 30
-    app.slider(key="qi_opt_course_stock_v2").set_value(110).run()
-    assert not app.exception
-    app.radio(key="qi_opt_course_kind_v2").set_value("Put").run()
-    assert not app.exception
+    assert not app.slider
+    assert not app.radio
+    assert len(app.metric) >= 6
 
 
 def test_learn_home_and_existing_lesson_links_remain_available():
@@ -81,12 +77,13 @@ def test_learn_home_and_existing_lesson_links_remain_available():
         "render_learn_page()"
     ).run()
     assert not app.exception
+    assert app.button(key="qi_learn_start_foundations")
     assert app.button(key="qi_learn_featured_masterclass_v2")
 
     source = Path("dashboard/learn_page.py").read_text()
     assert 'if lesson_id == "options_premium":' in source
     assert 'LESSON_RENDERERS[lesson_id]()' in source
-    assert 'for i in range(0, len(PATHWAYS), 2)' in source
+    assert 'for i in range(0, len(optional_paths), 2)' in source
 
 
 

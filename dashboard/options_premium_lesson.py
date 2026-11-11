@@ -24,12 +24,13 @@ from dashboard.learn_design import (
     lesson_journey,
     premium_bar,
 )
+from dashboard.learn_navigation import request_top
 
 CHAPTER_TITLES = (
     "What are you buying?",
     "What makes up the premium?",
     "What moves an option premium?",
-    "Experiment with option prices",
+    "See the forces change an option price",
     "Why time decay speeds up",
     "How a call can fall when the stock rises",
     "Understanding the Greeks",
@@ -63,6 +64,7 @@ def _caption(markdown_text: str) -> None:
 
 def _set_chapter(value: int) -> None:
     st.session_state[CHAPTER_KEY] = min(COUNT, max(0, value))
+    request_top()
 
 
 def _chart_style(fig: go.Figure, *, x_title: str, y_title: str) -> None:
@@ -270,70 +272,101 @@ def _chapter_three() -> None:
 
 
 def _chapter_four() -> None:
-    chapter(4, COUNT, "INTERACTIVE EXPLORATION", CHAPTER_TITLES[3],
-            "Change one input at a time to see how option value responds.",
+    chapter(4, COUNT, "SEE IT IN ACTION", CHAPTER_TITLES[3],
+            "Watch three controlled demonstrations with all assumptions explained for you.",
             icon="calculator")
     _prose(
-        "Below is a **European-style theoretical pricing model** with a "
-        "$100 strike, no interest or dividends and a 365-day year. "
-        "It illustrates relationships, not live prices or tradable quotes."
-    )
-    with st.container(border=True):
-        choice = st.radio(
-            "Which option do you want to explore?",
-            ["Call", "Put"], key="qi_opt_course_kind_v2", horizontal=True,
-        )
-        stock = st.slider(
-            "Stock price ($)", 75, 125, 100, 1,
-            key="qi_opt_course_stock_v2",
-        )
-        remaining = st.slider(
-            "Days remaining", 1, 180, 30, 1,
-            key="qi_opt_course_days_v2",
-        )
-        assumed_vol = st.slider(
-            "Assumed annualized volatility (%)", 10, 80, 30, 5,
-            key="qi_opt_course_vol_v2",
-        )
-        value = theoretical_option(
-            stock, 100, remaining, assumed_vol, choice.lower()
-        )
-        _prose("#### Theoretical premium")
-        premium_bar(max(value.premium, 0.0000001), value.intrinsic)
-        a, b = st.columns(2)
-        a.metric("Intrinsic value / share", f"${value.intrinsic:,.2f}")
-        b.metric("Time value / share", f"${value.time_value:,.2f}")
-        _caption(
-            f"Model premium: ${value.premium:,.2f} per share (before spread and fees). "
-            "Time value is the modeled premium minus intrinsic value."
-        )
-        if choice == "Call":
-            if stock > 100:
-                st.info("This call is in the money: the right to buy at $100 is valuable now.")
-            else:
-                st.info("This call has no intrinsic value; remaining time can still give it value.")
-        elif stock < 100:
-            st.info("This put is in the money: the right to sell at $100 is valuable now.")
-        else:
-            st.info("This put has no intrinsic value; remaining time can still give it value.")
-    _prose("### Explore three cause-and-effect relationships")
-    _prose(
-        "**Stock price:** Hold time and volatility fixed. Move the stock slider "
-        "upward. Compare a call against a put."
+        "You shouldn't have to choose complicated model settings to learn. "
+        "We will walk through **three ready-made comparisons**. "
+        "Everything uses a fictional **$100 strike** and a simplified "
+        "European-style theoretical model with zero interest and dividends."
     )
     _prose(
-        "**Time:** Return the stock to $100 and shorten expiration. "
-        "Notice what happens to the time-value portion."
+        "The volatility percentages below are **arbitrary teaching assumptions**—"
+        "not normal, average, current or recommended values. "
+        "We change one factor at a time to show why the numbers respond."
     )
+    base = theoretical_option(100, 100, 30, 30, "call")
+    higher_stock = theoretical_option(110, 100, 30, 30, "call")
+    _prose("### 1. The stock rises")
     _prose(
-        "**Volatility:** Return to 30 days, then increase the assumed volatility. "
-        "Observe how both calls and puts respond."
+        "Start with an at-the-money call. Now imagine its stock rises "
+        "from $100 to $110 while the 30 days remaining and the assumed "
+        "volatility stay exactly the same."
     )
+    left, right = st.columns(2, gap="medium")
+    with left, st.container(border=True):
+        st.caption("BEFORE · Stock $100")
+        st.metric("Modeled call premium / share", f"${base.premium:.2f}")
+        st.caption("Zero intrinsic value; premium is time value")
+    with right, st.container(border=True):
+        st.caption("AFTER · Stock $110")
+        st.metric("Modeled call premium / share", f"${higher_stock.premium:.2f}")
+        st.caption("At least $10 intrinsic value, plus remaining time value")
+    premium_bar(higher_stock.premium, higher_stock.intrinsic)
     insight(
-        "This model is not a prediction.",
-        "Actual US equity options commonly permit early exercise and trade with "
-        "bid–ask spreads. This educational model uses European expiration rules "
-        "and zero rates/dividends to isolate the core forces.",
+        "What changed?",
+        "The right to buy at $100 became more useful because shares now cost "
+        "$110. The model's premium increased. This does not tell us "
+        "what a real option quote would be.",
+    )
+    _prose("### 2. Time passes")
+    far = theoretical_option(100, 100, 90, 30, "call")
+    near = theoretical_option(100, 100, 7, 30, "call")
+    _prose(
+        "Next, return the stock to $100. Keep the assumed volatility "
+        "unchanged, and compare the same call with 90 days left versus "
+        "only 7 days left."
+    )
+    left, right = st.columns(2, gap="medium")
+    with left, st.container(border=True):
+        st.caption("MORE TIME · 90 days")
+        st.metric("Modeled premium / share", f"${far.premium:.2f}")
+    with right, st.container(border=True):
+        st.caption("LESS TIME · 7 days")
+        st.metric("Modeled premium / share", f"${near.premium:.2f}")
+    _prose(
+        "There are fewer opportunities for the stock to move before "
+        "expiration. In this comparison the option has no intrinsic "
+        "value, and its remaining time value becomes smaller."
+    )
+    _prose("### 3. Expected movement changes")
+    calm = theoretical_option(100, 100, 30, 20, "call")
+    uncertain = theoretical_option(100, 100, 30, 50, "call")
+    _prose(
+        "**Volatility** describes how widely prices may move. "
+        "To isolate its effect, hold the stock at $100, strike at $100 "
+        "and time remaining at 30 days. Compare two *illustrative* "
+        "assumed volatility levels: 20% and 50% annually."
+    )
+    left, right = st.columns(2, gap="medium")
+    with left, st.container(border=True):
+        st.caption("SCENARIO A · 20% assumed volatility")
+        st.metric("Modeled premium / share", f"${calm.premium:.2f}")
+    with right, st.container(border=True):
+        st.caption("SCENARIO B · 50% assumed volatility")
+        st.metric("Modeled premium / share", f"${uncertain.premium:.2f}")
+    insight(
+        "Higher expected movement, higher model premium.",
+        "The buyer can benefit from a large favorable move but does "
+        "not have to exercise after an unfavorable move. Increased "
+        "uncertainty generally raises the theoretical values of both "
+        "calls and puts, holding other assumptions fixed.",
+    )
+    _prose("### What about a put?")
+    put_100 = theoretical_option(100, 100, 30, 30, "put")
+    put_90 = theoretical_option(90, 100, 30, 30, "put")
+    _prose(
+        f"A put has the opposite stock-price sensitivity: with the "
+        f"same $100 strike, 30 days and 30% illustrative volatility, "
+        f"the model gives a premium of **${put_100.premium:.2f}** "
+        f"when the stock is $100, versus **${put_90.premium:.2f}** "
+        f"when the stock falls to $90."
+    )
+    _caption(
+        "All examples are hypothetical model outputs, not option quotes. "
+        "Actual equity options often allow early exercise, and prices "
+        "can differ because of interest, dividends, spreads and supply/demand."
     )
 
 
@@ -471,38 +504,40 @@ def _chapter_seven() -> None:
 
 def _chapter_eight() -> None:
     chapter(8, COUNT, "FROM THEORY TO PAYOFF", CHAPTER_TITLES[7],
-            "Learn the difference between a changing market premium and the profit from a completed trade.",
+            "Separate a changing option premium from what you ultimately gain or lose.",
             icon="target")
     _prose(
-        "Suppose you buy a fictional **$100-strike call for a $6 premium per "
-        "share**. At expiration, its exercise payoff depends on the amount "
-        "by which the stock exceeds $100."
+        "Suppose you pay a **$6 premium per share** to buy a fictional "
+        "**$100-strike call**. Ignore trading fees for this lesson. "
+        "At expiration, the call's exercise payoff depends on "
+        "how far the stock price finishes above the strike."
     )
     _prose(
-        "**Call payoff = max(stock at expiration − strike, $0)**\n\n"
-        "**Call profit = payoff − premium paid** (ignoring fees)"
+        "**Call payoff at expiration = max(stock price − strike, $0)**\n\n"
+        "**Net profit = payoff − original premium paid**"
     )
-    stock = st.slider(
-        "Stock price at expiration ($)", 80, 130, 110, 1,
-        key="qi_opt_course_expiry_stock_v2",
+    _prose("### Four outcomes from the same contract")
+    _prose(
+        "The premium paid at entry is always $6. "
+        "What changes below is **only the ending stock price**."
     )
-    payoff = max(stock - 100, 0)
-    profit = expiration_profit(stock, 100, 6, "call")
-    a, b, c = st.columns(3)
-    a.metric("Payoff / share", f"${payoff:,.2f}")
-    b.metric("Net P/L / share", f"{profit:+.2f} dollars")
-    c.metric("Break-even stock price", "$106")
+    st.table([
+        {"Ending stock price": "$95", "Payoff / share": "$0", "Net result / share": "−$6"},
+        {"Ending stock price": "$104", "Payoff / share": "$4", "Net result / share": "−$2"},
+        {"Ending stock price": "$106", "Payoff / share": "$6", "Net result / share": "$0"},
+        {"Ending stock price": "$115", "Payoff / share": "$15", "Net result / share": "+$9"},
+    ])
+    _prose(
+        "At **$104**, the call has value at expiration, but that value "
+        "does not recover the $6 paid. At **$106**, the payoff exactly "
+        "recovers the original premium. That's break-even, before fees."
+    )
     stocks = list(range(80, 131))
     values = [expiration_profit(s, 100, 6, "call") for s in stocks]
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=stocks, y=values, mode="lines", name="Long call net P/L",
         line={"width": 4, "color": "#FF78B7"},
-    ))
-    fig.add_trace(go.Scatter(
-        x=[stock], y=[profit], mode="markers",
-        name="Selected expiration price",
-        marker={"size": 12, "color": "#80A8F5"},
     ))
     fig.add_hline(y=0, line_dash="dot", line_color="#8192AD")
     fig.add_vline(x=106, line_dash="dot", line_color="#8192AD")
@@ -511,37 +546,34 @@ def _chapter_eight() -> None:
         y_title="Net profit / loss per share ($)",
     )
     with st.container(border=True):
+        _prose("**Visualize the break-even point**")
         st.plotly_chart(
             fig, width="stretch", key="qi_opt_course_payoff_chart_v2",
             config={"displaylogo": False, "scrollZoom": False},
         )
         _caption(
-            "Pink = payoff minus initial premium, not the call's market value "
-            "before expiration. Blue dot = selected ending stock price."
+            "Pink line = payoff minus the original premium. "
+            "The horizontal line shows zero profit; the vertical line "
+            "marks the $106 break-even stock price."
         )
-    _caption(
-        "The $6 is the original premium paid, not a current quote or time value. "
-        "At expiration, option time value is zero."
-    )
     insight(
-        "A correct prediction about direction is not enough.",
-        "A call can finish in the money and still lose money after accounting "
-        "for the premium paid. Here, a $104 ending stock price pays $4 but "
-        "produces a $2 loss per share before fees.",
+        "Predicting the right direction is not enough.",
+        "An option can finish in the money while still producing a loss. "
+        "The purchase price, time, volatility and final payoff all matter.",
     )
-    _prose("### Before you move on")
+    _prose("### What you've learned")
     _prose(
-        "You can now explain why premiums change, distinguish intrinsic and "
-        "time value, describe delta/theta/vega, and reason about trade outcomes "
-        "without confusing premiums, payoffs and profits."
+        "You can now explain why a premium changes, separate intrinsic "
+        "from time value, understand basic Greek sensitivities, "
+        "and distinguish an option's price from its payoff and net profit."
     )
     _caption(
-        "Long-option maximum loss is generally the premium paid plus fees. "
-        "Different positions, including written options, can have much greater risks. "
-        "This lesson is educational and does not recommend trading."
+        "The buyer of a plain long option generally risks the premium "
+        "paid plus costs. Uncovered short-option sellers can face much "
+        "larger losses. Educational examples, not trading advice."
     )
     st.link_button(
-        "Learn more — Options Industry Council",
+        "Further reading — Options Industry Council",
         "https://www.optionseducation.org/",
     )
 
